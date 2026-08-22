@@ -1,0 +1,8 @@
+{
+  "name": "即時資產戰情室",
+  "description": "全方位台美股即時持股監控、大盤走勢、農曆操盤黃曆與 AI 戰情分析系統",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,250 @@
+import React from 'react';
+import {
+  X,
+  TrendingUp,
+  BarChart2,
+  History,
+  Edit3,
+  Trash2,
+  DollarSign,
+  Sparkles,
+  Layers,
+  ArrowLeft,
+} from 'lucide-react';
+import { StockPosition } from '../../types';
+import { formatMoney } from '../../utils/format';
+import { playClickSound } from '../../utils/audio';
+import { getStockDividendInfo } from '../../utils/dividendHelper';
+
+interface StockDetailModalProps {
+  isOpen: boolean;
+  stock: StockPosition | null;
+  usdTwdRate: number;
+  isPrivacy: boolean;
+  isRedUp: boolean;
+  officialEvents?: Record<string, { exDate: string; amount: number; stockDps?: number }>;
+  onClose: () => void;
+  onOpenChart: (symbol: string, market: 'tse' | 'otc' | 'us', name: string) => void;
+  onOpenTxHistory: (stockId: string) => void;
+  onOpenEditModal: (stockId: string) => void;
+  onDeleteStock: (stockId: string) => void;
+}
+
+export const StockDetailModal: React.FC<StockDetailModalProps> = ({
+  isOpen,
+  stock,
+  usdTwdRate,
+  isPrivacy,
+  isRedUp,
+  officialEvents,
+  onClose,
+  onOpenChart,
+  onOpenTxHistory,
+  onOpenEditModal,
+  onDeleteStock,
+}) => {
+  if (!isOpen || !stock) return null;
+
+  const isUS = stock.market === 'us';
+  const buyFx = isUS ? stock.buyRate || usdTwdRate : 1;
+  const marketFx = isUS ? usdTwdRate : 1;
+  const safePrice = typeof stock.price === 'number' && stock.price > 0 ? stock.price : null;
+
+  const costTWD = stock.shares * stock.cost * buyFx;
+  const marketValTWD = safePrice === null ? null : stock.shares * safePrice * marketFx;
+  const profitTWD = marketValTWD === null ? null : marketValTWD - costTWD;
+  const roi = costTWD > 0 && profitTWD !== null ? (profitTWD / costTWD) * 100 : null;
+
+  const getUpColor = () => (isRedUp ? 'text-rose-600' : 'text-emerald-600');
+  const getDownColor = () => (isRedUp ? 'text-emerald-600' : 'text-rose-600');
+
+  const profitColorClass =
+    profitTWD === null ? 'text-slate-400' : profitTWD >= 0 ? getUpColor() : getDownColor();
+
+  const divInfo = getStockDividendInfo(stock, usdTwdRate, officialEvents?.[stock.symbol.toUpperCase()]);
+  const txCount = Array.isArray(stock.transactions) ? stock.transactions.length : 1;
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-slate-900/40 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-fadeIn h-[100dvh]">
+      <div className="w-full max-w-xl bg-white border border-slate-100 rounded-t-3xl sm:rounded-3xl shadow-[0_12px_40px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Top Sticky Navigation Bar */}
+        <div className="bg-white border-b border-slate-100 px-4 py-3.5 flex items-center justify-between gap-3 shrink-0">
+          <button
+            onClick={() => {
+              playClickSound();
+              onClose();
+            }}
+            className="flex items-center gap-1.5 text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-100 text-xs font-bold transition btn-interact shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4 text-indigo-600" />
+            <span>返回清單</span>
+          </button>
+
+          <div className="flex flex-col items-center min-w-0">
+            <div className="flex items-center gap-2 max-w-full">
+              <span className="text-base font-extrabold text-slate-900 truncate">{stock.name}</span>
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
+                {stock.market.toUpperCase()}
+              </span>
+            </div>
+            <span className="text-[11px] font-mono text-slate-500">{stock.symbol}</span>
+          </div>
+
+          <button
+            onClick={() => {
+              playClickSound();
+              onClose();
+            }}
+            className="text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 p-2 rounded-xl border border-slate-200 transition btn-interact shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Scrollable Content Body */}
+        <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+          {/* Price & Real-time Hero Banner */}
+          <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3 shadow-xs text-slate-900">
+            <div className="flex justify-between items-baseline">
+              <div>
+                <span className="text-[11px] text-slate-500 block font-sans font-bold">最新市場成交價</span>
+                <div className="text-3xl font-black font-mono text-slate-900 tabular-nums tracking-tight">
+                  {safePrice === null ? '--' : isUS ? `$${safePrice} USD` : `$${safePrice}`}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[11px] text-slate-500 block font-sans font-bold">持股總報酬率</span>
+                <div className={`text-2xl font-black font-mono tabular-nums ${profitColorClass}`}>
+                  {roi === null ? '--' : `${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%`}
+                </div>
+              </div>
+            </div>
+
+            {(stock.dayHigh || stock.dayLow) && (
+              <div className="pt-2.5 border-t border-slate-200 flex justify-between items-center text-xs font-mono text-slate-600">
+                <span>今日最低: ${stock.dayLow || '--'}</span>
+                <span>今日最高: ${stock.dayHigh || '--'}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Metric Cards Grid */}
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            {/* Market Value */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
+              <span className="text-[11px] text-slate-500 font-sans block flex items-center gap-1.5 font-bold">
+                <DollarSign className="w-4 h-4 text-indigo-600" /> 持有總市值 (NT$)
+              </span>
+              <div className="text-lg font-bold font-mono text-slate-900">
+                {marketValTWD === null ? '--' : formatMoney(marketValTWD, isPrivacy)}
+              </div>
+              <div className="text-[11px] text-slate-500 font-mono border-t border-slate-200 pt-1 mt-1">
+                買入總成本: <span className="text-slate-800 font-bold">${formatMoney(costTWD, isPrivacy)}</span>
+              </div>
+            </div>
+
+            {/* Profit & Loss */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
+              <span className="text-[11px] text-slate-500 font-sans block flex items-center gap-1.5 font-bold">
+                <TrendingUp className="w-4 h-4 text-emerald-600" /> 未實現損益 (NT$)
+              </span>
+              <div className={`text-lg font-bold font-mono ${profitColorClass}`}>
+                {profitTWD === null
+                  ? '--'
+                  : `${profitTWD >= 0 ? '+' : ''}${formatMoney(profitTWD, isPrivacy)}`}
+              </div>
+            </div>
+
+            {/* Shares & Cost */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
+              <span className="text-[11px] text-slate-500 font-sans block flex items-center gap-1.5 font-bold">
+                <Layers className="w-4 h-4 text-indigo-600" /> 持有股數與均價
+              </span>
+              <div className="text-slate-900 font-mono font-bold text-sm">
+                {stock.shares.toLocaleString()} 股 (${stock.cost})
+              </div>
+              {isUS && (
+                <div className="text-[10px] text-slate-500 font-mono">
+                  買入匯率: {buyFx.toFixed(2)}
+                </div>
+              )}
+            </div>
+
+            {/* Dividends */}
+            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] text-emerald-900 font-sans flex items-center gap-1 font-bold">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> 預估除權息
+                </span>
+                {divInfo.isOfficial ? (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    官方公告
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                    前次估算
+                  </span>
+                )}
+              </div>
+              <div className="text-emerald-900 font-mono font-bold text-sm">
+                現金股息: ${formatMoney(divInfo.annualIncomeTWD, isPrivacy)} /年
+              </div>
+              <div className="text-[11px] text-emerald-800 font-mono font-bold">
+                單次預估: ${formatMoney(divInfo.singlePayoutTWD, isPrivacy)} NT$
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons Toolbar */}
+          <div className="pt-2 space-y-2">
+            <button
+              onClick={() => {
+                playClickSound();
+                onClose();
+                onOpenChart(stock.symbol, stock.market === 'us' ? 'us' : 'tse', stock.name);
+              }}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 btn-interact shadow-sm"
+            >
+              <BarChart2 className="w-4 h-4" /> 檢視即時分時 K 線圖
+            </button>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => {
+                  playClickSound();
+                  onClose();
+                  onOpenTxHistory(stock.id);
+                }}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 py-2.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 btn-interact"
+              >
+                <History className="w-3.5 h-3.5 text-slate-500" /> 歷程({txCount})
+              </button>
+
+              <button
+                onClick={() => {
+                  playClickSound();
+                  onClose();
+                  onOpenEditModal(stock.id);
+                }}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 py-2.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 btn-interact"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-indigo-600" /> 編輯
+              </button>
+
+              <button
+                onClick={() => {
+                  onClose();
+                  onDeleteStock(stock.id);
+                }}
+                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-2.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 btn-interact"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" /> 刪除
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
