@@ -36,6 +36,7 @@ interface DividendCalendarProps {
   isPrivacy: boolean;
   officialEvents?: Record<string, { exDate: string; amount: number; stockDps?: number; exDateTs: number }>;
   onUpdateStock?: (updatedStock: StockPosition) => void;
+  onApplyPendingStockShares?: (stockId: string) => void;
 }
 
 export const DividendCalendar: React.FC<DividendCalendarProps> = ({
@@ -44,6 +45,7 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
   isPrivacy,
   officialEvents: officialEventsProp,
   onUpdateStock,
+  onApplyPendingStockShares,
 }) => {
   const [monthlyGoalTWD, setMonthlyGoalTWD] = useState<number>(30000); // Default Goal: $30,000 NTD/month
   const [activeTab, setActiveTab] = useState<'overview' | 'calendar' | 'goal' | 'drip'>('overview');
@@ -726,9 +728,20 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
                       </div>
 
                       {item.stockDps > 0 && (
-                        <div className="pt-1.5 border-t border-slate-200/60 flex justify-between items-center text-[11px]">
-                          <span className="text-purple-800">預估配股: <strong className="text-purple-900 font-bold">+{item.pendingStockShares} 股</strong></span>
-                          <span className="text-purple-800 font-bold">市值約 ${formatMoney(item.pendingStockValueTWD, isPrivacy)} NT$</span>
+                        <div className="pt-1.5 border-t border-slate-200/60 flex justify-between items-center text-[11px] flex-wrap gap-1">
+                          <span className="text-purple-800">預估配股: <strong className="text-purple-900 font-bold">+{item.pendingStockShares} 股</strong> (市值約 ${formatMoney(item.pendingStockValueTWD, isPrivacy)} NT$)</span>
+                          {onApplyPendingStockShares && originalStock && (
+                            <button
+                              onClick={() => {
+                                playClickSound();
+                                onApplyPendingStockShares(originalStock.id);
+                              }}
+                              className="text-[10px] font-bold bg-purple-600 hover:bg-purple-700 text-white px-2 py-0.5 rounded-lg flex items-center gap-1 transition btn-interact shadow-xs"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>一鍵撥入</span>
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

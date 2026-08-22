@@ -21,6 +21,8 @@ import {
   ArrowUpDown,
   TrendingUp,
   TrendingDown,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import { StockPosition } from '../types';
 import { formatMoney } from '../utils/format';
@@ -44,6 +46,10 @@ interface StockTableProps {
   onPublishToGlobal?: () => void;
   onExportData: () => void;
   onImportData: () => void;
+  isExAdjustedMode?: boolean;
+  onToggleExAdjustedMode?: () => void;
+  onApplyPendingStockShares?: (stockId: string) => void;
+  onDeductCashDividendCost?: (stockId: string, dps?: number) => void;
 }
 
 type ViewMode = 'table' | 'cards' | 'heatmap';
@@ -66,6 +72,10 @@ export const StockTable: React.FC<StockTableProps> = ({
   onPublishToGlobal,
   onExportData,
   onImportData,
+  isExAdjustedMode = true,
+  onToggleExAdjustedMode,
+  onApplyPendingStockShares,
+  onDeductCashDividendCost,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTab, setFilterTab] = useState<'all' | 'tw' | 'us'>('all');
@@ -111,7 +121,9 @@ export const StockTable: React.FC<StockTableProps> = ({
         const isUS = item.market === 'us';
         const fx = isUS ? usdTwdRate : 1;
         const p = typeof item.price === 'number' && item.price > 0 ? item.price : item.cost;
-        return item.shares * p * fx;
+        const divInfo = getStockDividendInfo(item, usdTwdRate, officialEvents?.[item.symbol.toUpperCase()]);
+        const effShares = isExAdjustedMode ? item.shares + divInfo.pendingStockShares : item.shares;
+        return effShares * p * fx;
       };
 
       const getROI = (item: StockPosition) => {
@@ -120,7 +132,9 @@ export const StockTable: React.FC<StockTableProps> = ({
         const mFx = isUS ? usdTwdRate : 1;
         const cost = item.shares * item.cost * buyFx;
         const p = typeof item.price === 'number' && item.price > 0 ? item.price : item.cost;
-        const val = item.shares * p * mFx;
+        const divInfo = getStockDividendInfo(item, usdTwdRate, officialEvents?.[item.symbol.toUpperCase()]);
+        const effShares = isExAdjustedMode ? item.shares + divInfo.pendingStockShares : item.shares;
+        const val = effShares * p * mFx;
         return cost > 0 ? ((val - cost) / cost) * 100 : 0;
       };
 
@@ -437,15 +451,17 @@ export const StockTable: React.FC<StockTableProps> = ({
                     const marketFx = isUS ? usdTwdRate : 1;
                     const safePrice = typeof item.price === 'number' && item.price > 0 ? item.price : null;
 
+                    const divInfo = getStockDividendInfo(item, usdTwdRate, officialEvents?.[item.symbol.toUpperCase()]);
+                    const pendingShares = divInfo.pendingStockShares || 0;
+                    const effectiveShares = isExAdjustedMode ? item.shares + pendingShares : item.shares;
+
                     const itemCostTWD = item.shares * item.cost * buyFx;
-                    const itemMarketValTWD = safePrice === null ? null : item.shares * safePrice * marketFx;
+                    const itemMarketValTWD = safePrice === null ? null : effectiveShares * safePrice * marketFx;
                     const itemProfitTWD = itemMarketValTWD === null ? null : itemMarketValTWD - itemCostTWD;
                     const itemRoi = itemCostTWD > 0 && itemProfitTWD !== null ? (itemProfitTWD / itemCostTWD) * 100 : null;
 
                     const profitColorClass =
                       itemProfitTWD === null ? 'text-slate-400' : itemProfitTWD >= 0 ? getUpColor() : getDownColor();
-
-                    const divInfo = getStockDividendInfo(item, usdTwdRate, officialEvents?.[item.symbol.toUpperCase()]);
 
                     return (
                       <tr
@@ -478,6 +494,11 @@ export const StockTable: React.FC<StockTableProps> = ({
                         {/* Shares & Cost */}
                         <td className="p-3.5 text-right font-mono whitespace-nowrap">
                           <div className="font-bold text-slate-900">{item.shares.toLocaleString()} 股</div>
+                          {isExAdjustedMode && pendingShares > 0 && (
+                            <div className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block mt-0.5" title="除權待撥股數：已算入估值與損益平準">
+                              +{pendingShares.toLocaleString()} 待撥
+                            </div>
+                          )}
                           <div className="text-[11px] text-slate-500">均價 ${item.cost}</div>
                         </td>
 
@@ -514,6 +535,19 @@ export const StockTable: React.FC<StockTableProps> = ({
                         {/* Action buttons */}
                         <td className="p-3.5 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1">
+                            {pendingShares > 0 && onApplyPendingStockShares && (
+                              <button
+                                onClick={() => {
+                                  playClickSound();
+                                  onApplyPendingStockShares(item.id);
+                                }}
+                                className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1 text-[10px] font-bold px-2 shadow-xs"
+                                title={`一鍵將 +${pendingShares} 股配股撥入持股總數`}
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>撥入 +{pendingShares}股</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 playClickSound();
@@ -806,15 +840,19 @@ export const StockTable: React.FC<StockTableProps> = ({
       {/* Detail Modal */}
       {detailModalStock && (
         <StockDetailModal
+          isOpen={!!detailModalStock}
           stock={detailModalStock}
           usdTwdRate={usdTwdRate}
           isPrivacy={isPrivacy}
           isRedUp={isRedUp}
           officialEvents={officialEvents}
           onClose={() => setDetailModalStock(null)}
+          onOpenChart={onSelectChartTarget}
           onOpenTxHistory={onOpenTxHistory}
           onOpenEditModal={onOpenEditModal}
           onDeleteStock={onDeleteStock}
+          onApplyPendingStockShares={onApplyPendingStockShares}
+          onDeductCashDividendCost={onDeductCashDividendCost}
         />
       )}
     </div>

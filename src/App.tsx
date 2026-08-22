@@ -871,6 +871,73 @@ export default function App() {
     }
   };
 
+  // Ex-Rights Adjusted Mode State (default: ON to protect portfolio against ex-dividend/ex-rights drop)
+  const [isExAdjustedMode, setIsExAdjustedMode] = useState<boolean>(true);
+
+  // Ex-Rights Pending Stock Dividend Application Handler
+  const handleApplyPendingStockShares = (stockId: string) => {
+    const target = portfolio.find((s) => s.id === stockId);
+    if (!target) return;
+
+    const divInfo = getStockDividendInfo(target, usdTwdRate, officialEvents[target.symbol.toUpperCase()]);
+    const pendingShares = divInfo.pendingStockShares || 0;
+
+    if (pendingShares <= 0) {
+      showToast('該股票目前無待撥配股可入帳', false);
+      return;
+    }
+
+    const newShares = Math.round((target.shares + pendingShares) * 1000) / 1000;
+    // Calculate new cost basis (free stock dividend dilutes weighted cost basis)
+    const newCost = Math.round(((target.shares * target.cost) / newShares) * 1000) / 1000;
+
+    // Record stock dividend transaction
+    const newTx: TransactionRecord = {
+      id: `tx_div_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      buyDate: getTaiwanDateString(),
+      shares: pendingShares,
+      cost: 0,
+      buyRate: target.buyRate || 1,
+    };
+
+    const updatedStock: StockPosition = {
+      ...target,
+      shares: newShares,
+      cost: newCost,
+      manualPendingStockShares: 0, // Reset manual override after applying
+      transactions: [newTx, ...(target.transactions || [])],
+    };
+
+    handleUpdateSingleStock(updatedStock);
+    showToast(`✅ 成功將 ${target.name} (+${pendingShares} 股) 配股撥入持股總數！`);
+    playSuccessSound();
+  };
+
+  // Cash Dividend Cost Deduction Handler
+  const handleDeductCashDividendCost = (stockId: string, dps?: number) => {
+    const target = portfolio.find((s) => s.id === stockId);
+    if (!target) return;
+
+    const divInfo = getStockDividendInfo(target, usdTwdRate, officialEvents[target.symbol.toUpperCase()]);
+    const deductAmountPerShare = dps || divInfo.singleDividendPerShare || 0;
+
+    if (deductAmountPerShare <= 0) {
+      showToast('該股票無現金股利可供扣抵', false);
+      return;
+    }
+
+    const newCost = Math.max(0, target.cost - deductAmountPerShare);
+    const updatedStock: StockPosition = {
+      ...target,
+      cost: Math.round(newCost * 1000) / 1000,
+      receivedDividends: (target.receivedDividends || 0) + (deductAmountPerShare * target.shares),
+    };
+
+    handleUpdateSingleStock(updatedStock);
+    showToast(`✅ 成功為 ${target.name} 每股扣抵 $${deductAmountPerShare.toFixed(2)} 元持股成本！`);
+    playSuccessSound();
+  };
+
   // Calculations for total portfolio
   let totalValTWD = 0;
   let prevCloseValTWD = 0;
@@ -879,24 +946,36 @@ export default function App() {
   let twCount = 0;
   let usCount = 0;
   let hasMissingPrice = false;
+  let totalPendingStockValueTWD = 0;
+  let totalPendingStockShares = 0;
 
   portfolio.forEach((item) => {
     const isUS = item.market === 'us';
     const buyFx = isUS ? item.buyRate || usdTwdRate : 1;
     const marketFx = isUS ? usdTwdRate : 1;
 
+    const divInfo = getStockDividendInfo(item, usdTwdRate, officialEvents[item.symbol.toUpperCase()]);
+    const pendingShares = divInfo.pendingStockShares || 0;
+    const effectiveShares = isExAdjustedMode ? item.shares + pendingShares : item.shares;
+
+    if (pendingShares > 0) {
+      totalPendingStockShares += pendingShares;
+      const safeP = typeof item.price === 'number' && item.price > 0 ? item.price : item.cost;
+      totalPendingStockValueTWD += pendingShares * safeP * marketFx;
+    }
+
     const costTWD = item.shares * item.cost * buyFx;
     totalCostTWD += costTWD;
 
     if (typeof item.price === 'number' && item.price > 0) {
-      const valTWD = item.shares * item.price * marketFx;
+      const valTWD = effectiveShares * item.price * marketFx;
       totalValTWD += valTWD;
 
       const pClose = typeof item.prevClose === 'number' && item.prevClose > 0 ? item.prevClose : item.price;
-      prevCloseValTWD += item.shares * pClose * marketFx;
+      prevCloseValTWD += effectiveShares * pClose * marketFx;
 
       if (typeof item.prevClose === 'number' && item.prevClose > 0) {
-        todayPLTWD += item.shares * (item.price - item.prevClose) * marketFx;
+        todayPLTWD += effectiveShares * (item.price - item.prevClose) * marketFx;
       }
     } else {
       hasMissingPrice = true;
@@ -964,7 +1043,10 @@ export default function App() {
               }
             }
 
-            totalTWDAtTs += stock.shares * pAtTs * fx;
+            const divInfo = getStockDividendInfo(stock, usdTwdRate, officialEvents[stock.symbol.toUpperCase()]);
+            const effShares = isExAdjustedMode ? stock.shares + divInfo.pendingStockShares : stock.shares;
+
+            totalTWDAtTs += effShares * pAtTs * fx;
           });
           return Math.round(totalTWDAtTs);
         });
@@ -1219,6 +1301,10 @@ export default function App() {
                   }}
                   monthlyTargetIncome={30000}
                   annualDividendIncome={annualDividendTWD}
+                  isExAdjustedMode={isExAdjustedMode}
+                  onToggleExAdjustedMode={() => setIsExAdjustedMode(!isExAdjustedMode)}
+                  totalPendingStockValueTWD={totalPendingStockValueTWD}
+                  totalPendingStockShares={totalPendingStockShares}
                 />
 
                 <div id="section-indices" className="scroll-mt-20">
@@ -1320,6 +1406,10 @@ export default function App() {
                   };
                   fileInput.click();
                 }}
+                isExAdjustedMode={isExAdjustedMode}
+                onToggleExAdjustedMode={() => setIsExAdjustedMode(!isExAdjustedMode)}
+                onApplyPendingStockShares={handleApplyPendingStockShares}
+                onDeductCashDividendCost={handleDeductCashDividendCost}
               />
             </div>
           )}
@@ -1361,6 +1451,7 @@ export default function App() {
                   isPrivacy={isPrivacy}
                   officialEvents={officialEvents}
                   onUpdateStock={handleUpdateSingleStock}
+                  onApplyPendingStockShares={handleApplyPendingStockShares}
                 />
               </div>
               <LunarFortuneCard />

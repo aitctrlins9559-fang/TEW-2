@@ -1,6 +1,7 @@
 import React from 'react';
-import { Wallet, Coins, Zap, TrendingUp, Sparkles, Target, Calendar } from 'lucide-react';
+import { Wallet, Coins, Zap, TrendingUp, Sparkles, Target, Calendar, ShieldCheck } from 'lucide-react';
 import { formatMoney } from '../utils/format';
+import { playClickSound } from '../utils/audio';
 
 interface KpiCardsProps {
   totalValue: number;
@@ -15,6 +16,10 @@ interface KpiCardsProps {
   isRedUp: boolean;
   onOpenTodayPLModal: () => void;
   annualDividendIncome?: number;
+  isExAdjustedMode?: boolean;
+  onToggleExAdjustedMode?: () => void;
+  totalPendingStockValueTWD?: number;
+  totalPendingStockShares?: number;
 }
 
 export const KpiCards: React.FC<KpiCardsProps> = ({
@@ -30,6 +35,10 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
   isRedUp,
   onOpenTodayPLModal,
   annualDividendIncome = 0,
+  isExAdjustedMode = true,
+  onToggleExAdjustedMode,
+  totalPendingStockValueTWD = 0,
+  totalPendingStockShares = 0,
 }) => {
   const getUpColor = () => (isRedUp ? 'text-rose-600' : 'text-emerald-600');
   const getDownColor = () => (isRedUp ? 'text-emerald-600' : 'text-rose-600');
@@ -60,7 +69,28 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
               </div>
               總資產淨估值 (TWD)
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {onToggleExAdjustedMode && (
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    onToggleExAdjustedMode();
+                  }}
+                  className={`text-[11px] font-bold px-3 py-1 rounded-full border transition-all duration-200 shadow-2xs flex items-center gap-1.5 btn-interact ${
+                    isExAdjustedMode
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80 hover:bg-emerald-100'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                  title={
+                    isExAdjustedMode
+                      ? '已開啟除權息還原：配股價格下降時自動將待撥股數算入總資產估值，避免產生虛跌損益'
+                      : '切換為標準市場盤價算表'
+                  }
+                >
+                  <ShieldCheck className={`w-3.5 h-3.5 ${isExAdjustedMode ? 'text-emerald-600' : 'text-slate-400'}`} />
+                  <span>{isExAdjustedMode ? '除權息還原算表 ON' : '標準盤價'}</span>
+                </button>
+              )}
               <span className="text-xs font-bold px-3.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-100 shadow-2xs">
                 總部位 {totalCount} 檔 ({twCount} 台股 / {usCount} 美股)
               </span>
@@ -83,6 +113,19 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Ex-Rights Protection Notice Banner */}
+          {isExAdjustedMode && totalPendingStockShares > 0 && (
+            <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50/90 border border-emerald-200/80 rounded-2xl px-3.5 py-2 flex items-center justify-between flex-wrap gap-2 animate-fadeIn">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                除權息還原保護中：已自動將待撥配股 +{totalPendingStockShares.toLocaleString()} 股 (${formatMoney(totalPendingStockValueTWD, isPrivacy)} TWD) 納入持股估值，真實反映實際資產淨值。
+              </span>
+              <span className="text-[10px] font-mono font-black text-emerald-700 bg-white px-2 py-0.5 rounded-lg border border-emerald-200/60 shadow-2xs shrink-0">
+                已平準除權跌幅
+              </span>
+            </div>
+          )}
 
           {/* Dividend Passive Income Target Progress Tracker */}
           <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">

@@ -10,6 +10,9 @@ import {
   Sparkles,
   Layers,
   ArrowLeft,
+  CheckCircle2,
+  Coins,
+  ShieldCheck,
 } from 'lucide-react';
 import { StockPosition } from '../../types';
 import { formatMoney } from '../../utils/format';
@@ -28,6 +31,8 @@ interface StockDetailModalProps {
   onOpenTxHistory: (stockId: string) => void;
   onOpenEditModal: (stockId: string) => void;
   onDeleteStock: (stockId: string) => void;
+  onApplyPendingStockShares?: (stockId: string) => void;
+  onDeductCashDividendCost?: (stockId: string, dps?: number) => void;
 }
 
 export const StockDetailModal: React.FC<StockDetailModalProps> = ({
@@ -42,6 +47,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
   onOpenTxHistory,
   onOpenEditModal,
   onDeleteStock,
+  onApplyPendingStockShares,
+  onDeductCashDividendCost,
 }) => {
   if (!isOpen || !stock) return null;
 
@@ -193,8 +200,72 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
               <div className="text-[11px] text-emerald-800 font-mono font-bold">
                 單次預估: ${formatMoney(divInfo.singlePayoutTWD, isPrivacy)} NT$
               </div>
+              {divInfo.stockDps > 0 && (
+                <div className="text-[11px] text-purple-900 font-mono font-bold pt-1 border-t border-emerald-200/60 flex items-center justify-between">
+                  <span>股票股利: {divInfo.stockDps} 元/股</span>
+                  <span className="text-purple-800">+{divInfo.pendingStockShares} 股待撥</span>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Ex-Rights / Ex-Dividend Special Management Section */}
+          {(divInfo.pendingStockShares > 0 || divInfo.annualDividendPerShare > 0) && (
+            <div className="bg-gradient-to-br from-emerald-50/80 to-indigo-50/80 border border-emerald-200/80 p-4 rounded-2xl space-y-3 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  除權息平準與配股入帳管理
+                </span>
+                <span className="text-[10px] font-mono font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-full border border-emerald-200">
+                  除權息防護中
+                </span>
+              </div>
+
+              {divInfo.pendingStockShares > 0 && (
+                <div className="space-y-2 bg-white/80 p-3 rounded-xl border border-emerald-100">
+                  <div className="text-xs text-slate-700 flex justify-between items-center font-bold">
+                    <span>待撥股票股利: <strong className="text-emerald-700">+{divInfo.pendingStockShares} 股</strong></span>
+                    <span className="font-mono text-emerald-800 text-[11px]">市值約 ${formatMoney(divInfo.pendingStockValueTWD, isPrivacy)}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    除權日股價因配股下降時，系統已自動將待撥股數納入資產淨值算表，避免產生假損益跌幅。若您的券商已撥入股票，請點擊下方直接入帳。
+                  </p>
+                  {onApplyPendingStockShares && (
+                    <button
+                      onClick={() => {
+                        playClickSound();
+                        onClose();
+                        onApplyPendingStockShares(stock.id);
+                      }}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs btn-interact"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> 一鍵將 +{divInfo.pendingStockShares} 股配股撥入持股總數
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {divInfo.singleDividendPerShare > 0 && onDeductCashDividendCost && (
+                <div className="bg-white/80 p-3 rounded-xl border border-indigo-100 flex items-center justify-between gap-2">
+                  <div className="text-xs text-slate-700">
+                    <div className="font-bold">現金股利扣抵持股成本</div>
+                    <div className="text-[10px] text-slate-500">每股配息 ${divInfo.singleDividendPerShare.toFixed(2)} 元 (每張可領 ${(divInfo.singleDividendPerShare * 1000).toFixed(0)})</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      playClickSound();
+                      onClose();
+                      onDeductCashDividendCost(stock.id, divInfo.singleDividendPerShare);
+                    }}
+                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 btn-interact shrink-0"
+                  >
+                    <Coins className="w-3.5 h-3.5 text-indigo-600" /> 扣抵成本
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Action Buttons Toolbar */}
           <div className="pt-2 space-y-2">

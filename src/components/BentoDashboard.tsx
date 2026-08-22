@@ -14,6 +14,7 @@ import {
   Award,
   ChevronRight,
   Zap,
+  ShieldCheck,
 } from 'lucide-react';
 import { formatMoney } from '../utils/format';
 import { playClickSound } from '../utils/audio';
@@ -32,6 +33,10 @@ interface BentoDashboardProps {
   onOpenTodayPLModal: (timeframe?: '1D' | '1M' | 'YTD' | 'ALL') => void;
   monthlyTargetIncome?: number; // default $30,000
   annualDividendIncome?: number;
+  isExAdjustedMode?: boolean;
+  onToggleExAdjustedMode?: () => void;
+  totalPendingStockValueTWD?: number;
+  totalPendingStockShares?: number;
 }
 
 export const BentoDashboard: React.FC<BentoDashboardProps> = ({
@@ -48,6 +53,10 @@ export const BentoDashboard: React.FC<BentoDashboardProps> = ({
   onOpenTodayPLModal,
   monthlyTargetIncome = 30000,
   annualDividendIncome,
+  isExAdjustedMode = true,
+  onToggleExAdjustedMode,
+  totalPendingStockValueTWD = 0,
+  totalPendingStockShares = 0,
 }) => {
   const [activeRange, setActiveRange] = useState<'1D' | '1M' | 'YTD' | 'ALL'>('1D');
 
@@ -139,24 +148,48 @@ export const BentoDashboard: React.FC<BentoDashboardProps> = ({
               </div>
             </div>
 
-            {/* Time Range Selector (Mobile Touch Friendly Scrollable) */}
-            <div className="flex items-center p-1 bg-slate-100/70 backdrop-blur-md rounded-2xl text-[11px] font-bold border border-slate-200/60 shrink-0 self-start sm:self-auto overflow-x-auto max-w-full no-scrollbar shadow-inner">
-              {(['1D', '1M', 'YTD', 'ALL'] as const).map((range) => (
+            {/* Time Range Selector & Ex-Rights Toggle */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {onToggleExAdjustedMode && (
                 <button
-                  key={range}
                   onClick={() => {
                     playClickSound();
-                    setActiveRange(range);
+                    onToggleExAdjustedMode();
                   }}
-                  className={`px-3.5 py-1.5 rounded-xl transition-all duration-200 active:scale-95 min-h-[32px] flex items-center justify-center ${
-                    activeRange === range
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-black scale-[1.02]'
-                      : 'text-slate-500 hover:text-slate-900 font-semibold hover:bg-white/50'
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all duration-200 active:scale-95 flex items-center gap-1.5 btn-interact shadow-2xs ${
+                    isExAdjustedMode
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80 hover:bg-emerald-100'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                   }`}
+                  title={
+                    isExAdjustedMode
+                      ? '除權息還原算表已開啟：股價因除權下跌時自動平準，真實反應權益'
+                      : '切換為標準市場盤價'
+                  }
                 >
-                  {range}
+                  <ShieldCheck className={`w-3.5 h-3.5 ${isExAdjustedMode ? 'text-emerald-600' : 'text-slate-400'}`} />
+                  <span>{isExAdjustedMode ? '除權息還原 ON' : '標準盤價'}</span>
                 </button>
-              ))}
+              )}
+
+              <div className="flex items-center p-1 bg-slate-100/70 backdrop-blur-md rounded-2xl text-[11px] font-bold border border-slate-200/60 shrink-0 self-start sm:self-auto overflow-x-auto max-w-full no-scrollbar shadow-inner">
+                {(['1D', '1M', 'YTD', 'ALL'] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => {
+                      playClickSound();
+                      setActiveRange(range);
+                    }}
+                    className={`px-3.5 py-1.5 rounded-xl transition-all duration-200 active:scale-95 min-h-[32px] flex items-center justify-center ${
+                      activeRange === range
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-black scale-[1.02]'
+                        : 'text-slate-500 hover:text-slate-900 font-semibold hover:bg-white/50'
+                    }`}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

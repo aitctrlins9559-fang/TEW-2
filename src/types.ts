@@ -29,6 +29,7 @@ export interface StockPosition {
   customSingleDps?: number; // e.g. 1.01 (single payout DPS per share)
   customStockDps?: number; // e.g. 0.3 (股票股利 元/股)
   pendingStockShares?: number; // 待撥股票股利股數 (Ex-rights pending shares)
+  receivedDividends?: number; // 已領現金股利總額 (TWD or USD)
 }
 
 export interface MarketIndex {
