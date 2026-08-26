@@ -22,6 +22,28 @@ const isStaticHost =
     window.location.hostname.endsWith('.netlify.app') ||
     window.location.protocol === 'file:');
 
+const DEFAULT_WORKER_URL = 'https://stock-proxy.aitctrlins9559.workers.dev';
+
+export function getCustomWorkerUrl(): string {
+  if (typeof window === 'undefined') return DEFAULT_WORKER_URL;
+  const stored = localStorage.getItem('CUSTOM_WORKER_URL');
+  if (stored) {
+    const trimmed = stored.trim().replace(/\/$/, '');
+    return trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
+  }
+  return DEFAULT_WORKER_URL;
+}
+
+export function setCustomWorkerUrl(url: string): void {
+  if (typeof window === 'undefined') return;
+  const trimmed = url.trim().replace(/\/$/, '');
+  if (trimmed) {
+    localStorage.setItem('CUSTOM_WORKER_URL', trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
+  } else {
+    localStorage.removeItem('CUSTOM_WORKER_URL');
+  }
+}
+
 // Reliable CORS Proxy fallback list for static deployment (GitHub Pages)
 const CORS_PROXIES = [
   (targetUrl: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
@@ -31,6 +53,20 @@ const CORS_PROXIES = [
 ];
 
 async function fetchWithCorsFallback(targetUrl: string, timeoutMs = 6000) {
+  // If user configured a custom Cloudflare Worker proxy, try it first
+  const customWorker = getCustomWorkerUrl();
+  if (customWorker) {
+    try {
+      const workerProxyUrl = `${customWorker}/proxy?url=${encodeURIComponent(targetUrl)}`;
+      const res = await fetchWithTimeout(workerProxyUrl, { cache: 'no-store' }, timeoutMs);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+      // fallback to standard proxies
+    }
+  }
+
   // First try direct fetch
   try {
     const res = await fetchWithTimeout(targetUrl, { cache: 'no-store' }, timeoutMs);
@@ -108,8 +144,32 @@ export async function apiFetchQuotes(symbols: string[]): Promise<QuoteResult[]> 
 
   let backendResults: QuoteResult[] = [];
 
+  // 0. Try Custom Cloudflare Worker if set
+  const customWorker = getCustomWorkerUrl();
+  if (customWorker) {
+    try {
+      const res = await fetchWithTimeout(
+        `${customWorker}/api/quote`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ symbols }),
+        },
+        6000
+      );
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.results) && json.results.length > 0) {
+          backendResults = json.results;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
   // 1. Try primary backend route if not on static host
-  if (!isStaticHost) {
+  if (backendResults.length === 0 && !isStaticHost) {
     try {
       const res = await fetchWithTimeout('/api/quote', {
         method: 'POST',
@@ -544,6 +604,25 @@ export async function apiFetchChartData(
   currentPrice?: number,
   prevClose?: number
 ) {
+  const customWorker = getCustomWorkerUrl();
+  if (customWorker) {
+    try {
+      const res = await fetchWithTimeout(
+        `${customWorker}/api/chart?symbol=${encodeURIComponent(symbol)}&range=${range}&interval=${interval}`,
+        {},
+        6000
+      );
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.meta) {
+          return json;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
   if (!isStaticHost) {
     try {
       const res = await fetchWithTimeout(
