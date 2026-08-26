@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CloudCog, Download, Upload, Save, Lock, X, CheckCircle2, Cpu } from 'lucide-react';
+import { CloudCog, Download, Upload, Save, Lock, X, CheckCircle2 } from 'lucide-react';
 import { playClickSound } from '../../utils/audio';
-import { getCustomWorkerUrl, setCustomWorkerUrl } from '../../utils/apiClient';
 
 interface SyncModalProps {
   isOpen: boolean;
@@ -23,12 +22,10 @@ export const SyncModal: React.FC<SyncModalProps> = ({
   isAdmin,
 }) => {
   const [inputUrl, setInputUrl] = useState('');
-  const [workerUrl, setWorkerUrl] = useState('');
   const [isOperating, setIsOperating] = useState(false);
 
   useEffect(() => {
     setInputUrl(currentSyncUrl);
-    setWorkerUrl(getCustomWorkerUrl());
   }, [currentSyncUrl, isOpen]);
 
   if (!isOpen) return null;
@@ -97,23 +94,6 @@ export const SyncModal: React.FC<SyncModalProps> = ({
             </p>
           </div>
 
-          <div className="border-t border-slate-100 pt-3">
-            <label className="block text-slate-700 mb-1.5 font-bold tracking-wide flex items-center gap-1.5">
-              <Cpu className="w-3.5 h-3.5 text-orange-600" />
-              <span>Cloudflare Worker 自訂 API 代理網址 (選填)</span>
-            </label>
-            <input
-              type="text"
-              value={workerUrl}
-              onChange={(e) => setWorkerUrl(e.target.value)}
-              placeholder="https://your-worker-subdomain.workers.dev"
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 font-mono text-xs outline-none focus:border-orange-500"
-            />
-            <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-medium">
-              若在 GitHub Pages 上使用，填入您的 Cloudflare Worker 網址，系統將優先經由您專屬的 Worker 抓取個股最新報價與 K 線走勢圖。
-            </p>
-          </div>
-
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[11px] text-slate-700 space-y-1">
             <div className="font-bold text-amber-800 flex items-center gap-1">
               💡 雲端同步無效或測試失敗的常見原因：
@@ -175,7 +155,6 @@ export const SyncModal: React.FC<SyncModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                setCustomWorkerUrl(workerUrl.trim());
                 onSaveSyncUrl(inputUrl.trim());
               }}
               className="w-2/3 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5 btn-interact"
