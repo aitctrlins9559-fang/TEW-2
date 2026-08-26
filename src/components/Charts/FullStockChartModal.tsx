@@ -286,7 +286,8 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             ? `${target.symbol}.TWO`
             : target.symbol;
 
-        const json = await apiFetchChartData(s, '1d', '5m');
+        const currentPrice = matchedPortfolioItem?.price && matchedPortfolioItem.price > 0 ? matchedPortfolioItem.price : undefined;
+        const json = await apiFetchChartData(s, '1d', '5m', currentPrice);
 
         if (!json || !json.success || !json.meta) {
           throw new Error('暫無即時分時行情數據');
