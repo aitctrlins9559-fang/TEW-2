@@ -21,7 +21,7 @@ import { StockTable } from './components/StockTable';
 import { IntegratedAssetHub } from './components/IntegratedAssetHub';
 import { AssetTrendChart } from './components/Charts/AssetTrendChart';
 import { AllocationPieChart } from './components/Charts/AllocationPieChart';
-import { SlidersHorizontal, Activity, TrendingUp, Sparkles } from 'lucide-react';
+import { SlidersHorizontal, Activity, TrendingUp, Sparkles, Eye, BarChart2, PieChart, Calendar, Plus } from 'lucide-react';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { SingleStockChart } from './components/Charts/SingleStockChart';
 import { FullStockChartModal } from './components/Charts/FullStockChartModal';
@@ -36,6 +36,7 @@ import { DeleteConfirmModal } from './components/Modals/DeleteConfirmModal';
 import { AdminPasswordModal } from './components/Modals/AdminPasswordModal';
 import { DividendCalendarModal } from './components/Modals/DividendCalendarModal';
 import { AssetAnalysisModal } from './components/Modals/AssetAnalysisModal';
+import { GuideModal } from './components/Modals/GuideModal';
 import { DividendCalendar } from './components/DividendCalendar';
 import { ApiDebugPanel } from './components/ApiDebugPanel';
 import { getStockDividendInfo } from './utils/dividendHelper';
@@ -56,7 +57,6 @@ import {
   playShieldBreakSound,
   playClickSound,
 } from './utils/audio';
-import { PieChart, BarChart2, Calendar, Plus } from 'lucide-react';
 
 const INITIAL_PORTFOLIO: StockPosition[] = [
   {
@@ -64,7 +64,7 @@ const INITIAL_PORTFOLIO: StockPosition[] = [
     symbol: '2330',
     name: '台積電',
     market: 'tse',
-    shares: 1000,
+    shares: 100,
     cost: 850,
     buyDate: '2024-05-10',
     buyRate: 1,
@@ -73,62 +73,24 @@ const INITIAL_PORTFOLIO: StockPosition[] = [
     dayHigh: 985,
     dayLow: 970,
     transactions: [
-      { id: 'tx_1', buyDate: '2024-05-10', shares: 1000, cost: 850, buyRate: 1 },
+      { id: 'tx_1', buyDate: '2024-05-10', shares: 100, cost: 850, buyRate: 1 },
     ],
   },
   {
     id: 'stk_2',
-    symbol: 'NVDA',
-    name: 'NVIDIA 輝達',
+    symbol: 'AAPL',
+    name: 'Apple 蘋果',
     market: 'us',
-    shares: 50,
-    cost: 110,
+    shares: 10,
+    cost: 225,
     buyDate: '2024-06-15',
     buyRate: 32.2,
-    price: 128,
-    prevClose: 125,
-    dayHigh: 130,
-    dayLow: 124,
+    price: 228,
+    prevClose: 225,
+    dayHigh: 230,
+    dayLow: 224,
     transactions: [
-      { id: 'tx_2', buyDate: '2024-06-15', shares: 50, cost: 110, buyRate: 32.2 },
-    ],
-  },
-  {
-    id: 'stk_3',
-    symbol: '0050',
-    name: '元大台灣50',
-    market: 'tse',
-    shares: 2000,
-    cost: 155,
-    buyDate: '2024-01-20',
-    buyRate: 1,
-    price: 172,
-    prevClose: 170,
-    dayHigh: 173,
-    dayLow: 169,
-    transactions: [
-      { id: 'tx_3', buyDate: '2024-01-20', shares: 2000, cost: 155, buyRate: 1 },
-    ],
-  },
-  {
-    id: 'stk_4',
-    symbol: '6691',
-    name: '洋基工程',
-    market: 'tse',
-    shares: 1000,
-    cost: 320,
-    buyDate: '2024-03-10',
-    buyRate: 1,
-    price: 365,
-    prevClose: 360,
-    dayHigh: 368,
-    dayLow: 358,
-    customExDate: '2026/08/20',
-    customSingleDps: 21.0,
-    customDps: 21.0,
-    customStockDps: 1.0,
-    transactions: [
-      { id: 'tx_4', buyDate: '2024-03-10', shares: 1000, cost: 320, buyRate: 1 },
+      { id: 'tx_2', buyDate: '2024-06-15', shares: 10, cost: 225, buyRate: 32.2 },
     ],
   },
 ];
@@ -197,6 +159,12 @@ export default function App() {
   const [isAdminPasswordModalOpen, setIsAdminPasswordModalOpen] = useState(false);
   const [isDividendModalOpen, setIsDividendModalOpen] = useState(false);
   const [isAssetAnalysisModalOpen, setIsAssetAnalysisModalOpen] = useState(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+
+  const handleDonotShowGuide7Days = useCallback(() => {
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    localStorage.setItem('hide_guide_until', String(Date.now() + sevenDaysMs));
+  }, []);
 
   const [deleteConfirmState, setDeleteConfirmState] = useState<{
     isOpen: boolean;
@@ -549,6 +517,12 @@ export default function App() {
       }
     } else {
       setPortfolio(normalizePortfolio(INITIAL_PORTFOLIO));
+    }
+
+    // Check Guide modal show status (7-day hide check)
+    const hideUntil = localStorage.getItem('hide_guide_until');
+    if (!hideUntil || Date.now() > Number(hideUntil)) {
+      setIsGuideModalOpen(true);
     }
 
     fetchRealtimePrices();
@@ -1180,6 +1154,7 @@ export default function App() {
             if (!aiAnalysisResult) handleRunAIAnalysis();
           }}
           onOpenChangelog={() => setIsVersionModalOpen(true)}
+          onOpenGuide={() => setIsGuideModalOpen(true)}
           usdTwdRate={usdTwdRate}
           lastUpdateTime={lastSyncTime}
           twMarketOpen={twMarketOpen}
@@ -1201,86 +1176,87 @@ export default function App() {
         />
 
         {/* Workbench Tab Switcher Bar */}
-        <div className="sticky top-2 z-40 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-1.5 shadow-md text-xs">
-          <div className="flex items-center justify-between gap-1 overflow-x-auto">
-            <div className="flex items-center gap-1 min-w-max">
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setActiveMobileTab('overview');
-                }}
-                className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 btn-interact ${
-                  activeMobileTab === 'overview'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <Activity className="w-4 h-4 text-indigo-500" />
-                <span>資產總覽</span>
-              </button>
+        <div className="sticky top-2 z-40 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-1 sm:p-1.5 shadow-md text-xs">
+          <div className="grid grid-cols-5 gap-1 w-full items-center">
+            <button
+              onClick={() => {
+                playClickSound();
+                setActiveMobileTab('overview');
+              }}
+              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-xl font-bold transition flex items-center justify-center gap-1 btn-interact text-[10px] sm:text-xs ${
+                activeMobileTab === 'overview'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <Activity className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${activeMobileTab === 'overview' ? 'text-white' : 'text-indigo-500'}`} />
+              <span><span className="sm:hidden">總覽</span><span className="hidden sm:inline">資產總覽</span></span>
+            </button>
 
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setActiveMobileTab('portfolio');
-                }}
-                className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 btn-interact ${
-                  activeMobileTab === 'portfolio'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <BarChart2 className="w-4 h-4 text-indigo-500" />
-                <span>持股部位</span>
-                <span className="text-[10px] px-1.5 py-0.2 bg-indigo-100 text-indigo-800 rounded-full font-mono">
-                  {portfolio.length}
-                </span>
-              </button>
+            <button
+              onClick={() => {
+                playClickSound();
+                setActiveMobileTab('portfolio');
+              }}
+              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-xl font-bold transition flex items-center justify-center gap-0.5 sm:gap-1 btn-interact text-[10px] sm:text-xs ${
+                activeMobileTab === 'portfolio'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <BarChart2 className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${activeMobileTab === 'portfolio' ? 'text-white' : 'text-indigo-500'}`} />
+              <span><span className="sm:hidden">部位</span><span className="hidden sm:inline">持股部位</span></span>
+              <span className={`text-[9px] sm:text-[10px] px-1 py-0.2 rounded-full font-mono ${
+                activeMobileTab === 'portfolio' ? 'bg-indigo-500 text-white' : 'bg-indigo-100 text-indigo-800'
+              }`}>
+                {portfolio.length}
+              </span>
+            </button>
 
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setActiveMobileTab('charts');
-                }}
-                className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 btn-interact ${
-                  activeMobileTab === 'charts'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <PieChart className="w-4 h-4 text-indigo-500" />
-                <span>走勢與配置</span>
-              </button>
+            <button
+              onClick={() => {
+                playClickSound();
+                setActiveMobileTab('charts');
+              }}
+              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-xl font-bold transition flex items-center justify-center gap-1 btn-interact text-[10px] sm:text-xs ${
+                activeMobileTab === 'charts'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <PieChart className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${activeMobileTab === 'charts' ? 'text-white' : 'text-indigo-500'}`} />
+              <span><span className="sm:hidden">走勢</span><span className="hidden sm:inline">走勢與配置</span></span>
+            </button>
 
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setActiveMobileTab('calendar');
-                }}
-                className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 btn-interact ${
-                  activeMobileTab === 'calendar'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <Calendar className="w-4 h-4 text-indigo-500" />
-                <span>股息月曆</span>
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                playClickSound();
+                setActiveMobileTab('calendar');
+              }}
+              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-xl font-bold transition flex items-center justify-center gap-1 btn-interact text-[10px] sm:text-xs ${
+                activeMobileTab === 'calendar'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <Calendar className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${activeMobileTab === 'calendar' ? 'text-white' : 'text-indigo-500'}`} />
+              <span><span className="sm:hidden">月曆</span><span className="hidden sm:inline">股息月曆</span></span>
+            </button>
 
             <button
               onClick={() => {
                 playClickSound();
                 setActiveMobileTab(activeMobileTab === 'all' ? 'overview' : 'all');
               }}
-              className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition shrink-0 flex items-center gap-1 btn-interact ${
+              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold border transition flex items-center justify-center gap-1 btn-interact ${
                 activeMobileTab === 'all'
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
               }`}
+              title={activeMobileTab === 'all' ? '返回分頁導覽' : '在單一頁面展開全部資產看板'}
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{activeMobileTab === 'all' ? '分頁模式' : '單頁全景'}</span>
+              <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-emerald-600" />
+              <span><span className="sm:hidden">全部</span><span className="hidden sm:inline">{activeMobileTab === 'all' ? '單視窗' : '全部顯示'}</span></span>
             </button>
           </div>
         </div>
@@ -1603,6 +1579,12 @@ export default function App() {
         data={assetTrendHistory.data}
         currentVal={totalValTWD}
         onClose={() => setIsAssetAnalysisModalOpen(false)}
+      />
+
+      <GuideModal
+        isOpen={isGuideModalOpen}
+        onClose={() => setIsGuideModalOpen(false)}
+        onDonotShow7Days={handleDonotShowGuide7Days}
       />
 
       {/* Floating AI Copilot Shortcut (Desktop & Tablet) */}

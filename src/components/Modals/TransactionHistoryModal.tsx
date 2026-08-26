@@ -9,6 +9,7 @@ interface TransactionHistoryModalProps {
   stock: StockPosition | null;
   isAdmin: boolean;
   usdTwdRate: number;
+  brokerDiscount?: number;
   onClose: () => void;
   onAddTransaction: (stockId: string, buyDate: string, shares: number, cost: number) => void;
   onDeleteTransaction: (stockId: string, txId: string) => void;
@@ -19,6 +20,7 @@ export const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = (
   stock,
   isAdmin,
   usdTwdRate,
+  brokerDiscount = 0.28,
   onClose,
   onAddTransaction,
   onDeleteTransaction,
@@ -87,14 +89,19 @@ export const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = (
                   <th className="py-2.5 px-3">買入股數</th>
                   <th className="py-2.5 px-3">單價 (均價)</th>
                   <th className="py-2.5 px-3">匯率</th>
-                  <th className="py-2.5 px-3">小計 (NT$)</th>
+                  <th className="py-2.5 px-3">買手續費</th>
+                  <th className="py-2.5 px-3">小計 (含手續費)</th>
                   <th className="py-2.5 px-3 text-center">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-mono">
                 {stock.transactions.map((tx) => {
                   const fx = isUS ? tx.buyRate || usdTwdRate : 1;
-                  const subtotal = tx.shares * tx.cost * fx;
+                  const rawSubtotal = tx.shares * tx.cost * fx;
+                  const buyFee = isUS
+                    ? 0
+                    : Math.max(20, Math.round(tx.shares * tx.cost * 0.001425 * brokerDiscount));
+                  const totalCostWithFee = rawSubtotal + buyFee;
 
                   return (
                     <tr key={tx.id} className="hover:bg-slate-50/80 transition">
@@ -102,8 +109,11 @@ export const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = (
                       <td className="py-2.5 px-3 whitespace-nowrap">{tx.shares.toLocaleString()} 股</td>
                       <td className="py-2.5 px-3 whitespace-nowrap">{isUS ? `$${tx.cost} USD` : `$${tx.cost}`}</td>
                       <td className="py-2.5 px-3 whitespace-nowrap">{isUS ? tx.buyRate || usdTwdRate : '1.0'}</td>
+                      <td className="py-2.5 px-3 whitespace-nowrap font-bold text-amber-900">
+                        {isUS ? '免費' : `$${buyFee} NT$`}
+                      </td>
                       <td className="py-2.5 px-3 font-bold text-slate-900 whitespace-nowrap">
-                        ${Math.round(subtotal).toLocaleString()}
+                        ${Math.round(totalCostWithFee).toLocaleString()} NT$
                       </td>
                       <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         <button

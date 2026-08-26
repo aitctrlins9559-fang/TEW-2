@@ -23,11 +23,14 @@ import {
   TrendingDown,
   ShieldCheck,
   CheckCircle2,
+  Receipt,
+  Calculator,
 } from 'lucide-react';
 import { StockPosition } from '../types';
 import { formatMoney } from '../utils/format';
 import { playClickSound } from '../utils/audio';
 import { getStockDividendInfo } from '../utils/dividendHelper';
+import { calculateTransactionCost, DISCOUNT_OPTIONS } from '../utils/costHelper';
 import { StockDetailModal } from './Modals/StockDetailModal';
 
 interface StockTableProps {
@@ -37,6 +40,8 @@ interface StockTableProps {
   isPrivacy: boolean;
   isRedUp: boolean;
   officialEvents?: Record<string, { exDate: string; amount: number; stockDps?: number }>;
+  brokerDiscount?: number;
+  onUpdateBrokerDiscount?: (discount: number) => void;
   onSelectChartTarget: (symbol: string, market: 'tse' | 'otc' | 'us', name: string) => void;
   onOpenTxHistory: (stockId: string) => void;
   onOpenEditModal: (stockId: string) => void;
@@ -63,6 +68,8 @@ export const StockTable: React.FC<StockTableProps> = ({
   isPrivacy,
   isRedUp,
   officialEvents,
+  brokerDiscount = 0.28,
+  onUpdateBrokerDiscount,
   onSelectChartTarget,
   onOpenTxHistory,
   onOpenEditModal,
@@ -84,7 +91,12 @@ export const StockTable: React.FC<StockTableProps> = ({
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [isDataMenuOpen, setIsDataMenuOpen] = useState(false);
   const [detailModalStock, setDetailModalStock] = useState<StockPosition | null>(null);
+  const [localDiscount, setLocalDiscount] = useState<number>(brokerDiscount);
   const dataMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setLocalDiscount(brokerDiscount);
+  }, [brokerDiscount]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -201,48 +213,72 @@ export const StockTable: React.FC<StockTableProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          {/* View Mode Switcher (Table vs Cards vs Heatmap) */}
-          <div className="flex items-center p-1 bg-slate-50 rounded-xl border border-slate-100 text-xs font-bold">
-            <button
-              onClick={() => {
-                playClickSound();
-                setViewMode('table');
-              }}
-              className={`px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 ${
-                viewMode === 'table' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-              }`}
-              title="表格檢視"
-            >
-              <TableIcon className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">專業表格</span>
-            </button>
-            <button
-              onClick={() => {
-                playClickSound();
-                setViewMode('cards');
-              }}
-              className={`px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 ${
-                viewMode === 'cards' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-              }`}
-              title="圖卡檢視"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">視覺圖卡</span>
-            </button>
-            <button
-              onClick={() => {
-                playClickSound();
-                setViewMode('heatmap');
-              }}
-              className={`px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 ${
-                viewMode === 'heatmap' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-              }`}
-              title="熱力比例圖"
-            >
-              <Grid className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">權重熱力圖</span>
-            </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
+          {/* View Mode Switcher & Broker Discount Selector */}
+          <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto justify-between sm:justify-start">
+            {/* Broker Discount Selector */}
+            <div className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
+              <Receipt className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="text-slate-600 font-sans text-[11px] sm:text-xs">手續費:</span>
+              <select
+                value={localDiscount}
+                onChange={(e) => {
+                  const d = parseFloat(e.target.value);
+                  playClickSound();
+                  setLocalDiscount(d);
+                  if (onUpdateBrokerDiscount) onUpdateBrokerDiscount(d);
+                }}
+                className="bg-transparent text-indigo-700 font-bold outline-none cursor-pointer text-xs font-mono"
+              >
+                {DISCOUNT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center p-1 bg-slate-50 rounded-xl border border-slate-100 text-xs font-bold">
+              <button
+                onClick={() => {
+                  playClickSound();
+                  setViewMode('table');
+                }}
+                className={`px-2 py-1.5 rounded-lg transition flex items-center gap-1 ${
+                  viewMode === 'table' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                }`}
+                title="表格檢視"
+              >
+                <TableIcon className="w-3.5 h-3.5" />
+                <span className="text-[11px] sm:text-xs">表格</span>
+              </button>
+              <button
+                onClick={() => {
+                  playClickSound();
+                  setViewMode('cards');
+                }}
+                className={`px-2 py-1.5 rounded-lg transition flex items-center gap-1 ${
+                  viewMode === 'cards' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                }`}
+                title="圖卡檢視"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="text-[11px] sm:text-xs">圖卡</span>
+              </button>
+              <button
+                onClick={() => {
+                  playClickSound();
+                  setViewMode('heatmap');
+                }}
+                className={`px-2 py-1.5 rounded-lg transition flex items-center gap-1 ${
+                  viewMode === 'heatmap' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                }`}
+                title="熱力比例圖"
+              >
+                <Grid className="w-3.5 h-3.5" />
+                <span className="text-[11px] sm:text-xs">熱力圖</span>
+              </button>
+            </div>
           </div>
 
           <button
@@ -316,13 +352,13 @@ export const StockTable: React.FC<StockTableProps> = ({
 
       {/* Interactive Toolbar: Filter Tabs, Search & Sort */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl border border-slate-200/80 shrink-0">
+        <div className="grid grid-cols-3 sm:flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl border border-slate-200/80 shrink-0 w-full sm:w-auto">
           <button
             onClick={() => {
               playClickSound();
               setFilterTab('all');
             }}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+            className={`px-3 py-1.5 sm:py-1 rounded-lg text-xs font-bold transition text-center ${
               filterTab === 'all'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -335,7 +371,7 @@ export const StockTable: React.FC<StockTableProps> = ({
               playClickSound();
               setFilterTab('tw');
             }}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+            className={`px-3 py-1.5 sm:py-1 rounded-lg text-xs font-bold transition text-center ${
               filterTab === 'tw'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -348,7 +384,7 @@ export const StockTable: React.FC<StockTableProps> = ({
               playClickSound();
               setFilterTab('us');
             }}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+            className={`px-3 py-1.5 sm:py-1 rounded-lg text-xs font-bold transition text-center ${
               filterTab === 'us'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -359,8 +395,8 @@ export const StockTable: React.FC<StockTableProps> = ({
         </div>
 
         {/* Search & Sort controls */}
-        <div className="flex flex-wrap items-center gap-2 flex-1 sm:max-w-md">
-          <div className="relative flex-1 min-w-[130px]">
+        <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2 flex-1 w-full sm:max-w-md">
+          <div className="relative flex-1 min-w-0">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -379,38 +415,40 @@ export const StockTable: React.FC<StockTableProps> = ({
             )}
           </div>
 
-          <button
-            onClick={() => toggleSort('value')}
-            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition shrink-0 ${
-              sortField === 'value' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
-            }`}
-            title="依市值排序"
-          >
-            <ArrowUpDown className="w-3 h-3" />
-            <span>市值</span>
-          </button>
+          <div className="grid grid-cols-3 gap-1 shrink-0 xs:flex xs:items-center">
+            <button
+              onClick={() => toggleSort('value')}
+              className={`px-2 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 transition ${
+                sortField === 'value' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
+              }`}
+              title="依市值排序"
+            >
+              <ArrowUpDown className="w-3 h-3" />
+              <span>市值</span>
+            </button>
 
-          <button
-            onClick={() => toggleSort('roi')}
-            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition shrink-0 ${
-              sortField === 'roi' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
-            }`}
-            title="依報酬率排序"
-          >
-            <ArrowUpDown className="w-3 h-3" />
-            <span>報酬</span>
-          </button>
+            <button
+              onClick={() => toggleSort('roi')}
+              className={`px-2 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 transition ${
+                sortField === 'roi' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
+              }`}
+              title="依報酬率排序"
+            >
+              <ArrowUpDown className="w-3 h-3" />
+              <span>報酬</span>
+            </button>
 
-          <button
-            onClick={() => toggleSort('yield')}
-            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition shrink-0 ${
-              sortField === 'yield' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
-            }`}
-            title="依殖利率排序"
-          >
-            <ArrowUpDown className="w-3 h-3" />
-            <span>殖利率</span>
-          </button>
+            <button
+              onClick={() => toggleSort('yield')}
+              className={`px-2 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 transition ${
+                sortField === 'yield' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
+              }`}
+              title="依殖利率排序"
+            >
+              <ArrowUpDown className="w-3 h-3" />
+              <span>殖利率</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -439,7 +477,8 @@ export const StockTable: React.FC<StockTableProps> = ({
                     <th className="p-3.5 text-right whitespace-nowrap">持有股數 / 成本</th>
                     <th className="p-3.5 text-right whitespace-nowrap">即時現價</th>
                     <th className="p-3.5 text-right whitespace-nowrap">估計總市值 (TWD)</th>
-                    <th className="p-3.5 text-right whitespace-nowrap">未實現損益 / ROI</th>
+                    <th className="p-3.5 text-right whitespace-nowrap">未實現損益 / 淨ROI</th>
+                    <th className="p-3.5 text-right whitespace-nowrap">預估交易成本 (手續費+稅)</th>
                     <th className="p-3.5 text-right whitespace-nowrap">殖利率 (預估年領)</th>
                     <th className="p-3.5 text-center whitespace-nowrap sticky right-0 bg-slate-50 z-20 border-l border-slate-200/80 shadow-[-4px_0_10px_rgba(0,0,0,0.05)]">
                       快捷操作
@@ -462,8 +501,14 @@ export const StockTable: React.FC<StockTableProps> = ({
                     const itemProfitTWD = itemMarketValTWD === null ? null : itemMarketValTWD - itemCostTWD;
                     const itemRoi = itemCostTWD > 0 && itemProfitTWD !== null ? (itemProfitTWD / itemCostTWD) * 100 : null;
 
+                    // Calculate detailed transaction costs (buy fee, sell fee, tax)
+                    const costDetails = calculateTransactionCost(item, usdTwdRate, localDiscount);
+
                     const profitColorClass =
                       itemProfitTWD === null ? 'text-slate-400' : itemProfitTWD >= 0 ? getUpColor() : getDownColor();
+
+                    const netProfitColorClass =
+                      costDetails.netProfitTWD >= 0 ? getUpColor() : getDownColor();
 
                     return (
                       <tr
@@ -514,14 +559,40 @@ export const StockTable: React.FC<StockTableProps> = ({
                           {itemMarketValTWD === null ? '--' : formatMoney(itemMarketValTWD, isPrivacy)}
                         </td>
 
-                        {/* P&L & ROI */}
+                        {/* Net P&L & ROI */}
                         <td className="p-3.5 text-right font-mono whitespace-nowrap">
-                          <div className={`font-black ${profitColorClass}`}>
-                            {itemProfitTWD === null ? '--' : `${itemProfitTWD >= 0 ? '+' : ''}${formatMoney(itemProfitTWD, isPrivacy)}`}
+                          <div className={`font-black ${netProfitColorClass}`}>
+                            {safePrice === null
+                              ? '--'
+                              : `${costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)}`}
                           </div>
-                          <div className={`text-[11px] font-bold ${profitColorClass}`}>
-                            {itemRoi === null ? '--' : `${itemRoi >= 0 ? '+' : ''}${itemRoi.toFixed(2)}%`}
+                          <div className={`text-[11px] font-bold ${netProfitColorClass}`}>
+                            {safePrice === null ? '--' : `淨 ${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(2)}%`}
                           </div>
+                          {itemProfitTWD !== null && (
+                            <div className="text-[10px] text-slate-400 font-sans mt-0.5" title="毛損益（未扣除交易成本）">
+                              毛 ${formatMoney(itemProfitTWD, isPrivacy)}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Transaction Cost Breakdown */}
+                        <td className="p-3.5 text-right font-mono whitespace-nowrap">
+                          {isUS ? (
+                            <div className="text-slate-400 text-[11px] font-sans">海外券商免手續費</div>
+                          ) : (
+                            <div>
+                              <div className="font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 inline-block">
+                                ${costDetails.totalCostTWD.toLocaleString()} NT$
+                              </div>
+                              <div
+                                className="text-[10px] text-slate-500 font-sans mt-0.5"
+                                title={`買手續費 $${costDetails.buyCommissionTWD} + 賣手續費 $${costDetails.sellCommissionTWD} + 證交稅 $${costDetails.sellTaxTWD}`}
+                              >
+                                費 ${costDetails.buyCommissionTWD + costDetails.sellCommissionTWD} | 稅 ${costDetails.sellTaxTWD}
+                              </div>
+                            </div>
+                          )}
                         </td>
 
                         {/* Dividend Yield */}
@@ -671,38 +742,38 @@ export const StockTable: React.FC<StockTableProps> = ({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 bg-slate-50/80 p-3 rounded-xl border border-slate-100 text-xs">
-                      <div>
-                        <span className="text-[10px] text-slate-400 font-bold block">市值總額 (TWD)</span>
-                        <span className="font-mono font-bold text-slate-900 text-sm">
+                    <div className="grid grid-cols-2 gap-2 bg-slate-50/80 p-2.5 sm:p-3 rounded-xl border border-slate-100 text-xs">
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-slate-400 font-bold block truncate">市值總額 (TWD)</span>
+                        <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm truncate block">
                           {itemMarketValTWD === null ? '--' : formatMoney(itemMarketValTWD, isPrivacy)}
                         </span>
                       </div>
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 font-bold block">未實現獲利</span>
-                        <span className={`font-mono font-bold text-sm ${profitColorClass}`}>
+                      <div className="text-right min-w-0">
+                        <span className="text-[10px] text-slate-400 font-bold block truncate">未實現獲利</span>
+                        <span className={`font-mono font-bold text-xs sm:text-sm truncate block ${profitColorClass}`}>
                           {itemProfitTWD === null ? '--' : `${itemProfitTWD >= 0 ? '+' : ''}${formatMoney(itemProfitTWD, isPrivacy)}`}
                         </span>
                       </div>
                     </div>
 
-                    <div className="bg-emerald-50/80 border border-emerald-100 p-3 rounded-xl text-xs space-y-1">
-                      <div className="flex items-center justify-between text-emerald-950 font-bold">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                    <div className="bg-emerald-50/80 border border-emerald-100 p-2.5 sm:p-3 rounded-xl text-xs space-y-1">
+                      <div className="flex items-center justify-between text-emerald-950 font-bold flex-wrap gap-1">
+                        <span className="flex items-center gap-1.5 text-[11px] sm:text-xs">
+                          <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                           殖利率 {divInfo.dividendYieldPct.toFixed(2)}% ({divInfo.frequency})
                         </span>
-                        <span className="font-mono text-emerald-800 font-bold">
+                        <span className="font-mono text-emerald-800 font-bold text-[11px] sm:text-xs shrink-0">
                           預估年領 {formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
                         </span>
                       </div>
-                      <div className="text-[11px] text-emerald-800 font-medium flex items-center justify-between">
-                        <span>
+                      <div className="text-[10px] sm:text-[11px] text-emerald-800 font-medium flex items-center justify-between flex-wrap gap-1">
+                        <span className="truncate">
                           單次配息：{hasCashDiv ? `$${divInfo.singleDividendPerShare}元` : '依公告'}
                           {hasStockDiv ? ` + 配股 ${divInfo.stockDps}元` : ''}
                         </span>
                         {(divInfo.exactExDate || divInfo.nextExMonthStr) && (
-                          <span className="font-mono text-emerald-800 font-bold">
+                          <span className="font-mono text-emerald-800 font-bold shrink-0">
                             除息日：{divInfo.exactExDate || divInfo.nextExMonthStr}
                           </span>
                         )}
@@ -866,6 +937,7 @@ export const StockTable: React.FC<StockTableProps> = ({
           isPrivacy={isPrivacy}
           isRedUp={isRedUp}
           officialEvents={officialEvents}
+          brokerDiscount={localDiscount}
           onClose={() => setDetailModalStock(null)}
           onOpenChart={onSelectChartTarget}
           onOpenTxHistory={onOpenTxHistory}

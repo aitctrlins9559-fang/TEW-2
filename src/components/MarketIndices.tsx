@@ -49,19 +49,19 @@ export const MarketIndices: React.FC<MarketIndicesProps> = ({
           playClickSound();
           onSelectIndex?.(symbol, marketType, name);
         }}
-        className="glass-card hover-card p-4 rounded-2xl cursor-pointer flex flex-col justify-between border border-slate-200/90 shadow-sm active:scale-[0.98] transition bg-white"
+        className="glass-card hover-card p-3 sm:p-4 rounded-xl sm:rounded-2xl cursor-pointer flex flex-col justify-between border border-slate-200/90 shadow-2xs active:scale-[0.98] transition bg-white"
         title="點擊切換查看該指數即時走勢圖 📈"
       >
         <div className="flex justify-between items-center text-xs text-slate-500 font-semibold">
-          <span className="flex items-center gap-1.5 text-slate-800 font-bold">
-            <Activity className="w-3.5 h-3.5 text-indigo-600" />
-            <span>{name.replace('指數', '')}</span>
+          <span className="flex items-center gap-1 sm:gap-1.5 text-slate-800 font-bold text-[11px] sm:text-xs">
+            <Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-600 shrink-0" />
+            <span className="truncate">{name.replace('指數', '')}</span>
           </span>
-          <span className="font-mono text-[10px] text-slate-400">{symbol}</span>
+          <span className="font-mono text-[9px] sm:text-[10px] text-slate-400 shrink-0">{symbol}</span>
         </div>
 
-        <div className="flex items-baseline justify-between mt-2.5 flex-wrap gap-1">
-          <div className="text-base sm:text-lg font-black text-slate-900 font-mono tracking-tight tabular-nums">
+        <div className="flex flex-col xs:flex-row xs:items-baseline justify-between mt-2 flex-wrap gap-1">
+          <div className="text-sm sm:text-lg font-black text-slate-900 font-mono tracking-tight tabular-nums truncate">
             {price
               ? price.toLocaleString('zh-TW', {
                   minimumFractionDigits: 1,
@@ -71,7 +71,7 @@ export const MarketIndices: React.FC<MarketIndicesProps> = ({
           </div>
 
           <div
-            className={`flex items-center gap-1 px-2.5 py-0.5 rounded-lg border font-mono font-bold text-xs ${colorClass}`}
+            className={`flex items-center gap-0.5 px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg border font-mono font-bold text-[10px] sm:text-xs shrink-0 self-start xs:self-auto ${colorClass}`}
           >
             {change === null || change === undefined ? (
               <Minus className="w-3 h-3" />
@@ -92,7 +92,7 @@ export const MarketIndices: React.FC<MarketIndicesProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
       {renderCard(twii, '^TWII', '加權指數', 'tw')}
       {renderCard(gspc, '^GSPC', '標普 500', 'us')}
       {renderCard(ixic, '^IXIC', '那斯達克', 'us')}

@@ -157,16 +157,16 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             全資產總市值走勢
           </h2>
         </div>
-        <div className="text-left sm:text-right">
+        <div className="text-left sm:text-right min-w-0">
           <div className="text-[10px] text-slate-500 font-bold tracking-wider uppercase mb-0.5">
             目前總市值 (NT$)
           </div>
-          <div className="flex flex-col sm:items-end gap-0.5">
-            <span className="text-xl sm:text-2xl font-black text-slate-900 font-mono tabular-nums leading-none tracking-tight">
+          <div className="flex flex-col sm:items-end gap-0.5 min-w-0">
+            <span className="text-lg sm:text-2xl font-black text-slate-900 font-mono tabular-nums leading-none tracking-tight truncate block max-w-full">
               {formatMoney(displayVal, isPrivacy)}
             </span>
             <span
-              className={`text-xs font-bold font-mono px-2 py-0.5 rounded-md border tabular-nums mt-0.5 inline-block ${
+              className={`text-[11px] sm:text-xs font-bold font-mono px-2 py-0.5 rounded-md border tabular-nums mt-0.5 inline-block shrink-0 ${
                 diff >= 0
                   ? (isRedUp ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200')
                   : (isRedUp ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-rose-700 bg-rose-50 border-rose-200')
@@ -180,14 +180,14 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         </div>
       </div>
 
-      <div className="h-[280px] sm:h-[320px] relative w-full pt-1">
+      <div className="h-[220px] sm:h-[320px] relative w-full pt-1">
         <Line data={chartData} options={options} />
       </div>
 
-      <div className="flex justify-between text-[10px] text-slate-500 uppercase tracking-wider font-mono border-t border-slate-100 pt-2 font-bold">
-        <span>起始: {labels.length > 0 ? labels[0].replace(' (現價)', '') : '--'}</span>
-        <span>資料以新台幣估算</span>
-        <span>最新: {labels.length > 0 ? labels[labels.length - 1].replace(' (現價)', '') : '--'}</span>
+      <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-wider font-mono border-t border-slate-100 pt-2 font-bold flex-wrap gap-1">
+        <span className="truncate">起始: {labels.length > 0 ? labels[0].replace(' (現價)', '') : '--'}</span>
+        <span className="hidden xs:inline">資料以 TWD 估算</span>
+        <span className="truncate">最新: {labels.length > 0 ? labels[labels.length - 1].replace(' (現價)', '') : '--'}</span>
       </div>
     </div>
   );

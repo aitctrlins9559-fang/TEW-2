@@ -74,11 +74,11 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
             </div>
             <div>
               <div className="font-black text-slate-900 tracking-tight text-base flex items-center gap-1.5">
-                Apex Wealth OS
+                股息記帳
               </div>
               <div className="text-[10px] font-mono font-bold text-indigo-600 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                v5.0 PRO TERMINAL
+                台美股持股管理
               </div>
             </div>
           </div>

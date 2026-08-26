@@ -183,7 +183,7 @@ export const AllocationPieChart: React.FC<AllocationPieChartProps> = ({
                 return (
                   <div
                     key={item.id}
-                    className="flex justify-between items-center bg-slate-50 hover:bg-slate-100 p-2 rounded-xl transition border border-slate-200/80 gap-2"
+                    className="flex justify-between items-center bg-slate-50 hover:bg-slate-100 p-1.5 sm:p-2 rounded-xl transition border border-slate-200/80 gap-1.5 min-w-0"
                   >
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <span
@@ -191,21 +191,21 @@ export const AllocationPieChart: React.FC<AllocationPieChartProps> = ({
                         style={{ backgroundColor: color }}
                       />
                       <span
-                        className="font-bold text-slate-900 text-xs truncate"
+                        className="font-bold text-slate-900 text-[11px] sm:text-xs truncate"
                         title={`${item.name} (${item.symbol})`}
                       >
                         {item.name}
                       </span>
-                      <span className="text-[10px] text-slate-500 font-mono font-bold shrink-0">
+                      <span className="text-[10px] text-slate-500 font-mono font-bold shrink-0 hidden xs:inline">
                         {item.symbol}
                       </span>
                     </div>
 
-                    <div className="text-right shrink-0 font-mono flex items-center gap-2">
-                      <span className="font-bold text-indigo-600 text-xs tabular-nums">
+                    <div className="text-right shrink-0 font-mono flex items-center gap-1.5">
+                      <span className="font-bold text-indigo-600 text-[11px] sm:text-xs tabular-nums">
                         {pct.toFixed(1)}%
                       </span>
-                      <span className="text-[10px] text-slate-500 font-medium tabular-nums">
+                      <span className="text-[10px] text-slate-500 font-medium tabular-nums hidden xs:inline">
                         {isPrivacy ? '****' : `$${Math.round(val).toLocaleString()}`}
                       </span>
                     </div>

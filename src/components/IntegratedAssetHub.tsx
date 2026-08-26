@@ -49,19 +49,20 @@ export const IntegratedAssetHub: React.FC<IntegratedAssetHubProps> = ({
         </div>
 
         {/* View Switcher Tabs */}
-        <div className="flex items-center gap-1 p-1 bg-slate-50 rounded-xl border border-slate-100 text-xs w-full sm:w-auto justify-between">
+        <div className="grid grid-cols-4 sm:flex items-center gap-1 p-1 bg-slate-50 rounded-xl border border-slate-100 text-xs w-full sm:w-auto">
           <button
             onClick={() => {
               playClickSound();
               setActiveTab('trend');
             }}
-            className={`px-3 py-1 rounded-lg font-bold transition ${
+            className={`px-1.5 sm:px-3 py-1 rounded-lg font-bold transition text-[10px] sm:text-xs text-center ${
               activeTab === 'trend'
                 ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            即時走勢
+            <span className="sm:hidden">走勢</span>
+            <span className="hidden sm:inline">即時走勢</span>
           </button>
 
           <button
@@ -69,13 +70,14 @@ export const IntegratedAssetHub: React.FC<IntegratedAssetHubProps> = ({
               playClickSound();
               setActiveTab('river');
             }}
-            className={`px-3 py-1 rounded-lg font-bold transition ${
+            className={`px-1.5 sm:px-3 py-1 rounded-lg font-bold transition text-[10px] sm:text-xs text-center ${
               activeTab === 'river'
                 ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            河流圖
+            <span className="sm:hidden">水流</span>
+            <span className="hidden sm:inline">河流圖</span>
           </button>
 
           <button
@@ -83,13 +85,14 @@ export const IntegratedAssetHub: React.FC<IntegratedAssetHubProps> = ({
               playClickSound();
               setActiveTab('pie');
             }}
-            className={`px-3 py-1 rounded-lg font-bold transition ${
+            className={`px-1.5 sm:px-3 py-1 rounded-lg font-bold transition text-[10px] sm:text-xs text-center ${
               activeTab === 'pie'
                 ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            資產占比
+            <span className="sm:hidden">占比</span>
+            <span className="hidden sm:inline">資產占比</span>
           </button>
 
           <button
@@ -97,24 +100,14 @@ export const IntegratedAssetHub: React.FC<IntegratedAssetHubProps> = ({
               playClickSound();
               setActiveTab('both');
             }}
-            className={`px-3 py-1 rounded-lg font-bold transition ${
+            className={`px-1.5 sm:px-3 py-1 rounded-lg font-bold transition text-[10px] sm:text-xs text-center ${
               activeTab === 'both'
                 ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            雙排全景
-          </button>
-
-          <button
-            onClick={() => {
-              playClickSound();
-              setIsExpanded(!isExpanded);
-            }}
-            className="p-1 text-slate-400 hover:text-slate-700"
-            title={isExpanded ? '折疊' : '展開'}
-          >
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span className="sm:hidden">全景</span>
+            <span className="hidden sm:inline">雙排全景</span>
           </button>
         </div>
       </div>

@@ -49,7 +49,7 @@ export const PerformanceBanners: React.FC<PerformanceBannersProps> = ({
   const lvp = losers.length > 0 ? losers[0] : null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
       {/* Top Performer */}
       <div
         onClick={() => {
@@ -57,37 +57,37 @@ export const PerformanceBanners: React.FC<PerformanceBannersProps> = ({
             onSelectStock(mvp.symbol, mvp.market, mvp.name);
           }
         }}
-        className={`glass-card p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex justify-between items-center border-l-4 ${
+        className={`glass-card p-3.5 sm:p-5 rounded-xl sm:rounded-2xl flex justify-between items-center gap-2 border-l-4 ${
           isRedUp ? 'border-l-rose-500 bg-gradient-to-r from-rose-50/50 via-white to-white' : 'border-l-emerald-500 bg-gradient-to-r from-emerald-50/50 via-white to-white'
         } transition-all duration-300 hover-card ${
           mvp && onSelectStock ? 'cursor-pointer hover:border-indigo-300' : ''
         }`}
       >
-        <div className="space-y-1">
+        <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
           <div
-            className={`text-xs font-bold tracking-wider uppercase flex items-center gap-1.5 ${
+            className={`text-[10px] sm:text-xs font-bold tracking-wider uppercase flex items-center gap-1 sm:gap-1.5 ${
               isRedUp ? 'text-rose-700' : 'text-emerald-700'
             }`}
           >
-            <TrendingUp className="w-4 h-4" /> 績效領頭羊 (Top Performer)
+            <TrendingUp className="w-3.5 h-3.5 shrink-0" /> 績效領頭羊 (Top Performer)
           </div>
-          <div className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+          <div className="text-sm sm:text-lg font-black text-slate-900 tracking-tight truncate">
             {mvp ? `${mvp.symbol} ${mvp.name}` : '目前無獲利標的'}
           </div>
           {mvp && (
-            <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
-              <span>貢獻最高未實現正收益</span>
-              <span className="text-indigo-600 font-bold">(點擊看詳情)</span>
+            <div className="text-[10px] sm:text-[11px] text-slate-500 font-medium flex items-center gap-1 truncate">
+              <span>最高未實現正收益</span>
+              <span className="text-indigo-600 font-bold hidden sm:inline">(點擊詳情)</span>
             </div>
           )}
         </div>
-        <div className="text-right">
-          <div className={`text-lg sm:text-2xl font-black font-mono tracking-tight tabular-nums ${getUpColor()}`}>
+        <div className="text-right shrink-0">
+          <div className={`text-base sm:text-2xl font-black font-mono tracking-tight tabular-nums ${getUpColor()}`}>
             {mvp && mvp.profit !== null && mvp.roi !== null
               ? `+${formatMoney(mvp.profit, isPrivacy)}`
               : '$0'}
           </div>
-          <div className={`text-xs font-mono font-bold ${getUpColor()}`}>
+          <div className={`text-[11px] sm:text-xs font-mono font-bold ${getUpColor()}`}>
             {mvp && mvp.roi !== null ? `+${mvp.roi.toFixed(1)}%` : '0%'}
           </div>
         </div>
@@ -100,42 +100,42 @@ export const PerformanceBanners: React.FC<PerformanceBannersProps> = ({
             onSelectStock(lvp.symbol, lvp.market, lvp.name);
           }
         }}
-        className={`glass-card p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex justify-between items-center border-l-4 ${
+        className={`glass-card p-3.5 sm:p-5 rounded-xl sm:rounded-2xl flex justify-between items-center gap-2 border-l-4 ${
           isRedUp ? 'border-l-emerald-500 bg-gradient-to-r from-emerald-50/50 via-white to-white' : 'border-l-rose-500 bg-gradient-to-r from-rose-50/50 via-white to-white'
         } transition-all duration-300 hover-card ${
           lvp && onSelectStock ? 'cursor-pointer hover:border-indigo-300' : ''
         }`}
       >
-        <div className="space-y-1">
+        <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
           <div
-            className={`text-xs font-bold tracking-wider uppercase flex items-center gap-1.5 ${
+            className={`text-[10px] sm:text-xs font-bold tracking-wider uppercase flex items-center gap-1 sm:gap-1.5 ${
               isRedUp ? 'text-emerald-700' : 'text-rose-700'
             }`}
           >
-            {lvp ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+            {lvp ? <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> : <ShieldCheck className="w-3.5 h-3.5 shrink-0" />}
             {lvp ? '風險觀察標的 (Risk Highlight)' : '資產健康度優良'}
           </div>
-          <div className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+          <div className="text-sm sm:text-lg font-black text-slate-900 tracking-tight truncate">
             {lvp ? `${lvp.symbol} ${lvp.name}` : '無累積虧損部位'}
           </div>
           {lvp ? (
-            <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
-              <span>建議評估止損或佈局調整</span>
-              <span className="text-rose-600 font-bold">(點擊看詳情)</span>
+            <div className="text-[10px] sm:text-[11px] text-slate-500 font-medium flex items-center gap-1 truncate">
+              <span>建議評估止損佈局</span>
+              <span className="text-rose-600 font-bold hidden sm:inline">(點擊詳情)</span>
             </div>
           ) : (
-            <div className="text-[11px] text-emerald-700 font-medium">
+            <div className="text-[10px] sm:text-[11px] text-emerald-700 font-medium truncate">
               全數持股均處於平盤或盈餘狀態
             </div>
           )}
         </div>
-        <div className="text-right">
-          <div className={`text-lg sm:text-2xl font-black font-mono tracking-tight tabular-nums ${getDownColor()}`}>
+        <div className="text-right shrink-0">
+          <div className={`text-base sm:text-2xl font-black font-mono tracking-tight tabular-nums ${getDownColor()}`}>
             {lvp && lvp.profit !== null && lvp.roi !== null
               ? `${formatMoney(lvp.profit, isPrivacy)}`
               : '$0'}
           </div>
-          <div className={`text-xs font-mono font-bold ${getDownColor()}`}>
+          <div className={`text-[11px] sm:text-xs font-mono font-bold ${getDownColor()}`}>
             {lvp && lvp.roi !== null ? `${lvp.roi.toFixed(1)}%` : '0%'}
           </div>
         </div>

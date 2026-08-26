@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   X,
   TrendingUp,
@@ -13,11 +13,15 @@ import {
   CheckCircle2,
   Coins,
   ShieldCheck,
+  Receipt,
+  Calculator,
+  Percent,
 } from 'lucide-react';
 import { StockPosition } from '../../types';
 import { formatMoney } from '../../utils/format';
 import { playClickSound } from '../../utils/audio';
 import { getStockDividendInfo } from '../../utils/dividendHelper';
+import { calculateTransactionCost, DISCOUNT_OPTIONS } from '../../utils/costHelper';
 
 interface StockDetailModalProps {
   isOpen: boolean;
@@ -26,6 +30,7 @@ interface StockDetailModalProps {
   isPrivacy: boolean;
   isRedUp: boolean;
   officialEvents?: Record<string, { exDate: string; amount: number; stockDps?: number }>;
+  brokerDiscount?: number;
   onClose: () => void;
   onOpenChart: (symbol: string, market: 'tse' | 'otc' | 'us', name: string) => void;
   onOpenTxHistory: (stockId: string) => void;
@@ -42,6 +47,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
   isPrivacy,
   isRedUp,
   officialEvents,
+  brokerDiscount = 0.28,
   onClose,
   onOpenChart,
   onOpenTxHistory,
@@ -50,6 +56,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
   onApplyPendingStockShares,
   onDeductCashDividendCost,
 }) => {
+  const [currentDiscount, setCurrentDiscount] = useState<number>(brokerDiscount);
+
   if (!isOpen || !stock) return null;
 
   const isUS = stock.market === 'us';
@@ -62,11 +70,17 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
   const profitTWD = marketValTWD === null ? null : marketValTWD - costTWD;
   const roi = costTWD > 0 && profitTWD !== null ? (profitTWD / costTWD) * 100 : null;
 
+  // Calculate Transaction Cost breakdown
+  const costDetails = calculateTransactionCost(stock, usdTwdRate, currentDiscount);
+
   const getUpColor = () => (isRedUp ? 'text-rose-600' : 'text-emerald-600');
   const getDownColor = () => (isRedUp ? 'text-emerald-600' : 'text-rose-600');
 
   const profitColorClass =
     profitTWD === null ? 'text-slate-400' : profitTWD >= 0 ? getUpColor() : getDownColor();
+
+  const netProfitColorClass =
+    costDetails.netProfitTWD >= 0 ? getUpColor() : getDownColor();
 
   const divInfo = getStockDividendInfo(stock, usdTwdRate, officialEvents?.[stock.symbol.toUpperCase()]);
   const txCount = Array.isArray(stock.transactions) ? stock.transactions.length : 1;
@@ -207,6 +221,91 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Transaction Cost Breakdown Card */}
+          <div className="bg-gradient-to-br from-indigo-50/80 via-slate-50 to-slate-50 p-4 sm:p-5 rounded-2xl space-y-3 shadow-2xs border border-indigo-100">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-xs font-black flex items-center gap-2 text-indigo-900">
+                <Receipt className="w-4 h-4 text-indigo-600" />
+                預估交易成本與淨損益精算
+              </span>
+              {!isUS && (
+                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-slate-200 text-[11px] font-mono font-bold shadow-2xs">
+                  <span className="text-slate-500 font-sans">券商折扣:</span>
+                  <select
+                    value={currentDiscount}
+                    onChange={(e) => {
+                      playClickSound();
+                      setCurrentDiscount(parseFloat(e.target.value));
+                    }}
+                    className="bg-transparent text-indigo-700 font-bold outline-none cursor-pointer rounded px-1 py-0.5 text-xs font-mono"
+                  >
+                    {DISCOUNT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {isUS ? (
+              <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600">
+                💡 美股海外券商普遍免收買賣手續費與證券交易稅（淨損益等於毛損益）。
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* 4 Cost items grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] text-slate-500 font-sans block font-bold">買入手續費</span>
+                    <span className="text-slate-900 font-bold">${costDetails.buyCommissionTWD.toLocaleString()} NT$</span>
+                    <span className="text-[9px] text-slate-400 block font-sans">底價20元 / 0.1425%</span>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] text-slate-500 font-sans block font-bold">賣出手續費 (預估)</span>
+                    <span className="text-slate-900 font-bold">${costDetails.sellCommissionTWD.toLocaleString()} NT$</span>
+                    <span className="text-[9px] text-slate-400 block font-sans">現價估算</span>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] text-slate-500 font-sans block font-bold">證券交易稅</span>
+                    <span className="text-slate-900 font-bold">${costDetails.sellTaxTWD.toLocaleString()} NT$</span>
+                    <span className="text-[9px] text-emerald-600 block font-sans font-bold">
+                      {costDetails.isETF ? 'ETF 稅率 0.1%' : '股票 稅率 0.3%'}
+                    </span>
+                  </div>
+
+                  <div className="bg-amber-50 p-2.5 rounded-xl border border-amber-200/80 shadow-2xs">
+                    <span className="text-[10px] text-amber-800 font-sans block font-bold">交易成本總計</span>
+                    <span className="text-amber-900 font-bold text-sm">${costDetails.totalCostTWD.toLocaleString()} NT$</span>
+                    <span className="text-[9px] text-amber-700/80 block font-sans">手續費+證交稅</span>
+                  </div>
+                </div>
+
+                {/* Net P&L comparison bar */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs flex items-center justify-between flex-wrap gap-2 shadow-2xs">
+                  <div>
+                    <span className="text-[10px] text-slate-500 block font-bold">帳面毛損益 (未扣成本)</span>
+                    <span className="font-mono font-bold text-slate-800">
+                      {profitTWD === null ? '--' : `${profitTWD >= 0 ? '+' : ''}${formatMoney(profitTWD, isPrivacy)}`}
+                      {roi !== null && <span className="text-[11px] text-slate-500 ml-1">({roi >= 0 ? '+' : ''}{roi.toFixed(2)}%)</span>}
+                    </span>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-[10px] text-indigo-700 block font-bold">扣除成本後淨損益 (淨利)</span>
+                    <span className={`font-mono font-black text-sm ${netProfitColorClass}`}>
+                      {costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)}
+                      <span className="text-[11px] ml-1">({costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(2)}%)</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Ex-Rights / Ex-Dividend Special Management Section */}
