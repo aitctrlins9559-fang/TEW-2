@@ -537,7 +537,7 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({
                 e.preventDefault();
                 handleSendMessage();
               }}
-              className="flex gap-2 pt-2 border-t border-slate-200 shrink-0"
+              className="flex gap-2 pt-2 pb-4 sm:pb-0 border-t border-slate-200 shrink-0"
             >
               <input
                 type="text"

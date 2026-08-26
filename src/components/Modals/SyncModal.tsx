@@ -36,11 +36,11 @@ export const SyncModal: React.FC<SyncModalProps> = ({
         playClickSound();
         onClose();
       }}
-      className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-[2rem] sm:rounded-3xl p-5 md:p-8 w-full max-w-lg shadow-2xl space-y-5 border border-slate-200 text-slate-900"
+        className="bg-white rounded-t-[2rem] sm:rounded-3xl p-5 md:p-8 w-full max-w-lg shadow-2xl flex flex-col max-h-[85dvh] sm:max-h-[88vh] overflow-y-auto border border-slate-200 text-slate-900"
       >
         <div className="flex justify-between items-center border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2.5">
@@ -141,7 +141,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
             </button>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 flex gap-3">
+          <div className="pt-3 pb-6 sm:pb-0 border-t border-slate-100 flex gap-3">
             <button
               type="button"
               onClick={() => {

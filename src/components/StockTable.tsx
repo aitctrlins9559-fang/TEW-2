@@ -430,7 +430,7 @@ export const StockTable: React.FC<StockTableProps> = ({
         <>
           {/* MODE 1: PRO FINANCIAL DATA TABLE VIEW */}
           {viewMode === 'table' && (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white relative">
               <table className="w-full min-w-[780px] text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200/90 uppercase tracking-wider font-mono">
@@ -441,7 +441,9 @@ export const StockTable: React.FC<StockTableProps> = ({
                     <th className="p-3.5 text-right whitespace-nowrap">估計總市值 (TWD)</th>
                     <th className="p-3.5 text-right whitespace-nowrap">未實現損益 / ROI</th>
                     <th className="p-3.5 text-right whitespace-nowrap">殖利率 (預估年領)</th>
-                    <th className="p-3.5 text-center whitespace-nowrap">快捷操作</th>
+                    <th className="p-3.5 text-center whitespace-nowrap sticky right-0 bg-slate-50 z-20 border-l border-slate-200/80 shadow-[-4px_0_10px_rgba(0,0,0,0.05)]">
+                      快捷操作
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
@@ -470,7 +472,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                           playClickSound();
                           setDetailModalStock(item);
                         }}
-                        className="hover:bg-indigo-50/40 cursor-pointer transition text-slate-800"
+                        className="hover:bg-indigo-50/40 cursor-pointer transition text-slate-800 group"
                       >
                         {/* Name & Symbol */}
                         <td className="p-3.5 whitespace-nowrap">
@@ -532,9 +534,12 @@ export const StockTable: React.FC<StockTableProps> = ({
                           </div>
                         </td>
 
-                        {/* Action buttons */}
-                        <td className="p-3.5 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-1">
+                        {/* Action buttons (Sticky on Right) */}
+                        <td
+                          className="p-3.5 text-center whitespace-nowrap sticky right-0 bg-white group-hover:bg-indigo-50/90 transition-colors z-10 border-l border-slate-100 shadow-[-4px_0_10px_rgba(0,0,0,0.05)]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-center gap-1.5">
                             {pendingShares > 0 && onApplyPendingStockShares && (
                               <button
                                 onClick={() => {
@@ -554,7 +559,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                                 onOpenEditModal(item.id);
                               }}
                               className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition"
-                              title="校正股息"
+                              title="校正股息/編輯"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
@@ -704,7 +709,22 @@ export const StockTable: React.FC<StockTableProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-100 text-xs">
+                    <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1 border-t border-slate-100 text-xs">
+                      {divInfo.pendingStockShares > 0 && onApplyPendingStockShares && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            playClickSound();
+                            onApplyPendingStockShares(item.id);
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1 transition btn-interact shadow-xs"
+                          title={`一鍵將 +${divInfo.pendingStockShares} 股配股撥入持股總數`}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>撥入 +{divInfo.pendingStockShares}股</span>
+                        </button>
+                      )}
+
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

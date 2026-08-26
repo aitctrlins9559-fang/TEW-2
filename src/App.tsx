@@ -413,10 +413,9 @@ export default function App() {
             );
           });
 
-          if (q && typeof q.regularMarketPrice === 'number') {
+          if (q && typeof q.regularMarketPrice === 'number' && q.regularMarketPrice > 0) {
             success++;
-            if (item.market === 'tse') twseSuccess = true;
-            if (item.market === 'otc') tpexSuccess = true;
+            if (item.market === 'tse' || item.market === 'otc') twseSuccess = true;
 
             const oldPrice = item.price;
             const newPrice = q.regularMarketPrice;
@@ -437,6 +436,13 @@ export default function App() {
               priceChanged,
             };
           }
+
+          if (item.price !== undefined && item.price !== null && item.price > 0) {
+            success++;
+            if (item.market === 'tse' || item.market === 'otc') twseSuccess = true;
+            return { ...item, fetchError: false };
+          }
+
           return { ...item, fetchError: true };
         });
 
@@ -1139,7 +1145,7 @@ export default function App() {
     <div className="min-h-screen p-3 sm:p-6 lg:p-8 antialiased selection:bg-sky-500 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 bg-slate-800/95 text-white font-medium px-4 sm:px-5 py-3.5 sm:py-4 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.6)] z-[999] flex items-center justify-between sm:justify-start gap-3 border border-slate-600/50 backdrop-blur-xl animate-bounce">
+        <div className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 bg-slate-800/95 text-white font-medium px-4 sm:px-5 py-3.5 sm:py-4 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.6)] z-[999] flex items-center justify-between sm:justify-start gap-3 border border-slate-600/50 backdrop-blur-xl animate-bounce">
           <span className={toastMessage.isSuccess ? 'text-sky-400 font-bold' : 'text-rose-400 font-bold'}>
             {toastMessage.isSuccess ? '✓' : '✕'}
           </span>

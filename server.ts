@@ -52,24 +52,128 @@ app.get('/api/fx', async (_req, res) => {
   }
 });
 
-// 2. Real-time Quotes Endpoint (TWSE MIS Batch + Yahoo Finance Multi-Host Fallback)
-async function fetchYahooChart(sym: string, interval = '1m', range = '1d', timeoutMs = 6000) {
-  const hosts = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com'];
-  const isNumericCode = /^\d{4,6}[A-Z]?$/i.test(sym.trim());
+// 2. Real-time Quotes Endpoint (TWSE MIS Batch + TWSE/TPEx OpenAPIs + Yahoo Finance Multi-Host Fallback)
 
-  const symbolsToTry: string[] = [sym];
-  if (isNumericCode && !sym.includes('.')) {
-    symbolsToTry.unshift(`${sym}.TW`);
-    symbolsToTry.push(`${sym}.TWO`);
+interface StockOpenApiCacheItem {
+  symbol: string;
+  shortName: string;
+  price: number;
+  prevClose: number;
+  dayHigh: number;
+  dayLow: number;
+}
+
+let twseOpenApiCache: Map<string, StockOpenApiCacheItem> = new Map();
+let lastOpenApiFetchTime = 0;
+
+async function getTwseOpenApiQuotes(): Promise<Map<string, StockOpenApiCacheItem>> {
+  const now = Date.now();
+  if (twseOpenApiCache.size > 0 && now - lastOpenApiFetchTime < 60000) {
+    return twseOpenApiCache;
   }
+
+  const newCache = new Map<string, StockOpenApiCacheItem>();
+
+  try {
+    const twseData = await fetchWithTimeout('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL', 5000);
+    if (Array.isArray(twseData)) {
+      twseData.forEach((row: any) => {
+        const code = row.Code?.toString().trim();
+        const closeStr = (row.ClosingPrice || '').toString().replace(/,/g, '');
+        const close = parseFloat(closeStr);
+        const open = parseFloat((row.OpeningPrice || '').toString().replace(/,/g, '')) || close;
+        const high = parseFloat((row.HighestPrice || '').toString().replace(/,/g, '')) || close;
+        const low = parseFloat((row.LowestPrice || '').toString().replace(/,/g, '')) || close;
+        const changeStr = (row.Change || '').toString().replace(/,/g, '');
+        const change = parseFloat(changeStr) || 0;
+        const prevClose = close - change > 0 ? close - change : close;
+
+        if (code && !isNaN(close) && close > 0) {
+          const item: StockOpenApiCacheItem = {
+            symbol: code,
+            shortName: row.Name || code,
+            price: close,
+            prevClose: !isNaN(prevClose) && prevClose > 0 ? prevClose : close,
+            dayHigh: high,
+            dayLow: low,
+          };
+          newCache.set(code, item);
+          newCache.set(`${code}.TW`, item);
+        }
+      });
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const tpexData = await fetchWithTimeout('https://openapi.tpex.org.tw/v1/opendata/MainBoard_Daily_Quotes', 5000);
+    if (Array.isArray(tpexData)) {
+      tpexData.forEach((row: any) => {
+        const code = (row.SecuritiesCompanyCode || row.Code)?.toString().trim();
+        const closeStr = (row.Close || row.ClosePrice || '').toString().replace(/,/g, '');
+        const close = parseFloat(closeStr);
+        const open = parseFloat((row.Open || row.OpenPrice || '').toString().replace(/,/g, '')) || close;
+        const high = parseFloat((row.High || row.HighPrice || '').toString().replace(/,/g, '')) || close;
+        const low = parseFloat((row.Low || row.LowPrice || '').toString().replace(/,/g, '')) || close;
+        const change = parseFloat((row.Change || '').toString().replace(/,/g, '')) || 0;
+        const prevClose = close - change > 0 ? close - change : close;
+
+        if (code && !isNaN(close) && close > 0) {
+          const item: StockOpenApiCacheItem = {
+            symbol: code,
+            shortName: row.CompanyName || code,
+            price: close,
+            prevClose: !isNaN(prevClose) && prevClose > 0 ? prevClose : close,
+            dayHigh: high,
+            dayLow: low,
+          };
+          newCache.set(code, item);
+          newCache.set(`${code}.TWO`, item);
+        }
+      });
+    }
+  } catch {
+    // ignore
+  }
+
+  if (newCache.size > 0) {
+    twseOpenApiCache = newCache;
+    lastOpenApiFetchTime = now;
+  }
+  return twseOpenApiCache;
+}
+
+async function fetchYahooChart(sym: string, interval = '1m', range = '1d', timeoutMs = 6000) {
+  const cleanCode = sym.replace(/\.(TW|TWO)$/i, '').trim().toUpperCase();
+  const isNumericCode = /^\d{4,6}[A-Z]?$/i.test(cleanCode);
+
+  const symbolsToTry: string[] = [];
+  if (isNumericCode) {
+    if (sym.endsWith('.TWO')) {
+      symbolsToTry.push(`${cleanCode}.TWO`, `${cleanCode}.TW`, cleanCode);
+    } else {
+      symbolsToTry.push(`${cleanCode}.TW`, `${cleanCode}.TWO`, cleanCode);
+    }
+  } else {
+    symbolsToTry.push(sym);
+  }
+
+  const hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
 
   for (const s of symbolsToTry) {
     for (const host of hosts) {
+      // 1. Chart endpoint
       try {
         const url = `https://${host}/v8/finance/chart/${encodeURIComponent(s)}?interval=${interval}&range=${range}`;
-        const data = await fetchWithTimeout(url, timeoutMs);
+        const data = await fetchWithTimeout(url, timeoutMs, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+        });
         const meta = data?.chart?.result?.[0]?.meta;
-        if (meta && typeof meta.regularMarketPrice === 'number') {
+        if (meta && typeof meta.regularMarketPrice === 'number' && meta.regularMarketPrice > 0) {
           return {
             symbol: sym,
             resolvedSymbol: s,
@@ -84,8 +188,62 @@ async function fetchYahooChart(sym: string, interval = '1m', range = '1d', timeo
       } catch {
         // try next
       }
+
+      // 2. Quote endpoint fallback
+      try {
+        const url = `https://${host}/v7/finance/quote?symbols=${encodeURIComponent(s)}`;
+        const data = await fetchWithTimeout(url, timeoutMs, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': '*/*',
+          },
+        });
+        const q = data?.quoteResponse?.result?.[0];
+        if (q && typeof q.regularMarketPrice === 'number' && q.regularMarketPrice > 0) {
+          return {
+            symbol: sym,
+            resolvedSymbol: s,
+            shortName: q.shortName || q.longName || q.symbol || sym,
+            regularMarketPrice: q.regularMarketPrice,
+            regularMarketPreviousClose: q.regularMarketPreviousClose || q.regularMarketPrice,
+            regularMarketDayHigh: q.regularMarketDayHigh || q.regularMarketPrice,
+            regularMarketDayLow: q.regularMarketDayLow || q.regularMarketPrice,
+          };
+        }
+      } catch {
+        // try next
+      }
     }
   }
+
+  // 3. Stooq Fallback for US Stocks
+  if (!isNumericCode) {
+    try {
+      const url = `https://stooq.com/q/l/?s=${encodeURIComponent(cleanCode.toLowerCase())}.us&f=sdal212&e=json`;
+      const data = await fetchWithTimeout(url, 4000);
+      const symbolItem = data?.symbols?.[0];
+      if (symbolItem) {
+        const price = parseFloat(symbolItem.close);
+        const high = parseFloat(symbolItem.high) || price;
+        const low = parseFloat(symbolItem.low) || price;
+        const open = parseFloat(symbolItem.open) || price;
+        if (!isNaN(price) && price > 0) {
+          return {
+            symbol: sym,
+            resolvedSymbol: sym,
+            shortName: sym,
+            regularMarketPrice: price,
+            regularMarketPreviousClose: open,
+            regularMarketDayHigh: high,
+            regularMarketDayLow: low,
+          };
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   return null;
 }
 
@@ -106,12 +264,18 @@ async function fetchTwseBatch(symbols: string[]) {
     exChParts.push(`otc_${item.code}.tw`);
   });
 
+  const results: any[] = [];
+
   try {
     const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${encodeURIComponent(exChParts.join('|'))}&_=${Date.now()}`;
-    const data = await fetchWithTimeout(url, 6000);
+    const data = await fetchWithTimeout(url, 6000, {
+      headers: {
+        'Referer': 'https://mis.twse.com.tw/stock/fibest.jsp',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      },
+    });
     const msgArray = data?.msgArray || [];
 
-    const results: any[] = [];
     twItems.forEach((item) => {
       const match = msgArray.find((m: any) => m.c === item.code && (m.z || m.y || m.a || m.b));
       if (match) {
@@ -148,10 +312,42 @@ async function fetchTwseBatch(symbols: string[]) {
         }
       }
     });
-    return results;
   } catch {
-    return [];
+    // ignore MIS error
   }
+
+  // Fallback to TWSE/TPEx OpenAPI if MIS failed or missed any items
+  const foundCodes = new Set(results.map((r) => r.symbol.replace(/\.(TW|TWO)$/i, '').toUpperCase()));
+  const missingTwItems = twItems.filter((it) => !foundCodes.has(it.code));
+
+  if (missingTwItems.length > 0) {
+    const openApiMap = await getTwseOpenApiQuotes();
+    missingTwItems.forEach((item) => {
+      const cached = openApiMap.get(item.code) || openApiMap.get(`${item.code}.TW`) || openApiMap.get(`${item.code}.TWO`);
+      if (cached) {
+        results.push({
+          symbol: item.original,
+          shortName: cached.shortName,
+          regularMarketPrice: cached.price,
+          regularMarketPreviousClose: cached.prevClose,
+          regularMarketDayHigh: cached.dayHigh,
+          regularMarketDayLow: cached.dayLow,
+        });
+        if (item.original !== item.code) {
+          results.push({
+            symbol: item.code,
+            shortName: cached.shortName,
+            regularMarketPrice: cached.price,
+            regularMarketPreviousClose: cached.prevClose,
+            regularMarketDayHigh: cached.dayHigh,
+            regularMarketDayLow: cached.dayLow,
+          });
+        }
+      }
+    });
+  }
+
+  return results;
 }
 
 app.post('/api/quote', async (req, res) => {
@@ -161,11 +357,11 @@ app.post('/api/quote', async (req, res) => {
       return res.json({ success: true, results: [] });
     }
 
-    // 1. Try TWSE MIS Batch for Taiwan stocks
+    // 1. Try TWSE MIS Batch + TWSE OpenAPI for Taiwan stocks
     const twseResults = await fetchTwseBatch(symbols);
     const foundSyms = new Set(twseResults.map((r) => r.symbol.toUpperCase()));
 
-    // 2. Fetch missing / US stocks from Yahoo Finance
+    // 2. Fetch missing / US stocks from Yahoo Finance & Stooq
     const missingSymbols = symbols.filter((sym) => {
       const upper = sym.toUpperCase();
       const bare = upper.replace(/\.(TW|TWO)$/i, '');

@@ -184,13 +184,13 @@ export const StockModal: React.FC<StockModalProps> = ({
         playClickSound();
         onClose();
       }}
-      className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-[2rem] sm:rounded-3xl p-5 md:p-8 w-full max-w-lg shadow-[0_12px_40px_rgb(0,0,0,0.08)] space-y-5 max-h-[88vh] overflow-y-auto border border-slate-100 text-slate-900"
+        className="bg-white rounded-t-[2rem] sm:rounded-3xl p-5 md:p-8 w-full max-w-lg shadow-[0_12px_40px_rgb(0,0,0,0.15)] flex flex-col max-h-[85dvh] sm:max-h-[88vh] border border-slate-100 text-slate-900"
       >
-        <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+        <div className="flex justify-between items-center border-b border-slate-100 pb-4 shrink-0">
           <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2.5">
             <PlusCircle className="w-5 h-5 text-indigo-600" />
             {editStock ? '編輯監控部位' : '新增監控部位'}
@@ -207,7 +207,8 @@ export const StockModal: React.FC<StockModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0 text-sm">
+          <div className="flex-1 overflow-y-auto space-y-4 py-3 pr-1">
           {/* Search Input */}
           <div className="relative">
             <div className="flex justify-between items-center mb-1.5">
@@ -429,7 +430,9 @@ export const StockModal: React.FC<StockModalProps> = ({
             </div>
           </div>
 
-          <div className="pt-3 flex gap-3">
+          </div>
+
+          <div className="pt-3 pb-2 sm:pb-0 flex gap-3 border-t border-slate-100 bg-white shrink-0">
             <button
               type="button"
               onClick={() => {

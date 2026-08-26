@@ -78,7 +78,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         playClickSound();
         onClose();
       }}
-      className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4 transition-all duration-300"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[90] flex items-center justify-center p-4 transition-all duration-300"
     >
       <div
         onClick={(e) => e.stopPropagation()}

@@ -72,8 +72,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
   const txCount = Array.isArray(stock.transactions) ? stock.transactions.length : 1;
 
   return (
-    <div className="fixed inset-0 z-[80] bg-slate-900/40 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-fadeIn h-[100dvh]">
-      <div className="w-full max-w-xl bg-white border border-slate-100 rounded-t-3xl sm:rounded-3xl shadow-[0_12px_40px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-fadeIn h-[100dvh]">
+      <div className="w-full max-w-xl bg-white border border-slate-100 rounded-t-3xl sm:rounded-3xl shadow-[0_12px_40px_rgb(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[88vh]">
         {/* Top Sticky Navigation Bar */}
         <div className="bg-white border-b border-slate-100 px-4 py-3.5 flex items-center justify-between gap-3 shrink-0">
           <button
@@ -266,53 +266,53 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
               )}
             </div>
           )}
+        </div>
 
-          {/* Action Buttons Toolbar */}
-          <div className="pt-2 space-y-2">
+        {/* Action Buttons Toolbar */}
+        <div className="p-3.5 pb-6 sm:pb-3 space-y-2 border-t border-slate-100 bg-white shrink-0">
+          <button
+            onClick={() => {
+              playClickSound();
+              onClose();
+              onOpenChart(stock.symbol, stock.market === 'us' ? 'us' : 'tse', stock.name);
+            }}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 btn-interact shadow-sm"
+          >
+            <BarChart2 className="w-4 h-4" /> 檢視即時分時 K 線圖
+          </button>
+
+          <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => {
                 playClickSound();
                 onClose();
-                onOpenChart(stock.symbol, stock.market === 'us' ? 'us' : 'tse', stock.name);
+                onOpenTxHistory(stock.id);
               }}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 btn-interact shadow-sm"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 py-2.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 btn-interact"
             >
-              <BarChart2 className="w-4 h-4" /> 檢視即時分時 K 線圖
+              <History className="w-3.5 h-3.5 text-slate-500" /> 歷程({txCount})
             </button>
 
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => {
-                  playClickSound();
-                  onClose();
-                  onOpenTxHistory(stock.id);
-                }}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 py-2.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 btn-interact"
-              >
-                <History className="w-3.5 h-3.5 text-slate-500" /> 歷程({txCount})
-              </button>
+            <button
+              onClick={() => {
+                playClickSound();
+                onClose();
+                onOpenEditModal(stock.id);
+              }}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 py-2.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 btn-interact"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-indigo-600" /> 編輯
+            </button>
 
-              <button
-                onClick={() => {
-                  playClickSound();
-                  onClose();
-                  onOpenEditModal(stock.id);
-                }}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 py-2.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 btn-interact"
-              >
-                <Edit3 className="w-3.5 h-3.5 text-indigo-600" /> 編輯
-              </button>
-
-              <button
-                onClick={() => {
-                  onClose();
-                  onDeleteStock(stock.id);
-                }}
-                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-2.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 btn-interact"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-600" /> 刪除
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                onClose();
+                onDeleteStock(stock.id);
+              }}
+              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-2.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 btn-interact"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600" /> 刪除
+            </button>
           </div>
         </div>
       </div>

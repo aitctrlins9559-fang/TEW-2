@@ -950,7 +950,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
           </div>
 
           {/* Quick Switcher at Bottom */}
-          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
+          <div className="bg-slate-50 p-3 pb-6 sm:pb-3 rounded-2xl border border-slate-200 space-y-2">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
               {/* Category Tabs */}
               <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 text-xs font-mono">

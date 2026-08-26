@@ -76,8 +76,8 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white w-full max-w-2xl rounded-3xl border border-slate-200 shadow-2xl p-6 md:p-8 space-y-6 max-h-[85vh] flex flex-col overflow-hidden text-slate-900">
+    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
+      <div className="bg-white w-full max-w-2xl rounded-t-3xl sm:rounded-3xl border border-slate-200 shadow-2xl p-5 md:p-8 flex flex-col max-h-[85dvh] sm:max-h-[88vh] overflow-hidden text-slate-900">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-100 pb-4 shrink-0">
           <div className="flex items-center gap-3">
@@ -137,7 +137,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
         </div>
 
         {/* Footer */}
-        <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500 shrink-0">
+        <div className="pt-4 pb-2 sm:pb-0 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500 shrink-0">
           <div className="flex items-center gap-1 text-slate-600 font-medium">
             <ShieldCheck className="w-4 h-4 text-emerald-600" /> 持股監控投資雷達 • 穩定極速體驗
           </div>

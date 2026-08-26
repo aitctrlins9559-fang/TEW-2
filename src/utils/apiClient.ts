@@ -19,6 +19,7 @@ export async function fetchWithTimeout(url: string, init?: RequestInit, timeoutM
 const CORS_PROXIES = [
   (targetUrl: string) => `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
   (targetUrl: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+  (targetUrl: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
 ];
 
 async function fetchWithCorsFallback(targetUrl: string, timeoutMs = 6000) {
@@ -86,7 +87,9 @@ export interface QuoteResult {
 export async function apiFetchQuotes(symbols: string[]): Promise<QuoteResult[]> {
   if (!symbols || symbols.length === 0) return [];
 
-  // Try primary backend route
+  let backendResults: QuoteResult[] = [];
+
+  // 1. Try primary backend route
   try {
     const res = await fetchWithTimeout('/api/quote', {
       method: 'POST',
@@ -96,24 +99,120 @@ export async function apiFetchQuotes(symbols: string[]): Promise<QuoteResult[]> 
 
     if (res.ok) {
       const json = await res.json();
-      if (json.success && Array.isArray(json.results) && json.results.length > 0) {
-        return json.results;
+      if (json.success && Array.isArray(json.results)) {
+        backendResults = json.results;
       }
     }
   } catch {
     // Fallback
   }
 
-  // Client-side fallback for GitHub Pages
-  const results = await Promise.all(
-    symbols.map(async (sym) => {
+  const foundSyms = new Set(
+    backendResults.map((r) => r.symbol.toUpperCase().replace(/\.(TW|TWO)$/i, ''))
+  );
+
+  const missingSymbols = symbols.filter((sym) => {
+    const upper = sym.toUpperCase();
+    const bare = upper.replace(/\.(TW|TWO)$/i, '');
+    return !foundSyms.has(upper) && !foundSyms.has(bare);
+  });
+
+  if (missingSymbols.length === 0) {
+    return backendResults;
+  }
+
+  // 2. Client-side TWSE/TPEx OpenAPI Fallback for missing Taiwan stocks
+  let clientOpenApiMap: Map<string, QuoteResult> = new Map();
+
+  const twMissing = missingSymbols.filter((sym) => {
+    const bare = sym.replace(/\.(TW|TWO)$/i, '').trim();
+    return /^\d{4,6}[A-Z]?$/i.test(bare);
+  });
+
+  if (twMissing.length > 0) {
+    try {
+      const [twseRes, tpexRes] = await Promise.allSettled([
+        fetchWithTimeout('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL', {}, 5000),
+        fetchWithTimeout('https://openapi.tpex.org.tw/v1/opendata/MainBoard_Daily_Quotes', {}, 5000),
+      ]);
+
+      if (twseRes.status === 'fulfilled' && twseRes.value.ok) {
+        const twseData = await twseRes.value.json();
+        if (Array.isArray(twseData)) {
+          twseData.forEach((row: any) => {
+            const code = row.Code?.toString().trim();
+            const close = parseFloat((row.ClosingPrice || '').toString().replace(/,/g, ''));
+            const open = parseFloat((row.OpeningPrice || '').toString().replace(/,/g, '')) || close;
+            const high = parseFloat((row.HighestPrice || '').toString().replace(/,/g, '')) || close;
+            const low = parseFloat((row.LowestPrice || '').toString().replace(/,/g, '')) || close;
+            const change = parseFloat((row.Change || '').toString().replace(/,/g, '')) || 0;
+            const prevClose = close - change > 0 ? close - change : close;
+
+            if (code && !isNaN(close) && close > 0) {
+              const resObj: QuoteResult = {
+                symbol: code,
+                shortName: row.Name || code,
+                regularMarketPrice: close,
+                regularMarketPreviousClose: !isNaN(prevClose) && prevClose > 0 ? prevClose : close,
+                regularMarketDayHigh: high,
+                regularMarketDayLow: low,
+              };
+              clientOpenApiMap.set(code, resObj);
+              clientOpenApiMap.set(`${code}.TW`, resObj);
+            }
+          });
+        }
+      }
+
+      if (tpexRes.status === 'fulfilled' && tpexRes.value.ok) {
+        const tpexData = await tpexRes.value.json();
+        if (Array.isArray(tpexData)) {
+          tpexData.forEach((row: any) => {
+            const code = (row.SecuritiesCompanyCode || row.Code)?.toString().trim();
+            const close = parseFloat((row.Close || row.ClosePrice || '').toString().replace(/,/g, ''));
+            const open = parseFloat((row.Open || row.OpenPrice || '').toString().replace(/,/g, '')) || close;
+            const high = parseFloat((row.High || row.HighPrice || '').toString().replace(/,/g, '')) || close;
+            const low = parseFloat((row.Low || row.LowPrice || '').toString().replace(/,/g, '')) || close;
+            const change = parseFloat((row.Change || '').toString().replace(/,/g, '')) || 0;
+            const prevClose = close - change > 0 ? close - change : close;
+
+            if (code && !isNaN(close) && close > 0) {
+              const resObj: QuoteResult = {
+                symbol: code,
+                shortName: row.CompanyName || code,
+                regularMarketPrice: close,
+                regularMarketPreviousClose: !isNaN(prevClose) && prevClose > 0 ? prevClose : close,
+                regularMarketDayHigh: high,
+                regularMarketDayLow: low,
+              };
+              clientOpenApiMap.set(code, resObj);
+              clientOpenApiMap.set(`${code}.TWO`, resObj);
+            }
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 3. Yahoo Finance CORS proxy fallback for any remaining missing symbols
+  const clientResults = await Promise.all(
+    missingSymbols.map(async (sym) => {
+      const bare = sym.replace(/\.(TW|TWO)$/i, '').trim();
+      const openApiMatch = clientOpenApiMap.get(bare) || clientOpenApiMap.get(sym);
+      if (openApiMatch) {
+        return { ...openApiMatch, symbol: sym };
+      }
+
       try {
         const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d`;
         const data = await fetchWithCorsFallback(targetUrl, 6000);
         const meta = data?.chart?.result?.[0]?.meta;
-        if (meta && typeof meta.regularMarketPrice === 'number') {
+        if (meta && typeof meta.regularMarketPrice === 'number' && meta.regularMarketPrice > 0) {
           return {
             symbol: sym,
+            shortName: meta.shortName || meta.longName || sym,
             regularMarketPrice: meta.regularMarketPrice,
             regularMarketPreviousClose: meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice,
             regularMarketDayHigh: meta.regularMarketDayHigh || meta.regularMarketPrice,
@@ -123,11 +222,25 @@ export async function apiFetchQuotes(symbols: string[]): Promise<QuoteResult[]> 
       } catch {
         // ignore
       }
+
       return null;
     })
   );
 
-  return results.filter(Boolean) as QuoteResult[];
+  const combined = [...backendResults, ...(clientResults.filter(Boolean) as QuoteResult[])];
+
+  // Remove duplicates
+  const uniqueMap = new Map<string, QuoteResult>();
+  combined.forEach((item) => {
+    if (item && item.symbol) {
+      const key = item.symbol.toUpperCase();
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, item);
+      }
+    }
+  });
+
+  return Array.from(uniqueMap.values());
 }
 
 // 3. Market Indices
