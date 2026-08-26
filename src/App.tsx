@@ -1321,7 +1321,7 @@ export default function App() {
 
           {/* Tab 2: Portfolio Holdings */}
           {(activeMobileTab === 'all' || activeMobileTab === 'portfolio') && (
-            <div id="section-portfolio" className="scroll-mt-20 animate-fadeIn">
+            <div id="section-portfolio" className="space-y-5 scroll-mt-20 animate-fadeIn">
               <StockTable
                 portfolio={portfolio}
                 usdTwdRate={usdTwdRate}
