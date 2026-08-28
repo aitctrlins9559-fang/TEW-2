@@ -89,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="bg-white p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-40 w-full">
+    <header className="bg-white p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-[60] w-full">
       <div className="flex flex-col gap-2 sm:gap-3">
         {/* Main Workstation Header Bar */}
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 sm:pb-3.5">
@@ -190,20 +190,24 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {/* Tools Menu Dropdown */}
-            <div className="relative" ref={toolsMenuRef}>
+            <div className="relative z-[70]" ref={toolsMenuRef}>
               <button
                 onClick={() => {
                   playClickSound();
                   setIsToolsOpen(!isToolsOpen);
                 }}
-                className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-white text-slate-700 border border-slate-200/80 hover:bg-slate-50 shadow-2xs transition btn-interact"
+                className={`p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border transition btn-interact ${
+                  isToolsOpen
+                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200/80 hover:bg-slate-50 shadow-2xs'
+                }`}
                 title="系統管理工具"
               >
-                <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Settings className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isToolsOpen ? 'text-indigo-600 rotate-45 transition-transform' : ''}`} />
               </button>
 
               {isToolsOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-slate-100 shadow-xl p-2 z-50 text-xs space-y-1 animate-fadeIn text-slate-800">
+                <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-24px)] rounded-2xl bg-white border border-slate-200/90 shadow-[0_15px_35px_rgba(0,0,0,0.18)] p-2 z-[70] text-xs space-y-1 animate-fadeIn text-slate-800 ring-1 ring-black/5">
                   {/* Admin Unlock */}
                   <button
                     onClick={() => {
@@ -211,7 +215,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setIsToolsOpen(false);
                       onToggleAdmin();
                     }}
-                    className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center justify-between font-bold"
+                    className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center justify-between font-bold transition"
                   >
                     <span className="flex items-center gap-2">
                       {isAdmin ? <Unlock className="w-4 h-4 text-emerald-600" /> : <Lock className="w-4 h-4 text-slate-400" />}
@@ -228,7 +232,7 @@ export const Header: React.FC<HeaderProps> = ({
                       playClickSound();
                       onToggleAutoRefresh();
                     }}
-                    className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center justify-between font-bold"
+                    className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center justify-between font-bold transition"
                   >
                     <span className="flex items-center gap-2">
                       {isAutoRefreshOn ? <Play className="w-4 h-4 text-emerald-600" /> : <Pause className="w-4 h-4 text-slate-400" />}
@@ -247,7 +251,7 @@ export const Header: React.FC<HeaderProps> = ({
                       if (!isAdmin) onToggleAdmin();
                       else onOpenSyncModal();
                     }}
-                    className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center justify-between font-bold"
+                    className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center justify-between font-bold transition"
                   >
                     <span className="flex items-center gap-2">
                       {isCloudBound ? <Cloud className="w-4 h-4 text-sky-600" /> : <CloudOff className="w-4 h-4 text-amber-500" />}
@@ -266,7 +270,7 @@ export const Header: React.FC<HeaderProps> = ({
                         setIsToolsOpen(false);
                         onOpenGuide();
                       }}
-                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-2 text-indigo-700 font-bold"
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-2 text-indigo-700 font-bold transition"
                     >
                       <BookOpen className="w-4 h-4 text-indigo-600" />
                       使用指南與邏輯說明
@@ -281,7 +285,7 @@ export const Header: React.FC<HeaderProps> = ({
                         setIsToolsOpen(false);
                         onOpenChangelog();
                       }}
-                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-2 text-indigo-700 font-bold"
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-2 text-indigo-700 font-bold transition"
                     >
                       <FileText className="w-4 h-4 text-indigo-600" />
                       更新日誌與版本規格

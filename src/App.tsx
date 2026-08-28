@@ -1128,7 +1128,7 @@ export default function App() {
       )}
 
       {/* Main Container - Full-Width Edge to Edge (滿版無多餘留白) */}
-      <div className="w-full max-w-full mx-auto space-y-2.5 sm:space-y-4 px-1 sm:px-2 md:px-3 pb-28 sm:pb-16 overflow-x-hidden">
+      <div className="w-full max-w-full mx-auto space-y-2.5 sm:space-y-4 px-1 sm:px-2 md:px-3 pb-28 sm:pb-16">
         {/* Header */}
         <Header
           isAdmin={isAdmin}
