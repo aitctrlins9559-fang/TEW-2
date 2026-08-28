@@ -89,8 +89,8 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-40">
-      <div className="flex flex-col gap-2.5 sm:gap-3.5">
+    <header className="bg-white p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-40 w-full">
+      <div className="flex flex-col gap-2 sm:gap-3">
         {/* Main Workstation Header Bar */}
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 sm:pb-3.5">
           {/* Logo & Platform Badge */}

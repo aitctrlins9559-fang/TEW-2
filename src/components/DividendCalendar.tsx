@@ -252,36 +252,36 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
   const maxMonthlyVal = Math.max(...summary.monthlyBreakdown, 1000);
 
   return (
-    <div className="glass-card p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm space-y-4 bg-white relative">
+    <div className="glass-card p-2 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-sm space-y-2.5 sm:space-y-4 bg-white relative w-full">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 border-b border-slate-100 pb-3.5">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold shrink-0">
-            <Calendar className="w-5 h-5" />
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2.5 sm:gap-3 border-b border-slate-100 pb-2.5 sm:pb-3.5">
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+          <div className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold shrink-0">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
-              除權息日曆與被動收入試算
-              <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-mono font-bold border border-emerald-100">
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-lg font-bold text-slate-900 flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span>除權息與被動收入</span>
+              <span className="text-[9px] sm:text-xs px-1.5 sm:px-2 py-0.2 rounded-full bg-emerald-50 text-emerald-700 font-mono font-bold border border-emerald-100">
                 Passive Income
               </span>
             </h2>
-            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-              整合台美股除息月曆、稅後淨領與 DRIP 複利計算
+            <p className="text-[9px] sm:text-xs text-slate-500 mt-0.5 truncate">
+              台美股除息月曆、稅後淨領與 DRIP 複利
             </p>
           </div>
         </div>
 
         {/* Tab Switcher */}
-        <div className="grid grid-cols-4 lg:flex w-full lg:w-auto p-1 bg-slate-100 rounded-xl border border-slate-200/80 text-xs font-bold shrink-0 gap-1">
+        <div className="grid grid-cols-4 lg:flex w-full lg:w-auto p-0.5 sm:p-1 bg-slate-100 rounded-lg sm:rounded-xl border border-slate-200/80 text-xs font-bold shrink-0 gap-0.5 sm:gap-1">
           <button
             onClick={() => {
               playClickSound();
               setActiveTab('overview');
             }}
-            className={`px-1.5 sm:px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs ${
+            className={`px-1 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg transition whitespace-nowrap flex items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs ${
               activeTab === 'overview'
-                ? 'bg-emerald-500 text-white shadow-sm'
+                ? 'bg-emerald-500 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -293,9 +293,9 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
               playClickSound();
               setActiveTab('calendar');
             }}
-            className={`px-1.5 sm:px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs ${
+            className={`px-1 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg transition whitespace-nowrap flex items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs ${
               activeTab === 'calendar'
-                ? 'bg-emerald-500 text-white shadow-sm'
+                ? 'bg-emerald-500 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -307,9 +307,9 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
               playClickSound();
               setActiveTab('goal');
             }}
-            className={`px-1.5 sm:px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs ${
+            className={`px-1 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg transition whitespace-nowrap flex items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs ${
               activeTab === 'goal'
-                ? 'bg-emerald-500 text-white shadow-sm'
+                ? 'bg-emerald-500 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -321,9 +321,9 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
               playClickSound();
               setActiveTab('drip');
             }}
-            className={`px-1.5 sm:px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs ${
+            className={`px-1 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg transition whitespace-nowrap flex items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs ${
               activeTab === 'drip'
-                ? 'bg-emerald-500 text-white shadow-sm'
+                ? 'bg-emerald-500 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -334,30 +334,30 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
       </div>
 
       {/* Tax Mode Switcher & Overview Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs">
-        <div className="flex items-center gap-2">
-          <Info className="w-4 h-4 text-emerald-600 shrink-0" />
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-2 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200/80 text-xs">
+        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs">
+          <Info className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
           <span className="text-slate-700 font-semibold">試算模式：</span>
         </div>
-        <div className="flex items-center bg-white rounded-lg p-1 border border-slate-200">
+        <div className="flex items-center bg-white rounded-md sm:rounded-lg p-0.5 border border-slate-200 text-[10px] sm:text-xs">
           <button
             onClick={() => {
               playClickSound();
               setTaxMode('gross');
             }}
-            className={`px-3 py-1 rounded-md font-bold transition ${
-              taxMode === 'gross' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded font-bold transition ${
+              taxMode === 'gross' ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            稅前估算 (Gross)
+            稅前 (Gross)
           </button>
           <button
             onClick={() => {
               playClickSound();
               setTaxMode('net');
             }}
-            className={`px-3 py-1 rounded-md font-bold transition flex items-center gap-1 ${
-              taxMode === 'net' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded font-bold transition flex items-center gap-1 ${
+              taxMode === 'net' ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <ShieldAlert className="w-3 h-3" />
@@ -367,54 +367,54 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
       </div>
 
       {/* Hero Stats Cards (Responsive Stack) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full">
         {/* Annual Passive Income */}
-        <div className="bg-slate-50 p-4 rounded-xl border border-emerald-100 space-y-1">
-          <div className="text-xs font-bold text-slate-500 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-emerald-800">
-              <DollarSign className="w-4 h-4 text-emerald-600" /> 預估年化被動收入 ({taxMode === 'gross' ? '稅前' : '稅後'})
+        <div className="bg-slate-50 p-2.5 sm:p-4 rounded-xl border border-emerald-100 space-y-0.5 sm:space-y-1">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-500 flex items-center justify-between">
+            <span className="flex items-center gap-1 text-emerald-800">
+              <DollarSign className="w-3.5 h-3.5 text-emerald-600" /> 年被動收入 ({taxMode === 'gross' ? '稅前' : '稅後'})
             </span>
             {taxMode === 'net' && (
-              <span className="text-[10px] text-amber-800 font-mono bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
-                含健保/美稅
+              <span className="text-[9px] text-amber-800 font-mono bg-amber-100 px-1 py-0.2 rounded border border-amber-200">
+                扣健保/美稅
               </span>
             )}
           </div>
-          <div className="text-2xl font-black font-mono text-emerald-700 tracking-tight">
+          <div className="text-xl sm:text-2xl font-black font-mono text-emerald-700 tracking-tight">
             ${formatMoney(displayAnnualIncome, isPrivacy)}
-            <span className="text-xs font-sans text-slate-500 font-semibold ml-1">NT$/年</span>
+            <span className="text-[10px] sm:text-xs font-sans text-slate-500 font-semibold ml-1">NT$/年</span>
           </div>
-          <div className="text-[11px] text-slate-500 font-mono">
+          <div className="text-[10px] sm:text-[11px] text-slate-500 font-mono truncate">
             {taxMode === 'gross'
-              ? '相當於每年多領一個月獎金'
-              : `已扣抵健保約 ${Math.round(totalNhiFeeTWD).toLocaleString()} / 美稅 ${Math.round(totalUsTaxTWD).toLocaleString()}`}
+              ? '每年多領約一個月獎金'
+              : `扣健保~${Math.round(totalNhiFeeTWD).toLocaleString()} / 美稅~${Math.round(totalUsTaxTWD).toLocaleString()}`}
           </div>
         </div>
 
         {/* Monthly Passive Income */}
-        <div className="bg-slate-50 p-4 rounded-xl border border-indigo-100 space-y-1">
-          <div className="text-xs font-bold text-slate-500 flex items-center gap-1.5 text-indigo-800">
-            <TrendingUp className="w-4 h-4 text-indigo-600" /> 平均每月領息
+        <div className="bg-slate-50 p-2.5 sm:p-4 rounded-xl border border-indigo-100 space-y-0.5 sm:space-y-1">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-500 flex items-center gap-1 text-indigo-800">
+            <TrendingUp className="w-3.5 h-3.5 text-indigo-600" /> 平均每月領息
           </div>
-          <div className="text-2xl font-black font-mono text-indigo-700 tracking-tight">
+          <div className="text-xl sm:text-2xl font-black font-mono text-indigo-700 tracking-tight">
             ${formatMoney(displayMonthlyIncome, isPrivacy)}
-            <span className="text-xs font-sans text-slate-500 font-semibold ml-1">NT$/月</span>
+            <span className="text-[10px] sm:text-xs font-sans text-slate-500 font-semibold ml-1">NT$/月</span>
           </div>
-          <div className="text-[11px] text-slate-500 font-mono">
-            自由目標達成率: <strong className="text-sky-300">{goalProgressPct.toFixed(1)}%</strong>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 font-mono truncate">
+            自由目標進度: <strong className="text-indigo-600">{goalProgressPct.toFixed(1)}%</strong>
           </div>
         </div>
 
         {/* Portfolio Dividend Yield */}
-        <div className="bg-amber-50/80 p-4 sm:p-5 rounded-2xl border border-amber-200/90 space-y-1">
-          <div className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-amber-600" /> 組合平均股息殖利率
+        <div className="bg-amber-50/80 p-2.5 sm:p-4 rounded-xl border border-amber-200/90 space-y-0.5 sm:space-y-1">
+          <div className="text-[11px] sm:text-xs font-bold text-amber-800 flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" /> 平均股息殖利率
           </div>
-          <div className="text-2xl sm:text-3xl font-black font-mono text-amber-700 tracking-tight">
+          <div className="text-xl sm:text-2xl font-black font-mono text-amber-700 tracking-tight">
             {summary.weightedDividendYieldPct.toFixed(2)}%
           </div>
-          <div className="text-[11px] text-slate-600 font-mono">
-            總持股標的: {portfolio.length} 檔
+          <div className="text-[10px] sm:text-[11px] text-slate-600 font-mono">
+            持股數: {portfolio.length} 檔
           </div>
         </div>
       </div>

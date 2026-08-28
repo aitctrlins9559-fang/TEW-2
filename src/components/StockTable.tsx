@@ -195,126 +195,143 @@ export const StockTable: React.FC<StockTableProps> = ({
   };
 
   return (
-    <div className="bg-white p-3 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-3.5 sm:space-y-4">
+    <div className="bg-white p-2 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-2.5 sm:space-y-4 w-full">
       {/* Table / Feed Header Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/15 font-bold shrink-0">
-            <PieChart className="w-4 h-4 sm:w-5 sm:h-5" />
+      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 sm:pb-3 flex-wrap">
+        {/* Left Title & Count */}
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/15 font-bold shrink-0">
+            <PieChart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 flex-wrap">
-              <span>持股部位終端</span>
-              <span className="bg-indigo-50 text-indigo-700 text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-mono font-bold border border-indigo-100 shrink-0">
-                {filteredPortfolio.length} / {portfolio.length} 檔
+            <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5 flex-wrap">
+              <span>持股部位</span>
+              <span className="bg-indigo-50 text-indigo-700 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.2 rounded-full font-mono font-bold border border-indigo-100 shrink-0">
+                {filteredPortfolio.length} / {portfolio.length}
               </span>
             </h2>
-            <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">支援表格、圖卡與部位權重熱力圖切換</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
-          {/* View Mode Switcher & Broker Discount Selector */}
-          <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto justify-between sm:justify-start">
-            {/* Broker Discount Selector */}
-            <div className="flex items-center gap-1 px-2 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
-              <Receipt className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="text-slate-600 font-sans text-[10px] sm:text-xs">手續費:</span>
-              <select
-                value={localDiscount}
-                onChange={(e) => {
-                  const d = parseFloat(e.target.value);
-                  playClickSound();
-                  setLocalDiscount(d);
-                  if (onUpdateBrokerDiscount) onUpdateBrokerDiscount(d);
-                }}
-                className="bg-transparent text-indigo-700 font-bold outline-none cursor-pointer text-[11px] sm:text-xs font-mono"
-              >
-                {DISCOUNT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center p-0.5 sm:p-1 bg-slate-50 rounded-xl border border-slate-100 text-xs font-bold">
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setViewMode('table');
-                }}
-                className={`px-2 py-1 sm:py-1.5 rounded-lg transition flex items-center gap-1 ${
-                  viewMode === 'table' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-                }`}
-                title="表格檢視"
-              >
-                <TableIcon className="w-3.5 h-3.5" />
-                <span className="text-[10px] sm:text-xs">表格</span>
-              </button>
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setViewMode('cards');
-                }}
-                className={`px-2 py-1 sm:py-1.5 rounded-lg transition flex items-center gap-1 ${
-                  viewMode === 'cards' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-                }`}
-                title="圖卡檢視"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span className="text-[10px] sm:text-xs">圖卡</span>
-              </button>
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setViewMode('heatmap');
-                }}
-                className={`px-2 py-1 sm:py-1.5 rounded-lg transition flex items-center gap-1 ${
-                  viewMode === 'heatmap' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-                }`}
-                title="熱力比例圖"
-              >
-                <Grid className="w-3.5 h-3.5" />
-                <span className="text-[10px] sm:text-xs">熱力圖</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
+        {/* Right Unified Controls: View Switcher + Add + Settings Dropdown */}
+        <div className="flex items-center gap-1 sm:gap-1.5 ml-auto">
+          {/* View Mode Switcher */}
+          <div className="flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200/80 text-[10px] sm:text-xs font-bold">
             <button
               onClick={() => {
                 playClickSound();
-                onOpenAddModal();
+                setViewMode('table');
               }}
-              className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 sm:py-2 rounded-xl transition flex items-center justify-center gap-1 btn-interact shadow-sm shrink-0"
+              className={`px-2 py-1 rounded-md transition flex items-center gap-0.5 sm:gap-1 ${
+                viewMode === 'table' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="表格檢視"
             >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span className="text-[11px] sm:text-xs">新增</span>
+              <TableIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>表格</span>
+            </button>
+            <button
+              onClick={() => {
+                playClickSound();
+                setViewMode('cards');
+              }}
+              className={`px-2 py-1 rounded-md transition flex items-center gap-0.5 sm:gap-1 ${
+                viewMode === 'cards' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="圖卡檢視"
+            >
+              <LayoutGrid className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>圖卡</span>
+            </button>
+            <button
+              onClick={() => {
+                playClickSound();
+                setViewMode('heatmap');
+              }}
+              className={`px-2 py-1 rounded-md transition flex items-center gap-0.5 sm:gap-1 ${
+                viewMode === 'heatmap' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="熱力比例圖"
+            >
+              <Grid className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>熱力</span>
+            </button>
+          </div>
+
+          {/* Add Stock Button */}
+          <button
+            onClick={() => {
+              playClickSound();
+              onOpenAddModal();
+            }}
+            className="text-[11px] sm:text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl transition flex items-center gap-1 btn-interact shadow-xs shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span className="hidden xs:inline">新增持股</span>
+            <span className="xs:hidden">新增</span>
+          </button>
+
+          {/* Settings & Parameters Dropdown Menu (Contains Broker Discount + Backup) */}
+          <div className="relative" ref={dataMenuRef}>
+            <button
+              onClick={() => {
+                playClickSound();
+                setIsDataMenuOpen((prev) => !prev);
+              }}
+              className={`text-xs p-1 sm:px-2 sm:py-1.5 rounded-lg sm:rounded-xl border transition flex items-center gap-1 btn-interact ${
+                isDataMenuOpen
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
+              }`}
+              title="參數與管理設定 (券商折數、備份匯出入)"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="text-[10px] font-mono font-bold text-indigo-700 hidden sm:inline">
+                {DISCOUNT_OPTIONS.find((o) => Math.abs(o.value - localDiscount) < 0.001)?.label.split(' ')[1] || `${(localDiscount * 10).toFixed(1)}折`}
+              </span>
+              <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isDataMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Data Management Dropdown */}
-            <div className="relative" ref={dataMenuRef}>
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setIsDataMenuOpen((prev) => !prev);
-                }}
-                className="text-xs bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1.5 sm:py-2 rounded-xl transition flex items-center gap-1 btn-interact"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isDataMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
+            {isDataMenuOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-50 space-y-2.5 text-xs animate-fadeIn">
+                {/* Broker Discount Setting Block inside Dropdown */}
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-700 font-bold text-[11px]">
+                    <span className="flex items-center gap-1">
+                      <Receipt className="w-3.5 h-3.5 text-indigo-600" />
+                      券商手續費折讓
+                    </span>
+                    <span className="font-mono text-indigo-600 font-bold text-[10px]">
+                      {DISCOUNT_OPTIONS.find((o) => Math.abs(o.value - localDiscount) < 0.001)?.label.split(' ')[0] || ''}
+                    </span>
+                  </div>
+                  <select
+                    value={localDiscount}
+                    onChange={(e) => {
+                      const d = parseFloat(e.target.value);
+                      playClickSound();
+                      setLocalDiscount(d);
+                      if (onUpdateBrokerDiscount) onUpdateBrokerDiscount(d);
+                    }}
+                    className="w-full bg-white border border-slate-200 text-indigo-700 font-bold rounded-lg px-2 py-1.5 outline-none cursor-pointer text-xs font-mono shadow-2xs"
+                  >
+                    {DISCOUNT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[9px] text-slate-400">用於損益試算扣除手續費 (0.1425%) 與證交稅</p>
+                </div>
 
-              {isDataMenuOpen && (
-                <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1 text-xs">
+                <div className="border-t border-slate-100 pt-1.5 space-y-1">
                   <button
                     onClick={() => {
                       playClickSound();
                       setIsDataMenuOpen(false);
                       onExportData();
                     }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 text-slate-700 font-medium transition"
+                    className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-slate-50 text-slate-700 font-medium transition"
                   >
                     <Download className="w-4 h-4 text-indigo-600" />
                     <span>匯出備份檔 (JSON)</span>
@@ -326,7 +343,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                       setIsDataMenuOpen(false);
                       onImportData();
                     }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 text-slate-700 font-medium transition"
+                    className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-slate-50 text-slate-700 font-medium transition"
                   >
                     <Upload className="w-4 h-4 text-emerald-600" />
                     <span>還原 JSON 備份檔</span>
@@ -339,28 +356,28 @@ export const StockTable: React.FC<StockTableProps> = ({
                         setIsDataMenuOpen(false);
                         onPublishToGlobal();
                       }}
-                      className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-emerald-50 text-emerald-700 font-bold transition"
+                      className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-emerald-50 text-emerald-700 font-bold transition"
                     >
                       <Globe className="w-4 h-4 text-emerald-600" />
                       <span>同步至全域雲端</span>
                     </button>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Interactive Toolbar: Filter Tabs, Search & Sort */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        <div className="grid grid-cols-3 sm:flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl border border-slate-200/80 shrink-0 w-full sm:w-auto">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+        <div className="grid grid-cols-3 sm:flex items-center gap-1 p-0.5 sm:p-1 bg-slate-100/80 rounded-lg sm:rounded-xl border border-slate-200/80 shrink-0 w-full sm:w-auto">
           <button
             onClick={() => {
               playClickSound();
               setFilterTab('all');
             }}
-            className={`px-3 py-1.5 sm:py-1 rounded-lg text-xs font-bold transition text-center ${
+            className={`px-2 py-1 sm:px-3 sm:py-1 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-bold transition text-center ${
               filterTab === 'all'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -373,7 +390,7 @@ export const StockTable: React.FC<StockTableProps> = ({
               playClickSound();
               setFilterTab('tw');
             }}
-            className={`px-3 py-1.5 sm:py-1 rounded-lg text-xs font-bold transition text-center ${
+            className={`px-2 py-1 sm:px-3 sm:py-1 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-bold transition text-center ${
               filterTab === 'tw'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -386,7 +403,7 @@ export const StockTable: React.FC<StockTableProps> = ({
               playClickSound();
               setFilterTab('us');
             }}
-            className={`px-3 py-1.5 sm:py-1 rounded-lg text-xs font-bold transition text-center ${
+            className={`px-2 py-1 sm:px-3 sm:py-1 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-bold transition text-center ${
               filterTab === 'us'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -397,20 +414,20 @@ export const StockTable: React.FC<StockTableProps> = ({
         </div>
 
         {/* Search & Sort controls */}
-        <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2 flex-1 w-full sm:max-w-md">
+        <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-1.5 sm:gap-2 flex-1 w-full sm:max-w-md">
           <div className="relative flex-1 min-w-0">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜尋名稱或代號..."
-              className="w-full glass-input rounded-xl pl-9 pr-8 py-1.5 text-xs placeholder-slate-400 border-slate-300 focus:border-indigo-500"
+              placeholder="搜尋代號或名稱..."
+              className="w-full glass-input rounded-lg sm:rounded-xl pl-8 pr-7 py-1 sm:py-1.5 text-xs placeholder-slate-400 border-slate-300 focus:border-indigo-500"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-bold"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-bold"
               >
                 ✕
               </button>
@@ -420,7 +437,7 @@ export const StockTable: React.FC<StockTableProps> = ({
           <div className="grid grid-cols-3 gap-1 shrink-0 xs:flex xs:items-center">
             <button
               onClick={() => toggleSort('value')}
-              className={`px-2 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 transition ${
+              className={`px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-bold flex items-center justify-center gap-0.5 transition ${
                 sortField === 'value' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
               }`}
               title="依市值排序"
@@ -431,7 +448,7 @@ export const StockTable: React.FC<StockTableProps> = ({
 
             <button
               onClick={() => toggleSort('roi')}
-              className={`px-2 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 transition ${
+              className={`px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-bold flex items-center justify-center gap-0.5 transition ${
                 sortField === 'roi' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
               }`}
               title="依報酬率排序"
@@ -442,7 +459,7 @@ export const StockTable: React.FC<StockTableProps> = ({
 
             <button
               onClick={() => toggleSort('yield')}
-              className={`px-2 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 transition ${
+              className={`px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-bold flex items-center justify-center gap-0.5 transition ${
                 sortField === 'yield' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
               }`}
               title="依殖利率排序"
@@ -471,20 +488,17 @@ export const StockTable: React.FC<StockTableProps> = ({
           {/* MODE 1: PRO FINANCIAL DATA TABLE VIEW */}
           {viewMode === 'table' && (
             <>
-              {/* Desktop / Tablet Table View */}
-              <div className="hidden sm:block overflow-x-auto rounded-2xl border border-slate-200 bg-white relative">
-                <table className="w-full min-w-[780px] text-left text-xs border-collapse">
+              {/* Desktop / Tablet Table View (Stacked for Maximum Width & Zero Horizontal Drag) */}
+              <div className="hidden sm:block rounded-xl sm:rounded-2xl border border-slate-200 bg-white relative w-full overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200/90 uppercase tracking-wider font-mono">
-                      <th className="p-3.5 whitespace-nowrap">標的代號 / 名稱</th>
-                      <th className="p-3.5 whitespace-nowrap">市場</th>
-                      <th className="p-3.5 text-right whitespace-nowrap">持有股數 / 成本</th>
-                      <th className="p-3.5 text-right whitespace-nowrap">即時現價</th>
-                      <th className="p-3.5 text-right whitespace-nowrap">估計總市值 (TWD)</th>
-                      <th className="p-3.5 text-right whitespace-nowrap">未實現損益 / 淨ROI</th>
-                      <th className="p-3.5 text-right whitespace-nowrap">預估交易成本 (手續費+稅)</th>
-                      <th className="p-3.5 text-right whitespace-nowrap">殖利率 (預估年領)</th>
-                      <th className="p-3.5 text-center whitespace-nowrap sticky right-0 bg-slate-50 z-20 border-l border-slate-200/80 shadow-[-4px_0_10px_rgba(0,0,0,0.05)]">
+                    <tr className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200/90 uppercase tracking-wider font-mono text-[11px]">
+                      <th className="p-3 whitespace-nowrap">標的 / 代號</th>
+                      <th className="p-3 text-right whitespace-nowrap">現價 / 均價股數</th>
+                      <th className="p-3 text-right whitespace-nowrap">總市值 / 淨損益 (ROI)</th>
+                      <th className="p-3 text-right whitespace-nowrap">預估成本 (手續費+稅)</th>
+                      <th className="p-3 text-right whitespace-nowrap">殖利率 (預估年息)</th>
+                      <th className="p-3 text-center whitespace-nowrap sticky right-0 bg-slate-50 z-20 border-l border-slate-200/80 shadow-[-4px_0_10px_rgba(0,0,0,0.04)]">
                         快捷操作
                       </th>
                     </tr>
@@ -518,118 +532,117 @@ export const StockTable: React.FC<StockTableProps> = ({
                           }}
                           className="hover:bg-indigo-50/40 cursor-pointer transition text-slate-800 group"
                         >
-                          {/* Name & Symbol */}
-                          <td className="p-3.5 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md shrink-0">
-                                {item.symbol}
-                              </span>
-                              <span className="font-extrabold text-slate-900 text-sm hover:text-indigo-600 transition whitespace-nowrap">
-                                {item.name}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Market Badge */}
-                          <td className="p-3.5 whitespace-nowrap">
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase">
-                              {item.market}
-                            </span>
-                          </td>
-
-                          {/* Shares & Cost */}
-                          <td className="p-3.5 text-right font-mono whitespace-nowrap">
-                            <div className="font-bold text-slate-900">{item.shares.toLocaleString()} 股</div>
-                            {isExAdjustedMode && pendingShares > 0 && (
-                              <div className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block mt-0.5" title="除權待撥股數：已算入估值與損益平準">
-                                +{pendingShares.toLocaleString()} 待撥
+                          {/* Stacked Name & Symbol & Market */}
+                          <td className="p-3 whitespace-nowrap">
+                            <div className="flex flex-col gap-0.5">
+                              <div className="font-extrabold text-slate-900 text-sm group-hover:text-indigo-600 transition flex items-center gap-1.5">
+                                <span>{item.name}</span>
                               </div>
-                            )}
-                            <div className="text-[11px] text-slate-500">均價 ${item.cost}</div>
-                          </td>
-
-                          {/* Price */}
-                          <td className="p-3.5 text-right font-mono font-black text-slate-900 text-sm whitespace-nowrap">
-                            {safePrice === null ? '--' : `$${safePrice}`}
-                          </td>
-
-                          {/* Market Value */}
-                          <td className="p-3.5 text-right font-mono font-bold text-slate-900 text-sm whitespace-nowrap">
-                            {itemMarketValTWD === null ? '--' : formatMoney(itemMarketValTWD, isPrivacy)}
-                          </td>
-
-                          {/* Net P&L & ROI */}
-                          <td className="p-3.5 text-right font-mono whitespace-nowrap">
-                            <div className={`font-black ${netProfitColorClass}`}>
-                              {safePrice === null
-                                ? '--'
-                                : `${costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)}`}
-                            </div>
-                            <div className={`text-[11px] font-bold ${netProfitColorClass}`}>
-                              {safePrice === null ? '--' : `淨 ${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(2)}%`}
-                            </div>
-                            {itemProfitTWD !== null && (
-                              <div className="text-[10px] text-slate-400 font-sans mt-0.5" title="毛損益（未扣除交易成本）">
-                                毛 ${formatMoney(itemProfitTWD, isPrivacy)}
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <span className="font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.2 rounded text-[10px] shrink-0">
+                                  {item.symbol}
+                                </span>
+                                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 uppercase">
+                                  {item.market}
+                                </span>
+                                {isExAdjustedMode && pendingShares > 0 && (
+                                  <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200" title="除權待撥股數：已算入估值與損益平準">
+                                    +{pendingShares.toLocaleString()} 待撥
+                                  </span>
+                                )}
                               </div>
-                            )}
+                            </div>
                           </td>
 
-                          {/* Transaction Cost Breakdown */}
-                          <td className="p-3.5 text-right font-mono whitespace-nowrap">
+                          {/* Stacked Current Price & Shares / Cost */}
+                          <td className="p-3 text-right font-mono whitespace-nowrap">
+                            <div className="font-black text-slate-900 text-sm">
+                              {safePrice === null ? '--' : `$${safePrice}`}
+                            </div>
+                            <div className="text-[11px] text-slate-500">
+                              {item.shares.toLocaleString()} 股 · 均價 ${item.cost}
+                            </div>
+                          </td>
+
+                          {/* Stacked Market Value & Net Profit / ROI */}
+                          <td className="p-3 text-right font-mono whitespace-nowrap">
+                            <div className="font-black text-slate-900 text-sm">
+                              {itemMarketValTWD === null ? '--' : formatMoney(itemMarketValTWD, isPrivacy)}
+                            </div>
+                            <div className={`text-[11px] font-bold ${netProfitColorClass} flex items-center justify-end gap-1`}>
+                              <span>
+                                {safePrice === null
+                                  ? '--'
+                                  : `${costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)}`}
+                              </span>
+                              <span className="text-[10px]">
+                                ({safePrice === null ? '--' : `${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(2)}%`})
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Stacked Transaction Cost */}
+                          <td className="p-3 text-right font-mono whitespace-nowrap">
                             {isUS ? (
-                              <div className="text-slate-400 text-[11px] font-sans">海外券商免手續費</div>
+                              <div className="text-slate-400 text-[11px] font-sans">免手續費 (美股)</div>
                             ) : (
                               <div>
-                                <div className="font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 inline-block">
+                                <div className="font-bold text-amber-900 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 inline-block text-[11px]">
                                   ${costDetails.totalCostTWD.toLocaleString()} NT$
                                 </div>
-                                <div
-                                  className="text-[10px] text-slate-500 font-sans mt-0.5"
-                                  title={`買手續費 $${costDetails.buyCommissionTWD} + 賣手續費 $${costDetails.sellCommissionTWD} + 證交稅 $${costDetails.sellTaxTWD}`}
-                                >
+                                <div className="text-[10px] text-slate-400 font-sans mt-0.5">
                                   費 ${costDetails.buyCommissionTWD + costDetails.sellCommissionTWD} | 稅 ${costDetails.sellTaxTWD}
                                 </div>
                               </div>
                             )}
                           </td>
 
-                          {/* Dividend Yield */}
-                          <td className="p-3.5 text-right font-mono whitespace-nowrap">
-                            <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          {/* Stacked Dividend Yield & Annual Income */}
+                          <td className="p-3 text-right font-mono whitespace-nowrap">
+                            <span className="font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 text-xs">
                               {divInfo.dividendYieldPct.toFixed(2)}%
                             </span>
-                            <div className="text-[10px] text-emerald-800 font-bold mt-1">
+                            <div className="text-[10px] text-emerald-800 font-bold mt-0.5">
                               年領 {formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
                             </div>
                           </td>
 
                           {/* Action buttons (Sticky on Right) */}
                           <td
-                            className="p-3.5 text-center whitespace-nowrap sticky right-0 bg-white group-hover:bg-indigo-50/90 transition-colors z-10 border-l border-slate-100 shadow-[-4px_0_10px_rgba(0,0,0,0.05)]"
+                            className="p-3 text-center whitespace-nowrap sticky right-0 bg-white group-hover:bg-indigo-50/90 transition-colors z-10 border-l border-slate-100 shadow-[-4px_0_10px_rgba(0,0,0,0.04)]"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div className="flex items-center justify-center gap-1">
                               {pendingShares > 0 && onApplyPendingStockShares && (
                                 <button
                                   onClick={() => {
                                     playClickSound();
                                     onApplyPendingStockShares(item.id);
                                   }}
-                                  className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1 text-[10px] font-bold px-2 shadow-xs"
+                                  className="p-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-0.5 text-[10px] font-bold px-1.5 shadow-xs"
                                   title={`一鍵將 +${pendingShares} 股配股撥入持股總數`}
                                 >
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  <span>撥入 +{pendingShares}股</span>
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>撥入</span>
                                 </button>
                               )}
+                              <button
+                                onClick={() => {
+                                  playClickSound();
+                                  onSelectChartTarget(item.symbol, item.market === 'us' ? 'us' : 'tse', item.name);
+                                }}
+                                className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition"
+                                title="K線走勢"
+                              >
+                                <BarChart2 className="w-3.5 h-3.5" />
+                              </button>
                               <button
                                 onClick={() => {
                                   playClickSound();
                                   onOpenEditModal(item.id);
                                 }}
                                 className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition"
-                                title="校正股息/編輯"
+                                title="編輯持股"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
@@ -642,16 +655,6 @@ export const StockTable: React.FC<StockTableProps> = ({
                                 title="交易紀錄"
                               >
                                 <History className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  playClickSound();
-                                  onSelectChartTarget(item.symbol, item.market === 'us' ? 'us' : 'tse', item.name);
-                                }}
-                                className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition"
-                                title="K線走勢"
-                              >
-                                <BarChart2 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => {
@@ -672,195 +675,146 @@ export const StockTable: React.FC<StockTableProps> = ({
                 </table>
               </div>
 
-              {/* Mobile Mobile-Optimized Position Feed (Zero Scrollbar) */}
-              <div className="block sm:hidden space-y-3">
-                {filteredPortfolio.map((item) => {
-                  const isUS = item.market === 'us';
-                  const buyFx = isUS ? item.buyRate || usdTwdRate : 1;
-                  const marketFx = isUS ? usdTwdRate : 1;
-                  const safePrice = typeof item.price === 'number' && item.price > 0 ? item.price : null;
+              {/* Mobile Table View (Optimized Stacked Edge-to-Edge, Minimal Dragging) */}
+              <div className="block sm:hidden rounded-xl border border-slate-200 bg-white shadow-2xs w-full overflow-x-auto">
+                <table className="w-full min-w-[360px] text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 text-[10px] uppercase tracking-wider font-mono">
+                      <th className="p-2 sticky left-0 bg-slate-50 z-20 border-r border-slate-200/80 shadow-xs whitespace-nowrap">
+                        標的 / 代號
+                      </th>
+                      <th className="p-2 text-right whitespace-nowrap">現價 / 均價</th>
+                      <th className="p-2 text-right whitespace-nowrap">總市值 / 損益</th>
+                      <th className="p-2 text-right whitespace-nowrap">殖利率</th>
+                      <th className="p-2 text-center sticky right-0 bg-slate-50 z-20 border-l border-slate-200/80 shadow-[-3px_0_6px_rgba(0,0,0,0.03)] whitespace-nowrap">
+                        操作
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-[11px]">
+                    {filteredPortfolio.map((item) => {
+                      const isUS = item.market === 'us';
+                      const buyFx = isUS ? item.buyRate || usdTwdRate : 1;
+                      const marketFx = isUS ? usdTwdRate : 1;
+                      const safePrice = typeof item.price === 'number' && item.price > 0 ? item.price : null;
 
-                  const divInfo = getStockDividendInfo(item, usdTwdRate, officialEvents?.[item.symbol.toUpperCase()]);
-                  const pendingShares = divInfo.pendingStockShares || 0;
-                  const effectiveShares = isExAdjustedMode ? item.shares + pendingShares : item.shares;
+                      const divInfo = getStockDividendInfo(item, usdTwdRate, officialEvents?.[item.symbol.toUpperCase()]);
+                      const pendingShares = divInfo.pendingStockShares || 0;
+                      const effectiveShares = isExAdjustedMode ? item.shares + pendingShares : item.shares;
 
-                  const itemCostTWD = item.shares * item.cost * buyFx;
-                  const itemMarketValTWD = safePrice === null ? null : effectiveShares * safePrice * marketFx;
-                  const itemProfitTWD = itemMarketValTWD === null ? null : itemMarketValTWD - itemCostTWD;
+                      const itemCostTWD = item.shares * item.cost * buyFx;
+                      const itemMarketValTWD = safePrice === null ? null : effectiveShares * safePrice * marketFx;
 
-                  const costDetails = calculateTransactionCost(item, usdTwdRate, localDiscount);
+                      const costDetails = calculateTransactionCost(item, usdTwdRate, localDiscount);
+                      const netProfitColorClass =
+                        costDetails.netProfitTWD >= 0 ? getUpColor() : getDownColor();
 
-                  const profitColorClass =
-                    itemProfitTWD === null ? 'text-slate-400' : itemProfitTWD >= 0 ? getUpColor() : getDownColor();
-
-                  const netProfitColorClass =
-                    costDetails.netProfitTWD >= 0 ? getUpColor() : getDownColor();
-
-                  const hasCashDiv = divInfo.singleDividendPerShare > 0;
-                  const hasStockDiv = typeof divInfo.stockDps === 'number' && divInfo.stockDps > 0;
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="glass-card p-3.5 rounded-2xl border border-slate-200/90 bg-white shadow-xs hover:shadow-md transition space-y-3 relative"
-                    >
-                      {/* Top Header */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div
+                      return (
+                        <tr
+                          key={item.id}
                           onClick={() => {
                             playClickSound();
                             setDetailModalStock(item);
                           }}
-                          className="cursor-pointer min-w-0 flex-1"
+                          className="hover:bg-indigo-50/40 active:bg-indigo-50/60 cursor-pointer transition text-slate-800"
                         >
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <h3 className="text-sm font-black text-slate-900 truncate max-w-[150px]">
-                              {item.name}
-                            </h3>
-                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
-                              {item.symbol}
-                            </span>
-                            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0 uppercase">
-                              {item.market}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-500 font-mono font-medium mt-1 flex items-center gap-1.5 flex-wrap">
-                            <span>{item.shares.toLocaleString()} 股</span>
-                            <span>｜</span>
-                            <span>均價 ${item.cost}</span>
+                          {/* Stacked Symbol & Name */}
+                          <td className="p-2 sticky left-0 bg-white z-10 border-r border-slate-100 shadow-xs whitespace-nowrap">
+                            <div className="flex flex-col">
+                              <div className="font-extrabold text-slate-900 truncate max-w-[95px] text-xs leading-tight">
+                                {item.name}
+                              </div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className="font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-1 py-0.2 rounded text-[9px]">
+                                  {item.symbol}
+                                </span>
+                                <span className="text-[8px] font-bold text-slate-400 uppercase">
+                                  {item.market}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Stacked Price & Shares/Cost */}
+                          <td className="p-2 text-right font-mono whitespace-nowrap">
+                            <div className="font-black text-slate-900 text-xs">
+                              {safePrice === null ? '--' : `$${safePrice}`}
+                            </div>
+                            <div className="text-[9px] text-slate-500">
+                              {item.shares}股 · ${item.cost}
+                            </div>
                             {isExAdjustedMode && pendingShares > 0 && (
-                              <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1 rounded border border-emerald-200 shrink-0">
-                                +{pendingShares.toLocaleString()} 待撥
-                              </span>
+                              <div className="text-[8px] font-bold text-emerald-800 bg-emerald-50 px-1 rounded border border-emerald-200 inline-block">
+                                +{pendingShares}
+                              </div>
                             )}
-                          </div>
-                        </div>
+                          </td>
 
-                        <div className="text-right shrink-0 font-mono">
-                          <div className="text-sm font-black text-slate-900">
-                            {safePrice === null ? '--' : `$${safePrice}`}
-                          </div>
-                          <div
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md border inline-flex items-center gap-0.5 mt-0.5 ${
-                              costDetails.netRoiPct === null
-                                ? 'bg-slate-100 text-slate-500 border-slate-200'
-                                : costDetails.netRoiPct >= 0
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-rose-50 text-rose-700 border-rose-200'
-                            }`}
-                          >
-                            {safePrice === null ? '--' : `${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(2)}%`}
-                          </div>
-                        </div>
-                      </div>
+                          {/* Stacked Market Value & Net Profit */}
+                          <td className="p-2 text-right font-mono whitespace-nowrap">
+                            <div className="font-bold text-slate-900 text-xs">
+                              {itemMarketValTWD === null ? '--' : formatMoney(itemMarketValTWD, isPrivacy)}
+                            </div>
+                            <div className={`text-[9px] font-bold ${netProfitColorClass}`}>
+                              {safePrice === null
+                                ? '--'
+                                : `${costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)} (${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(1)}%)`}
+                            </div>
+                          </td>
 
-                      {/* Financial Grid */}
-                      <div className="grid grid-cols-2 gap-2 bg-slate-50/90 p-2.5 rounded-xl border border-slate-100 text-xs">
-                        <div className="min-w-0">
-                          <span className="text-[10px] text-slate-400 font-bold block truncate">估計市值 (TWD)</span>
-                          <span className="font-mono font-bold text-slate-900 text-xs truncate block">
-                            {itemMarketValTWD === null ? '--' : formatMoney(itemMarketValTWD, isPrivacy)}
-                          </span>
-                        </div>
-                        <div className="text-right min-w-0">
-                          <span className="text-[10px] text-slate-400 font-bold block truncate">未實現損益 (淨獲利)</span>
-                          <span className={`font-mono font-bold text-xs truncate block ${netProfitColorClass}`}>
-                            {safePrice === null ? '--' : `${costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)}`}
-                          </span>
-                        </div>
-                      </div>
+                          {/* Stacked Dividend Yield & Income */}
+                          <td className="p-2 text-right font-mono whitespace-nowrap">
+                            <div className="text-emerald-700 font-bold text-xs">
+                              {divInfo.dividendYieldPct.toFixed(1)}%
+                            </div>
+                            <div className="text-[9px] text-slate-500">
+                              年領 {formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
+                            </div>
+                          </td>
 
-                      {/* Dividend info */}
-                      <div className="bg-emerald-50/80 border border-emerald-100 p-2.5 rounded-xl text-xs space-y-1">
-                        <div className="flex items-center justify-between text-emerald-950 font-bold flex-wrap gap-1">
-                          <span className="flex items-center gap-1 text-[11px]">
-                            <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            殖利率 {divInfo.dividendYieldPct.toFixed(2)}% ({divInfo.frequency})
-                          </span>
-                          <span className="font-mono text-emerald-800 font-bold text-[11px] shrink-0">
-                            年領 {formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-emerald-800 font-medium flex items-center justify-between flex-wrap gap-1">
-                          <span className="truncate">
-                            單次配息：{hasCashDiv ? `$${divInfo.singleDividendPerShare}元` : '依公告'}
-                            {hasStockDiv ? ` + 配股 ${divInfo.stockDps}元` : ''}
-                          </span>
-                          {(divInfo.exactExDate || divInfo.nextExMonthStr) && (
-                            <span className="font-mono text-emerald-800 font-bold shrink-0">
-                              除息日：{divInfo.exactExDate || divInfo.nextExMonthStr}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Touch Quick Actions */}
-                      <div className="grid grid-cols-4 gap-1.5 pt-1 border-t border-slate-100 text-xs">
-                        {pendingShares > 0 && onApplyPendingStockShares && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              playClickSound();
-                              onApplyPendingStockShares(item.id);
-                            }}
-                            className="col-span-4 px-2 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-1 transition btn-interact shadow-xs text-[11px]"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>撥入 +{pendingShares}股待撥</span>
-                          </button>
-                        )}
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playClickSound();
-                            onSelectChartTarget(item.symbol, item.market === 'us' ? 'us' : 'tse', item.name);
-                          }}
-                          className="px-2 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-100 flex items-center justify-center gap-1 transition btn-interact text-[11px]"
-                        >
-                          <BarChart2 className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>K線</span>
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playClickSound();
-                            onOpenTxHistory(item.id);
-                          }}
-                          className="px-2 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold border border-slate-200 flex items-center justify-center gap-1 transition btn-interact text-[11px]"
-                        >
-                          <History className="w-3.5 h-3.5 text-slate-500" />
-                          <span>交易</span>
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playClickSound();
-                            onOpenEditModal(item.id);
-                          }}
-                          className="px-2 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold border border-slate-200 flex items-center justify-center gap-1 transition btn-interact text-[11px]"
-                        >
-                          <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                          <span>編輯</span>
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playClickSound();
-                            onDeleteStock(item.id);
-                          }}
-                          className="p-1.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 flex items-center justify-center transition btn-interact"
-                          title="刪除部位"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                          {/* Sticky Right Actions */}
+                          <td className="p-1.5 text-center sticky right-0 bg-white z-10 border-l border-slate-100 shadow-[-3px_0_6px_rgba(0,0,0,0.03)] whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  playClickSound();
+                                  onSelectChartTarget(item.symbol, item.market === 'us' ? 'us' : 'tse', item.name);
+                                }}
+                                className="p-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition"
+                                title="K線走勢"
+                              >
+                                <BarChart2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  playClickSound();
+                                  onOpenEditModal(item.id);
+                                }}
+                                className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+                                title="編輯"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  playClickSound();
+                                  onDeleteStock(item.id);
+                                }}
+                                className="p-1 rounded bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
+                                title="刪除"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </>
           )}

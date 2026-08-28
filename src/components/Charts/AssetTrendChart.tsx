@@ -64,11 +64,11 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         {
           data,
           borderColor: trendColorRgb,
-          borderWidth: 2.5,
+          borderWidth: 3,
           fill: true,
           tension: 0.1,
           pointRadius: 0,
-          pointHoverRadius: 6,
+          pointHoverRadius: 7,
           pointHitRadius: 30,
           pointBackgroundColor: '#ffffff',
           pointBorderWidth: 2.5,
@@ -80,7 +80,7 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             if (!chartArea) return 'rgba(79, 70, 229, 0.05)';
             const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
             gradient.addColorStop(0, 'rgba(241, 245, 249, 0)');
-            gradient.addColorStop(1, isTrendUp ? 'rgba(5, 150, 105, 0.12)' : 'rgba(225, 29, 72, 0.12)');
+            gradient.addColorStop(1, isTrendUp ? 'rgba(5, 150, 105, 0.15)' : 'rgba(225, 29, 72, 0.15)');
             return gradient;
           },
         },
@@ -121,7 +121,26 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
       scales: {
         x: {
           grid: { color: 'rgba(0,0,0,0.04)' },
-          ticks: { color: '#64748b', font: { size: 10, weight: 'bold' as const }, maxTicksLimit: 8, maxRotation: 0, padding: 8 },
+          ticks: {
+            color: '#64748b',
+            font: { size: 10, weight: 'bold' as const },
+            maxTicksLimit: 6,
+            autoSkip: true,
+            maxRotation: 0,
+            padding: 6,
+            callback: function (val: any) {
+              const label = this.getLabelForValue(val as number) || '';
+              if (typeof label === 'string') {
+                const clean = label.replace(' (現價)', '');
+                if (clean.includes('/')) {
+                  const parts = clean.split('/');
+                  if (parts.length === 3) return `${parts[1]}/${parts[2]}`;
+                }
+                return clean;
+              }
+              return label;
+            },
+          },
         },
         y: {
           position: 'right' as const,
@@ -130,7 +149,7 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
             color: '#334155',
             font: { size: 11, family: 'monospace', weight: 'bold' as const },
             maxTicksLimit: 5,
-            padding: 10,
+            padding: 8,
             callback: (value: string | number) => {
               if (isPrivacy) return '****';
               const val = Number(value);
@@ -147,26 +166,23 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   }, [isPrivacy]);
 
   return (
-    <div className="lg:col-span-3 glass-card p-4 sm:p-6 rounded-2xl sm:rounded-3xl space-y-4 border border-slate-200/90 shadow-sm bg-white">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3.5">
+    <div className="p-2.5 sm:p-4 space-y-3 relative w-full">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-2.5">
         <div>
-          <div className="text-[10px] text-indigo-600 font-extrabold tracking-widest uppercase mb-0.5">
+          <div className="text-[9px] text-indigo-600 font-extrabold tracking-widest uppercase mb-0.5">
             TOTAL ASSET TREND
           </div>
-          <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
             全資產總市值走勢
           </h2>
         </div>
         <div className="text-left sm:text-right min-w-0">
-          <div className="text-[10px] text-slate-500 font-bold tracking-wider uppercase mb-0.5">
-            目前總市值 (NT$)
-          </div>
-          <div className="flex flex-col sm:items-end gap-0.5 min-w-0">
-            <span className="text-lg sm:text-2xl font-black text-slate-900 font-mono tabular-nums leading-none tracking-tight truncate block max-w-full">
+          <div className="flex flex-wrap sm:justify-end items-baseline gap-1.5 min-w-0">
+            <span className="text-base sm:text-xl font-black text-slate-900 font-mono tabular-nums leading-none tracking-tight">
               {formatMoney(displayVal, isPrivacy)}
             </span>
             <span
-              className={`text-[11px] sm:text-xs font-bold font-mono px-2 py-0.5 rounded-md border tabular-nums mt-0.5 inline-block shrink-0 ${
+              className={`text-[10px] font-bold font-mono px-1.5 py-0.2 rounded border tabular-nums ${
                 diff >= 0
                   ? (isRedUp ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200')
                   : (isRedUp ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-rose-700 bg-rose-50 border-rose-200')
@@ -180,11 +196,12 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         </div>
       </div>
 
-      <div className="h-[220px] sm:h-[320px] relative w-full pt-1">
+      {/* Chart Canvas - Wide Panoramic Ratio */}
+      <div className="h-[220px] sm:h-[280px] lg:h-[320px] relative w-full pt-1">
         <Line data={chartData} options={options} />
       </div>
 
-      <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-wider font-mono border-t border-slate-100 pt-2 font-bold flex-wrap gap-1">
+      <div className="flex justify-between items-center text-[9px] text-slate-500 uppercase tracking-wider font-mono border-t border-slate-100 pt-1.5 font-bold flex-wrap gap-1">
         <span className="truncate">起始: {labels.length > 0 ? labels[0].replace(' (現價)', '') : '--'}</span>
         <span className="hidden xs:inline">資料以 TWD 估算</span>
         <span className="truncate">最新: {labels.length > 0 ? labels[labels.length - 1].replace(' (現價)', '') : '--'}</span>

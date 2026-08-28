@@ -1116,7 +1116,7 @@ export default function App() {
   }, [portfolio, officialEvents]);
 
   return (
-    <div className="min-h-screen p-3 sm:p-6 lg:p-8 antialiased selection:bg-sky-500 selection:text-white">
+    <div className="min-h-screen p-0 sm:p-1.5 lg:p-2.5 antialiased selection:bg-sky-500 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 bg-slate-800/95 text-white font-medium px-4 sm:px-5 py-3.5 sm:py-4 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.6)] z-[999] flex items-center justify-between sm:justify-start gap-3 border border-slate-600/50 backdrop-blur-xl animate-bounce">
@@ -1127,8 +1127,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Container */}
-      <div className="max-w-7xl mx-auto space-y-5 px-3 sm:px-6 pb-28 sm:pb-16 overflow-x-hidden">
+      {/* Main Container - Full-Width Edge to Edge (滿版無多餘留白) */}
+      <div className="w-full max-w-full mx-auto space-y-2.5 sm:space-y-4 px-1 sm:px-2 md:px-3 pb-28 sm:pb-16 overflow-x-hidden">
         {/* Header */}
         <Header
           isAdmin={isAdmin}
@@ -1176,14 +1176,14 @@ export default function App() {
         />
 
         {/* Workbench Tab Switcher Bar */}
-        <div className="sticky top-2 z-40 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-1 sm:p-1.5 shadow-md text-xs">
-          <div className="grid grid-cols-5 gap-1 w-full items-center">
+        <div className="sticky top-1 sm:top-2 z-40 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-xl sm:rounded-2xl p-0.5 sm:p-1.5 shadow-sm text-xs w-full">
+          <div className="grid grid-cols-5 gap-0.5 sm:gap-1 w-full items-center">
             <button
               onClick={() => {
                 playClickSound();
                 setActiveMobileTab('overview');
               }}
-              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-xl font-bold transition flex items-center justify-center gap-1 btn-interact text-[10px] sm:text-xs ${
+              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl font-bold transition flex items-center justify-center gap-1 btn-interact text-[10px] sm:text-xs ${
                 activeMobileTab === 'overview'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
@@ -1198,7 +1198,7 @@ export default function App() {
                 playClickSound();
                 setActiveMobileTab('portfolio');
               }}
-              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-xl font-bold transition flex items-center justify-center gap-0.5 sm:gap-1 btn-interact text-[10px] sm:text-xs ${
+              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl font-bold transition flex items-center justify-center gap-0.5 sm:gap-1 btn-interact text-[10px] sm:text-xs ${
                 activeMobileTab === 'portfolio'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
@@ -1206,7 +1206,7 @@ export default function App() {
             >
               <BarChart2 className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${activeMobileTab === 'portfolio' ? 'text-white' : 'text-indigo-500'}`} />
               <span><span className="sm:hidden">部位</span><span className="hidden sm:inline">持股部位</span></span>
-              <span className={`text-[9px] sm:text-[10px] px-1 py-0.2 rounded-full font-mono ${
+              <span className={`text-[8px] sm:text-[10px] px-1 py-0.2 rounded-full font-mono font-bold ${
                 activeMobileTab === 'portfolio' ? 'bg-indigo-500 text-white' : 'bg-indigo-100 text-indigo-800'
               }`}>
                 {portfolio.length}
@@ -1218,7 +1218,7 @@ export default function App() {
                 playClickSound();
                 setActiveMobileTab('charts');
               }}
-              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-xl font-bold transition flex items-center justify-center gap-1 btn-interact text-[10px] sm:text-xs ${
+              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl font-bold transition flex items-center justify-center gap-1 btn-interact text-[10px] sm:text-xs ${
                 activeMobileTab === 'charts'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
@@ -1233,7 +1233,7 @@ export default function App() {
                 playClickSound();
                 setActiveMobileTab('calendar');
               }}
-              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-xl font-bold transition flex items-center justify-center gap-1 btn-interact text-[10px] sm:text-xs ${
+              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl font-bold transition flex items-center justify-center gap-1 btn-interact text-[10px] sm:text-xs ${
                 activeMobileTab === 'calendar'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
@@ -1248,7 +1248,7 @@ export default function App() {
                 playClickSound();
                 setActiveMobileTab(activeMobileTab === 'all' ? 'overview' : 'all');
               }}
-              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold border transition flex items-center justify-center gap-1 btn-interact ${
+              className={`px-1 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold border transition flex items-center justify-center gap-1 btn-interact ${
                 activeMobileTab === 'all'
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -1262,7 +1262,7 @@ export default function App() {
         </div>
 
           {/* Tab Content Display Areas */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Tab 1: Overview */}
             {(activeMobileTab === 'all' || activeMobileTab === 'overview') && (
               <div className="space-y-5 animate-fadeIn">

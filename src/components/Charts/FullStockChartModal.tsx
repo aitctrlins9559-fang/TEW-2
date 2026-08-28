@@ -678,7 +678,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-fadeIn h-[100dvh]">
-      <div className="w-full max-w-4xl bg-white border border-slate-200 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="w-full max-w-6xl xl:max-w-7xl bg-white border border-slate-200 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
         {/* Top Professional Control Header Bar */}
         <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2 overflow-hidden">
