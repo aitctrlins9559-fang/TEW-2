@@ -1110,10 +1110,10 @@ export default function App() {
 
   const annualDividendTWD = useMemo(() => {
     return portfolio.reduce((sum, item) => {
-      const divInfo = getStockDividendInfo(item, officialEvents);
-      return sum + divInfo.annualIncomeTWD;
+      const divInfo = getStockDividendInfo(item, usdTwdRate, officialEvents?.[item.symbol.toUpperCase()]);
+      return sum + (divInfo.annualIncomeTWD || 0);
     }, 0);
-  }, [portfolio, officialEvents]);
+  }, [portfolio, usdTwdRate, officialEvents]);
 
   return (
     <div className="min-h-screen p-0 sm:p-1.5 lg:p-2.5 antialiased selection:bg-sky-500 selection:text-white">

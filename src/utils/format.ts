@@ -19,12 +19,14 @@ export function getTaiwanTimeString(date: Date = new Date()): string {
 
 export function formatMoney(amount: number, isPrivacy = false): string {
   if (isPrivacy) return '****';
+  if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount)) return '$0';
   const rounded = Math.round(amount);
   const absFormatted = Math.abs(rounded).toLocaleString();
   return rounded < 0 ? `-$${absFormatted}` : `$${absFormatted}`;
 }
 
 export function formatNumber(num: number, digits = 2): string {
+  if (typeof num !== 'number' || isNaN(num) || !isFinite(num)) return '0.00';
   return num.toLocaleString('zh-TW', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,

@@ -63,9 +63,13 @@ export const BentoDashboard: React.FC<BentoDashboardProps> = ({
   const getUpColor = () => (isRedUp ? 'text-rose-600' : 'text-emerald-600');
   const getDownColor = () => (isRedUp ? 'text-emerald-600' : 'text-rose-600');
 
-  const estAnnualIncome = annualDividendIncome ?? totalValue * 0.052; // estimated ~5.2% average yield if not provided
-  const estMonthlyIncome = estAnnualIncome / 12;
-  const targetPct = Math.min(100, (estMonthlyIncome / monthlyTargetIncome) * 100);
+  const estAnnualIncome =
+    typeof annualDividendIncome === 'number' && !isNaN(annualDividendIncome)
+      ? annualDividendIncome
+      : (totalValue || 0) * 0.052;
+  const estMonthlyIncome = estAnnualIncome > 0 ? estAnnualIncome / 12 : 0;
+  const safeTarget = monthlyTargetIncome > 0 ? monthlyTargetIncome : 30000;
+  const targetPct = Math.min(100, Math.max(0, (estMonthlyIncome / safeTarget) * 100)) || 0;
 
   // Dynamic calculations for selected timeframe
   const getRangeData = () => {
