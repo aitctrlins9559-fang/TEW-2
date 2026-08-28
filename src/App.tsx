@@ -1240,7 +1240,7 @@ export default function App() {
               }`}
             >
               <Calendar className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${activeMobileTab === 'calendar' ? 'text-white' : 'text-indigo-500'}`} />
-              <span><span className="sm:hidden">月曆</span><span className="hidden sm:inline">股息月曆</span></span>
+              <span><span className="sm:hidden">除息</span><span className="hidden sm:inline">除權息</span></span>
             </button>
 
             <button

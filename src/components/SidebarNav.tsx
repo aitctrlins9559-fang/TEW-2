@@ -59,7 +59,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
     { id: 'overview', label: '戰情總覽', icon: LayoutDashboard, badge: null },
     { id: 'portfolio', label: '持股終端', icon: BarChart3, badge: portfolioCount },
     { id: 'charts', label: '走勢配置', icon: PieChart, badge: null },
-    { id: 'calendar', label: '股息月曆', icon: Calendar, badge: '息' },
+    { id: 'calendar', label: '除權息', icon: Calendar, badge: '息' },
     { id: 'all', label: '單頁全景', icon: Sliders, badge: null },
   ];
 

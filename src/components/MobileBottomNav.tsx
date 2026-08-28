@@ -86,7 +86,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </button>
           </div>
 
-          {/* Tab 4: Calendar */}
+          {/* Tab 4: Dividend / Calendar */}
           <button
             onClick={() => {
               playClickSound();
@@ -99,7 +99,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             }`}
           >
             <Calendar className={`w-4 h-4 ${activeTab === 'calendar' ? 'stroke-[2.5]' : ''}`} />
-            <span className="text-[10px] tracking-tight font-bold">日曆</span>
+            <span className="text-[10px] tracking-tight font-bold">除息</span>
           </button>
 
           {/* Tab 5: AI / Charts */}
