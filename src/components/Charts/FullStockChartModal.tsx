@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   X,
-  BarChart2,
   Zap,
   Activity,
   TrendingUp,
@@ -9,18 +8,21 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  PieChart,
-  BarChart,
   Sliders,
   Sparkles,
-  Info,
   DollarSign,
-  Percent,
   Layers,
   Flame,
-  Volume2,
   ArrowLeft,
   Clock,
+  BarChart2,
+  Maximize2,
+  ShieldAlert,
+  Target,
+  Compass,
+  ArrowUpRight,
+  ArrowDownRight,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -38,11 +40,30 @@ import {
 } from 'chart.js';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { Chart } from 'react-chartjs-2';
-import { StockPosition, ChartTarget, MarketType, IntradayData } from '../../types';
+import {
+  StockPosition,
+  ChartTarget,
+  MarketType,
+  IntradayData,
+  ChartTimeframe,
+  ChartRenderStyle,
+  SubChartIndicator,
+} from '../../types';
 import { playClickSound } from '../../utils/audio';
 import { apiFetchChartData, apiSearchStock } from '../../utils/apiClient';
 import { searchLocalDictionary } from '../../data/stockDictionary';
 import { getMarketStatusInfo } from '../../utils/marketHelper';
+import {
+  calculateSMA,
+  calculateBollingerBands,
+  calculateRSI,
+  calculateKD,
+  calculateMACD,
+  calculateSupportResistance,
+  evaluateTechnicalDiagnosis,
+  generateOrderBook,
+  CandleData,
+} from '../../utils/technicalAnalysis';
 
 ChartJS.register(
   CategoryScale,
@@ -59,6 +80,44 @@ ChartJS.register(
   annotationPlugin
 );
 
+// Custom Chart.js Plugin for drawing Candlestick High/Low Wicks
+const candlestickWicksPlugin = {
+  id: 'candlestickWicks',
+  beforeDatasetsDraw(chart: any) {
+    const opts = chart.config.options?.plugins?.candlestickWicks;
+    if (!opts || !opts.enabled) return;
+    const meta = chart.getDatasetMeta(0);
+    if (!meta || meta.type !== 'bar' || !meta.data) return;
+    const ctx = chart.ctx;
+    const candles: CandleData[] = opts.candles || [];
+    const yScale = chart.scales.y;
+    if (!candles.length || !yScale || !ctx) return;
+
+    ctx.save();
+    meta.data.forEach((element: any, index: number) => {
+      const candle = candles[index];
+      if (!candle || !element || typeof element.x !== 'number' || isNaN(element.x)) return;
+      if (isNaN(candle.high) || isNaN(candle.low)) return;
+      
+      const x = element.x;
+      const yHigh = yScale.getPixelForValue(candle.high);
+      const yLow = yScale.getPixelForValue(candle.low);
+      if (typeof yHigh !== 'number' || typeof yLow !== 'number' || isNaN(yHigh) || isNaN(yLow)) return;
+      
+      const isBullish = candle.close >= candle.open;
+      ctx.strokeStyle = isBullish ? opts.upColor : opts.downColor;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x, yHigh);
+      ctx.lineTo(x, yLow);
+      ctx.stroke();
+    });
+    ctx.restore();
+  },
+};
+
+ChartJS.register(candlestickWicksPlugin);
+
 interface FullStockChartModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -69,7 +128,6 @@ interface FullStockChartModalProps {
   onOpenAICopilot?: () => void;
 }
 
-// Quick Switcher Preset Categories
 const MARKET_INDICES: Array<{ symbol: string; market: MarketType; name: string }> = [
   { symbol: '^TWII', market: 'tse', name: '台股加權' },
   { symbol: '^DJI', market: 'us', name: '道瓊工業' },
@@ -90,124 +148,6 @@ const HOT_STOCKS: Array<{ symbol: string; market: MarketType; name: string }> = 
   { symbol: 'AAPL', market: 'us', name: '蘋果' },
 ];
 
-function generateFullTradingSession(
-  market: MarketType,
-  symbol: string,
-  ts: number[],
-  quotes: number[],
-  rawVolumes: number[] = []
-) {
-  const isUS = market === 'us' || symbol === '^DJI' || symbol === '^GSPC' || symbol === '^IXIC';
-  const isJP = symbol === '^N225';
-  const isKR = symbol === '^KS11';
-
-  let timeZone = 'Asia/Taipei';
-  let startMins = 9 * 60; // 09:00
-  let endMins = 13 * 60 + 30; // 13:30
-
-  if (isUS) {
-    timeZone = 'America/New_York';
-    startMins = 9 * 60 + 30; // 09:30
-    endMins = 16 * 60; // 16:00
-  } else if (isJP) {
-    timeZone = 'Asia/Tokyo';
-    startMins = 9 * 60; // 09:00
-    endMins = 15 * 60; // 15:00
-  } else if (isKR) {
-    timeZone = 'Asia/Seoul';
-    startMins = 9 * 60; // 09:00
-    endMins = 15 * 60 + 30; // 15:30
-  }
-
-  const fullLabels: string[] = [];
-  for (let m = startMins; m <= endMins; m += 5) {
-    const hh = String(Math.floor(m / 60)).padStart(2, '0');
-    const mm = String(m % 60).padStart(2, '0');
-    fullLabels.push(`${hh}:${mm}`);
-  }
-
-  const priceMap = new Map<string, number>();
-  const volumeMap = new Map<string, number>();
-  const validPrices: number[] = [];
-
-  ts.forEach((t, i) => {
-    if (typeof quotes[i] === 'number' && quotes[i] > 0) {
-      const d = new Date(t * 1000);
-      let timeStr = '';
-      try {
-        timeStr = d.toLocaleTimeString('en-GB', {
-          timeZone,
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit',
-        });
-      } catch {
-        const hh = String(d.getHours()).padStart(2, '0');
-        const mm = String(d.getMinutes()).padStart(2, '0');
-        timeStr = `${hh}:${mm}`;
-      }
-
-      const parts = timeStr.split(':');
-      if (parts.length >= 2) {
-        const hh = Number(parts[0]);
-        const mm = Number(parts[1]);
-        const roundedMm = Math.floor(mm / 5) * 5;
-        const key = `${String(hh).padStart(2, '0')}:${String(roundedMm).padStart(2, '0')}`;
-        priceMap.set(key, quotes[i]);
-        if (typeof rawVolumes[i] === 'number') {
-          volumeMap.set(key, rawVolumes[i]);
-        }
-      }
-      validPrices.push(quotes[i]);
-    }
-  });
-
-  if (validPrices.length === 0) {
-    return { fullLabels: [], fullPrices: [], validPrices: [], fullVolumes: [] };
-  }
-
-  let latestAvailableIndex = -1;
-  fullLabels.forEach((label, idx) => {
-    if (priceMap.has(label)) {
-      latestAvailableIndex = idx;
-    }
-  });
-
-  const fullPrices: (number | null)[] = [];
-  const fullVolumes: number[] = [];
-
-  if (latestAvailableIndex === -1) {
-    for (let i = 0; i < fullLabels.length; i++) {
-      if (i < validPrices.length) {
-        fullPrices.push(validPrices[i]);
-        fullVolumes.push(rawVolumes[i] || 0);
-      } else {
-        fullPrices.push(null);
-        fullVolumes.push(0);
-      }
-    }
-    return { fullLabels, fullPrices, validPrices, fullVolumes };
-  }
-
-  let lastVal: number | null = null;
-  for (let i = 0; i < fullLabels.length; i++) {
-    const label = fullLabels[i];
-    if (priceMap.has(label)) {
-      lastVal = priceMap.get(label)!;
-      fullPrices.push(lastVal);
-      fullVolumes.push(volumeMap.get(label) || 0);
-    } else if (i <= latestAvailableIndex) {
-      fullPrices.push(lastVal);
-      fullVolumes.push(0);
-    } else {
-      fullPrices.push(null);
-      fullVolumes.push(0);
-    }
-  }
-
-  return { fullLabels, fullPrices, validPrices, fullVolumes };
-}
-
 export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   isOpen,
   onClose,
@@ -217,199 +157,75 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   isRedUp,
   onOpenAICopilot,
 }) => {
-  const [intradayData, setIntradayData] = useState<IntradayData | null>(null);
+  // Timeframe and View Settings
+  const [timeframe, setTimeframe] = useState<ChartTimeframe>('1D');
+  const [chartStyle, setChartStyle] = useState<ChartRenderStyle>('candlestick');
+  const [subIndicator, setSubIndicator] = useState<SubChartIndicator>('volume');
+
+  // Overlays
+  const [showMA, setShowMA] = useState(true);
+  const [showBollinger, setShowBollinger] = useState(false);
+  const [showVWAP, setShowVWAP] = useState(true);
+
+  // Mobile View Mode & Desktop Sidecar Tab
+  const [mobileTab, setMobileTab] = useState<'chart' | 'orderbook' | 'diagnosis' | 'position' | 'switcher'>('chart');
+  const [sidebarTab, setSidebarTab] = useState<'orderbook' | 'diagnosis' | 'position' | 'switcher'>('orderbook');
+
+  // Raw Candle Data
+  const [candles, setCandles] = useState<CandleData[]>([]);
+  const [metaInfo, setMetaInfo] = useState<{
+    prevClose: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+    currency: string;
+    tradingDateStr: string;
+    isMarketOpen: boolean;
+    marketStatusText: string;
+  } | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // Indicators toggles
-  const [showVWAP, setShowVWAP] = useState(true);
-  const [showMA5, setShowMA5] = useState(false);
-  const [showVolumeBars, setShowVolumeBars] = useState(true);
+  const [hoveredCandle, setHoveredCandle] = useState<CandleData | null>(null);
+  const hoveredIndexRef = useRef<number | null>(null);
 
   // Quick Switcher search & category tabs
-  const [switcherTab, setSwitcherTab] = useState<'portfolio' | 'indices' | 'hot'>('portfolio');
+  const [switcherCategory, setSwitcherCategory] = useState<'portfolio' | 'indices' | 'hot'>('portfolio');
   const [searchInput, setSearchInput] = useState('');
   const [searchResults, setSearchResults] = useState<
     Array<{ symbol: string; name: string; market: MarketType }>
   >([]);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSearchQueryRef = useRef<string>('');
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
-        setSearchResults([]);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
-  }, []);
+  // Target profit simulation
+  const [targetSimPrice, setTargetSimPrice] = useState<string>('');
 
-  // Match current target with portfolio item
+  const portfolioRef = useRef(portfolio);
+  portfolioRef.current = portfolio;
+
+  const upColor = useMemo(() => (isRedUp ? '#e11d48' : '#059669'), [isRedUp]);
+  const downColor = useMemo(() => (isRedUp ? '#059669' : '#e11d48'), [isRedUp]);
+
+  // Check if current target is held in portfolio
   const matchedPortfolioItem = useMemo(() => {
     return portfolio.find(
-      (p) => p.symbol === selectedChartTarget.symbol && p.market === selectedChartTarget.market
+      (p) =>
+        p.symbol.toUpperCase() === selectedChartTarget.symbol.toUpperCase() ||
+        p.symbol.toUpperCase().replace(/\.(TW|TWO)$/i, '') === selectedChartTarget.symbol.toUpperCase()
     );
   }, [portfolio, selectedChartTarget]);
 
-  // Handle Search Input in Modal
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setSearchInput(val);
-    lastSearchQueryRef.current = val;
-
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-
-    if (!val.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    const instantLocal = searchLocalDictionary(val, 10);
-    if (instantLocal.length > 0) {
-      setSearchResults(instantLocal);
-    }
-
-    searchTimeoutRef.current = setTimeout(async () => {
-      const currentQ = val;
-      try {
-        const res = await apiSearchStock(currentQ);
-        if (lastSearchQueryRef.current === currentQ) {
-          if (Array.isArray(res)) {
-            setSearchResults(res.slice(0, 10));
-          }
-        }
-      } catch {
-        // Keep local matches if any
-      }
-    }, 120);
-  };
-
-  // Fetch Intraday Data
-  const fetchIntradayData = useCallback(
-    async (target: ChartTarget) => {
-      if (!target.symbol) return;
-      setLoading(true);
-      setErrorMsg(null);
-
-      try {
-        const s =
-          target.symbol.startsWith('^')
-            ? target.symbol
-            : target.market === 'tse'
-            ? `${target.symbol}.TW`
-            : target.market === 'otc'
-            ? `${target.symbol}.TWO`
-            : target.symbol;
-
-        const currentPrice = matchedPortfolioItem?.price && matchedPortfolioItem.price > 0 ? matchedPortfolioItem.price : undefined;
-        const json = await apiFetchChartData(s, '1d', '5m', currentPrice);
-
-        if (!json || !json.success || !json.meta) {
-          throw new Error('暫無即時分時行情數據');
-        }
-
-        const meta = json.meta;
-        const ts: number[] = json.timestamp || [];
-        const quotes: number[] = json.quotes || [];
-        const rawVolumes: number[] = json.volumes || [];
-
-        const { fullLabels, fullPrices, validPrices, fullVolumes } = generateFullTradingSession(
-          target.market,
-          target.symbol,
-          ts,
-          quotes,
-          rawVolumes
-        );
-
-        if (validPrices.length === 0) {
-          throw new Error('暫無盤中分時走勢數據');
-        }
-
-        const prevClose = meta.chartPreviousClose || meta.previousClose || validPrices[0];
-        let latestPrice = validPrices[validPrices.length - 1];
-        if (matchedPortfolioItem?.price && matchedPortfolioItem.price > 0) {
-          latestPrice = matchedPortfolioItem.price;
-        }
-
-        const openPrice = meta.regularMarketOpen || meta.open || validPrices[0] || prevClose;
-        const highPrice = Math.max(...validPrices);
-        const lowPrice = Math.min(...validPrices);
-
-        let totalVolume = meta.regularMarketVolume || meta.volume || 0;
-        if (totalVolume === 0 && fullVolumes.length > 0) {
-          totalVolume = fullVolumes.reduce((a, b) => a + b, 0);
-        }
-
-        // Estimated volume calculation based on current session progress
-        const validCount = validPrices.length;
-        const totalSessionIntervals = 54; // ~54 5-min blocks in a standard 4.5h trading session
-        const sessionProgress = Math.max(0.1, Math.min(1.0, validCount / totalSessionIntervals));
-        const estimatedVolume = Math.round(totalVolume / sessionProgress);
-
-        const limitUpPrice = prevClose * 1.1;
-        const limitDownPrice = prevClose * 0.9;
-        const amplitudePct = prevClose > 0 ? ((highPrice - lowPrice) / prevClose) * 100 : 0;
-
-        const rangeSpan = highPrice - lowPrice;
-        const rangePct = rangeSpan > 0 ? ((latestPrice - lowPrice) / rangeSpan) * 100 : 50;
-
-        const lastTs = meta.regularMarketTime || (ts.length > 0 ? ts[ts.length - 1] : undefined);
-        const marketStatus = getMarketStatusInfo(target.market, target.symbol, lastTs);
-
-        setIntradayData({
-          symbol: target.symbol,
-          market: target.market,
-          name: target.name || target.symbol,
-          prevClose,
-          openPrice,
-          highPrice,
-          lowPrice,
-          latestPrice,
-          totalVolume,
-          estimatedVolume,
-          limitUpPrice,
-          limitDownPrice,
-          amplitudePct,
-          rangePct,
-          labels: fullLabels,
-          prices: fullPrices as number[],
-          volumes: fullVolumes,
-          tradingDateStr: marketStatus.tradingDateStr,
-          isMarketOpen: marketStatus.isMarketOpen,
-          marketStatusText: marketStatus.statusText,
-        });
-      } catch (err) {
-        setErrorMsg((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [matchedPortfolioItem]
-  );
-
-  useEffect(() => {
-    if (isOpen && selectedChartTarget.symbol) {
-      fetchIntradayData(selectedChartTarget);
-    }
-  }, [isOpen, selectedChartTarget, fetchIntradayData]);
-
-  const getUpColor = useCallback(() => (isRedUp ? '#e11d48' : '#059669'), [isRedUp]);
-  const getDownColor = useCallback(() => (isRedUp ? '#059669' : '#e11d48'), [isRedUp]);
-
-  // Stepper navigation (< / >)
+  // Stepper navigation
   const portfolioList = useMemo(() => {
     return portfolio.map((p) => ({ symbol: p.symbol, market: p.market, name: p.name }));
   }, [portfolio]);
 
   const currentPortfolioIndex = useMemo(() => {
     return portfolioList.findIndex(
-      (p) => p.symbol === selectedChartTarget.symbol && p.market === selectedChartTarget.market
+      (p) => p.symbol.toUpperCase() === selectedChartTarget.symbol.toUpperCase()
     );
   }, [portfolioList, selectedChartTarget]);
 
@@ -429,700 +245,1914 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
     onSelectChartTarget(item.symbol, item.market, item.name);
   };
 
-  // Chart datasets & multi-axis volume bar setup
-  const chartData = useMemo(() => {
-    if (!intradayData) return null;
-    const diff = intradayData.latestPrice - intradayData.prevClose;
-    const lineColor = diff >= 0 ? getUpColor() : getDownColor();
+  // Search autocomplete in modal
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchInput(val);
 
-    const lastValidIdx = intradayData.prices.findLastIndex((p) => p !== null && p !== undefined);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (!val.trim()) {
+      setSearchResults([]);
+      return;
+    }
 
-    // Calculate VWAP (cumulative average)
-    const vwapData: (number | null)[] = [];
-    let cumSum = 0;
-    let count = 0;
-    intradayData.prices.forEach((p) => {
-      if (p !== null && p !== undefined) {
-        cumSum += p;
-        count += 1;
-        vwapData.push(cumSum / count);
-      } else {
-        vwapData.push(null);
-      }
-    });
+    const instantLocal = searchLocalDictionary(val, 10);
+    if (instantLocal.length > 0) {
+      setSearchResults(instantLocal);
+    }
 
-    // Calculate MA5 (5-point moving average)
-    const ma5Data: (number | null)[] = [];
-    intradayData.prices.forEach((p, idx) => {
-      if (p === null || p === undefined) {
-        ma5Data.push(null);
-      } else {
-        const slice = intradayData.prices
-          .slice(Math.max(0, idx - 4), idx + 1)
-          .filter((x): x is number => x !== null && x !== undefined);
-        const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-        ma5Data.push(avg);
-      }
-    });
-
-    // Color code volume bars based on price direction relative to previous tick
-    const volumeColors: string[] = [];
-    const volumes = intradayData.volumes || [];
-    let prevP = intradayData.prevClose;
-
-    intradayData.prices.forEach((p) => {
-      if (p !== null && p !== undefined) {
-        if (p >= prevP) {
-          volumeColors.push(getUpColor() + '80'); // opacity
-        } else {
-          volumeColors.push(getDownColor() + '80');
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await apiSearchStock(val);
+        if (Array.isArray(res)) {
+          setSearchResults(res.slice(0, 10));
         }
-        prevP = p;
-      } else {
-        volumeColors.push('transparent');
+      } catch {
+        // Keep local matches
       }
+    }, 150);
+  };
+
+  // Fetch Chart & Candle Data based on selected Timeframe
+  const fetchChartDataForTimeframe = useCallback(
+    async (target: ChartTarget, tf: ChartTimeframe) => {
+      if (!target.symbol) return;
+      setLoading(true);
+      setErrorMsg(null);
+      setHoveredCandle(null);
+
+      let range = '1d';
+      let interval = '5m';
+
+      switch (tf) {
+        case '1D':
+          range = '1d';
+          interval = '5m';
+          break;
+        case '5D':
+          range = '5d';
+          interval = '15m';
+          break;
+        case '1M':
+          range = '1mo';
+          interval = '1d';
+          break;
+        case '3M':
+          range = '3mo';
+          interval = '1d';
+          break;
+        case '6M':
+          range = '6mo';
+          interval = '1d';
+          break;
+        case '1Y':
+          range = '1y';
+          interval = '1wk';
+          break;
+        case '5Y':
+          range = '5y';
+          interval = '1mo';
+          break;
+      }
+
+      try {
+        const s =
+          target.symbol.startsWith('^')
+            ? target.symbol
+            : target.market === 'tse'
+            ? `${target.symbol}.TW`
+            : target.market === 'otc'
+            ? `${target.symbol}.TWO`
+            : target.symbol;
+
+        const matched = portfolioRef.current.find(
+          (p) =>
+            p.symbol.toUpperCase() === target.symbol.toUpperCase() ||
+            p.symbol.toUpperCase().replace(/\.(TW|TWO)$/i, '') === target.symbol.toUpperCase()
+        );
+        const currentPrice = matched?.price && matched.price > 0 ? matched.price : undefined;
+
+        const json = await apiFetchChartData(s, range, interval, currentPrice);
+
+        if (!json || !json.success || !json.meta) {
+          throw new Error('暫無即時走勢數據');
+        }
+
+        const meta = json.meta;
+        const ts: number[] = json.timestamp || [];
+        const quotes: number[] = json.quotes || [];
+        const opens: number[] = json.opens || [];
+        const highs: number[] = json.highs || [];
+        const lows: number[] = json.lows || [];
+        const volumes: number[] = json.volumes || [];
+
+        const isUS = target.market === 'us' || target.symbol.startsWith('^');
+        const timeZone = isUS ? 'America/New_York' : 'Asia/Taipei';
+
+        const parsedCandles: CandleData[] = [];
+
+        for (let i = 0; i < ts.length; i++) {
+          const t = ts[i];
+          const c = quotes[i];
+          if (typeof c !== 'number' || isNaN(c) || c <= 0) continue;
+
+          const o = typeof opens[i] === 'number' && !isNaN(opens[i]) && opens[i] > 0 ? opens[i] : c;
+          const h = typeof highs[i] === 'number' && !isNaN(highs[i]) && highs[i] > 0 ? highs[i] : Math.max(o, c);
+          const l = typeof lows[i] === 'number' && !isNaN(lows[i]) && lows[i] > 0 ? lows[i] : Math.min(o, c);
+          const v = typeof volumes[i] === 'number' && !isNaN(volumes[i]) ? volumes[i] : 0;
+
+          const dateObj = new Date(t * 1000);
+          let dateStr = '';
+          let timeStr = '';
+
+          try {
+            dateStr = dateObj.toLocaleDateString('zh-TW', { timeZone, month: '2-digit', day: '2-digit' });
+            timeStr = dateObj.toLocaleTimeString('zh-TW', {
+              timeZone,
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+          } catch {
+            dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+            timeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+          }
+
+          parsedCandles.push({
+            timestamp: t,
+            dateStr,
+            timeStr: tf === '1D' || tf === '5D' ? `${tf === '5D' ? dateStr + ' ' : ''}${timeStr}` : dateStr,
+            open: Number(o.toFixed(2)),
+            high: Number(h.toFixed(2)),
+            low: Number(l.toFixed(2)),
+            close: Number(c.toFixed(2)),
+            volume: Math.round(v),
+          });
+        }
+
+        if (parsedCandles.length === 0) {
+          throw new Error('暫無該週期的 K 線走勢資料');
+        }
+
+        const prevClose =
+          meta.chartPreviousClose || meta.previousClose || parsedCandles[0].open || parsedCandles[0].close;
+        const lastCandle = parsedCandles[parsedCandles.length - 1];
+        const latestPrice =
+          matched?.price && matched.price > 0
+            ? matched.price
+            : lastCandle.close;
+
+        const openPrice = meta.regularMarketOpen || meta.open || parsedCandles[0].open;
+        const allHighs = parsedCandles.map((c) => c.high);
+        const allLows = parsedCandles.map((c) => c.low);
+        const highPrice = Math.max(...allHighs);
+        const lowPrice = Math.min(...allLows);
+
+        let totalVolume = meta.regularMarketVolume || meta.volume || 0;
+        if (totalVolume === 0) {
+          totalVolume = parsedCandles.reduce((acc, c) => acc + c.volume, 0);
+        }
+
+        const lastTs = meta.regularMarketTime || (ts.length > 0 ? ts[ts.length - 1] : undefined);
+        const marketStatus = getMarketStatusInfo(target.market, target.symbol, lastTs);
+
+        setCandles(parsedCandles);
+        setMetaInfo({
+          prevClose,
+          open: openPrice,
+          high: highPrice,
+          low: lowPrice,
+          close: latestPrice,
+          volume: totalVolume,
+          currency: meta.currency || (target.market === 'us' ? 'USD' : 'TWD'),
+          tradingDateStr: marketStatus.tradingDateStr,
+          isMarketOpen: marketStatus.isMarketOpen,
+          marketStatusText: marketStatus.statusText,
+        });
+
+        // Set initial simulation target price without creating effect dependency
+        setTargetSimPrice((prev) => (prev ? prev : (latestPrice * 1.1).toFixed(2)));
+      } catch (err) {
+        setErrorMsg((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (isOpen && selectedChartTarget.symbol) {
+      fetchChartDataForTimeframe(selectedChartTarget, timeframe);
+    }
+  }, [isOpen, selectedChartTarget.symbol, selectedChartTarget.market, timeframe, fetchChartDataForTimeframe]);
+
+  // Derived Technical Indicator Series
+  const technicalSeries = useMemo(() => {
+    if (candles.length === 0) return null;
+
+    const closes = candles.map((c) => c.close);
+    const highs = candles.map((c) => c.high);
+    const lows = candles.map((c) => c.low);
+    const volumes = candles.map((c) => c.volume);
+
+    const ma5 = calculateSMA(closes, 5);
+    const ma10 = calculateSMA(closes, 10);
+    const ma20 = calculateSMA(closes, 20);
+    const ma60 = calculateSMA(closes, 60);
+
+    const bollinger = calculateBollingerBands(closes, 20, 2);
+
+    // VWAP
+    const vwapData: (number | null)[] = [];
+    let cumVol = 0;
+    let cumVal = 0;
+    candles.forEach((c) => {
+      const typical = (c.high + c.low + c.close) / 3;
+      const v = Math.max(1, c.volume);
+      cumVal += typical * v;
+      cumVol += v;
+      vwapData.push(Number((cumVal / cumVol).toFixed(2)));
     });
 
-    const datasets: any[] = [
-      {
+    // Sub indicators
+    const volMa5 = calculateSMA(volumes, 5);
+    const volMa20 = calculateSMA(volumes, 20);
+    const kd = calculateKD(highs, lows, closes, 9, 3, 3);
+    const rsi = calculateRSI(closes, 14);
+    const macd = calculateMACD(closes, 12, 26, 9);
+
+    // Technical diagnosis & levels
+    const diagnosis = evaluateTechnicalDiagnosis(closes, highs, lows, volumes, isRedUp);
+    const levels = calculateSupportResistance(highs, lows, closes);
+    const orderBook = generateOrderBook(
+      metaInfo ? metaInfo.close : closes[closes.length - 1],
+      metaInfo ? metaInfo.prevClose : closes[0],
+      selectedChartTarget.market === 'us'
+    );
+
+    return {
+      ma5,
+      ma10,
+      ma20,
+      ma60,
+      bollinger,
+      vwapData,
+      volMa5,
+      volMa20,
+      kd,
+      rsi,
+      macd,
+      diagnosis,
+      levels,
+      orderBook,
+    };
+  }, [candles, isRedUp, metaInfo, selectedChartTarget.market]);
+
+  // Main Chart Dataset Builder
+  const mainChartData = useMemo(() => {
+    if (candles.length === 0 || !metaInfo || !technicalSeries) return null;
+
+    const labels = candles.map((c) => c.timeStr);
+    const datasets: any[] = [];
+
+    const isIntraday = timeframe === '1D' || timeframe === '5D';
+
+    // 1. Candlestick vs Line / Area Datasets
+    if (chartStyle === 'candlestick') {
+      // Floating bar representing [min(open, close), max(open, close)]
+      const barData = candles.map((c) => {
+        const minVal = Math.min(c.open, c.close);
+        const maxVal = Math.max(c.open, c.close);
+        // If doji (open == close), give tiny 0.05 height so the line renders
+        if (minVal === maxVal) {
+          return [minVal - 0.02, maxVal + 0.02];
+        }
+        return [minVal, maxVal];
+      });
+
+      const barBgColors = candles.map((c) =>
+        c.close >= c.open ? upColor : downColor
+      );
+
+      datasets.push({
+        type: 'bar' as const,
+        label: 'K線棒體',
+        data: barData,
+        backgroundColor: barBgColors,
+        borderColor: barBgColors,
+        borderWidth: 1,
+        barPercentage: 0.75,
+        categoryPercentage: 0.85,
+        yAxisID: 'y',
+        order: 2,
+      });
+    } else {
+      const closes = candles.map((c) => c.close);
+      const isUpTrend = closes[closes.length - 1] >= (metaInfo?.prevClose || closes[0]);
+      const lineColor = isUpTrend ? upColor : downColor;
+
+      datasets.push({
         type: 'line' as const,
-        label: `${intradayData.name} 分時價`,
-        data: intradayData.prices,
+        label: `${selectedChartTarget.name} 走勢`,
+        data: closes,
         borderColor: lineColor,
-        borderWidth: 2.5,
-        fill: true,
-        spanGaps: false,
-        tension: 0.15,
-        pointRadius: (ctx: { dataIndex: number }) => (ctx.dataIndex === lastValidIdx ? 6 : 0),
+        borderWidth: 2.2,
+        fill: chartStyle === 'area',
+        tension: 0.1,
+        pointRadius: (ctx: { dataIndex: number }) => (ctx.dataIndex === closes.length - 1 ? 5 : 0),
         pointBackgroundColor: lineColor,
         pointBorderColor: '#ffffff',
         pointBorderWidth: 2,
-        pointHoverRadius: 7,
-        pointHitRadius: 20,
         yAxisID: 'y',
+        order: 2,
         backgroundColor: (context: {
           chart: { ctx: CanvasRenderingContext2D; chartArea?: { bottom: number; top: number } };
         }) => {
           const chart = context.chart;
           const { ctx, chartArea } = chart;
-          if (!chartArea) return 'transparent';
+          if (!chartArea || chartStyle !== 'area') return 'transparent';
           const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-          gradient.addColorStop(0, 'rgba(241, 245, 249, 0)');
-          gradient.addColorStop(1, diff >= 0 ? 'rgba(5, 150, 105, 0.15)' : 'rgba(225, 29, 72, 0.15)');
+          gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+          gradient.addColorStop(1, isUpTrend ? (isRedUp ? 'rgba(225, 29, 72, 0.18)' : 'rgba(5, 150, 105, 0.18)') : (isRedUp ? 'rgba(5, 150, 105, 0.18)' : 'rgba(225, 29, 72, 0.18)'));
           return gradient;
         },
-      },
-    ];
+      });
+    }
 
-    if (showVWAP) {
+    // 2. MA Overlays
+    if (showMA) {
       datasets.push({
         type: 'line' as const,
-        label: '當日 VWAP 均價線',
-        data: vwapData,
-        borderColor: '#d97706', // Amber 600
+        label: 'MA5 (週)',
+        data: technicalSeries.ma5,
+        borderColor: '#eab308', // Amber 500
         borderWidth: 1.5,
+        fill: false,
+        pointRadius: 0,
+        tension: 0.2,
+        yAxisID: 'y',
+        order: 1,
+      });
+
+      datasets.push({
+        type: 'line' as const,
+        label: 'MA10 (雙週)',
+        data: technicalSeries.ma10,
+        borderColor: '#06b6d4', // Cyan 500
+        borderWidth: 1.5,
+        fill: false,
+        pointRadius: 0,
+        tension: 0.2,
+        yAxisID: 'y',
+        order: 1,
+      });
+
+      datasets.push({
+        type: 'line' as const,
+        label: 'MA20 (月線)',
+        data: technicalSeries.ma20,
+        borderColor: '#8b5cf6', // Violet 500
+        borderWidth: 1.8,
+        fill: false,
+        pointRadius: 0,
+        tension: 0.2,
+        yAxisID: 'y',
+        order: 1,
+      });
+
+      if (!isIntraday && candles.length >= 40) {
+        datasets.push({
+          type: 'line' as const,
+          label: 'MA60 (季線)',
+          data: technicalSeries.ma60,
+          borderColor: '#f97316', // Orange 500
+          borderWidth: 1.8,
+          fill: false,
+          pointRadius: 0,
+          tension: 0.2,
+          yAxisID: 'y',
+          order: 1,
+        });
+      }
+    }
+
+    // 3. Bollinger Bands Overlays
+    if (showBollinger) {
+      datasets.push({
+        type: 'line' as const,
+        label: '布林上軌',
+        data: technicalSeries.bollinger.upper,
+        borderColor: '#3b82f6',
+        borderWidth: 1.2,
+        borderDash: [3, 3],
+        fill: '+1', // fill down to lower band
+        backgroundColor: 'rgba(59, 130, 246, 0.05)',
+        pointRadius: 0,
+        tension: 0.2,
+        yAxisID: 'y',
+        order: 3,
+      });
+
+      datasets.push({
+        type: 'line' as const,
+        label: '布林中軌 (20MA)',
+        data: technicalSeries.bollinger.middle,
+        borderColor: '#3b82f6',
+        borderWidth: 1.2,
+        fill: false,
+        pointRadius: 0,
+        tension: 0.2,
+        yAxisID: 'y',
+        order: 3,
+      });
+
+      datasets.push({
+        type: 'line' as const,
+        label: '布林下軌',
+        data: technicalSeries.bollinger.lower,
+        borderColor: '#3b82f6',
+        borderWidth: 1.2,
         borderDash: [3, 3],
         fill: false,
         pointRadius: 0,
         tension: 0.2,
         yAxisID: 'y',
+        order: 3,
       });
     }
 
-    if (showMA5) {
+    // 4. VWAP Overlay (Only on Intraday 1D/5D)
+    if (showVWAP && isIntraday) {
       datasets.push({
         type: 'line' as const,
-        label: 'MA5 均線',
-        data: ma5Data,
-        borderColor: '#9333ea', // Purple 600
+        label: 'VWAP 均價',
+        data: technicalSeries.vwapData,
+        borderColor: '#d97706',
         borderWidth: 1.5,
+        borderDash: [4, 3],
         fill: false,
         pointRadius: 0,
         tension: 0.2,
         yAxisID: 'y',
-      });
-    }
-
-    if (showVolumeBars && volumes.length > 0) {
-      datasets.push({
-        type: 'bar' as const,
-        label: '分時成交量',
-        data: volumes,
-        backgroundColor: volumeColors,
-        borderWidth: 0,
-        barThickness: 'flex',
-        yAxisID: 'y1',
+        order: 1,
       });
     }
 
     return {
-      labels: intradayData.labels,
+      labels,
       datasets,
     };
-  }, [intradayData, getUpColor, getDownColor, showVWAP, showMA5, showVolumeBars]);
+  }, [
+    candles,
+    metaInfo,
+    technicalSeries,
+    timeframe,
+    chartStyle,
+    showMA,
+    showBollinger,
+    showVWAP,
+    upColor,
+    downColor,
+    isRedUp,
+    selectedChartTarget.name,
+  ]);
 
-  const maxVolume = useMemo(() => {
-    if (!intradayData || !intradayData.volumes) return 1000;
-    return Math.max(...intradayData.volumes, 10);
-  }, [intradayData]);
+  // Dynamic Y-axis Bounds Calculation strictly focusing on current candle price range
+  const yBounds = useMemo(() => {
+    if (candles.length === 0) return { min: 0, max: 100 };
+    
+    // Extract actual candle price extremes for the current period / timeframe
+    const highs = candles.map((c) => c.high).filter((v) => typeof v === 'number' && v > 0);
+    const lows = candles.map((c) => c.low).filter((v) => typeof v === 'number' && v > 0);
+    if (highs.length === 0 || lows.length === 0) return { min: 0, max: 100 };
 
-  const options = useMemo(() => {
-    if (!intradayData) return {};
-    const prevClose = intradayData.prevClose;
+    let minVal = Math.min(...lows);
+    let maxVal = Math.max(...highs);
+
+    // Incorporate MA only if reasonably close (within 4%) to keep view focused on price action
+    if (showMA && technicalSeries) {
+      const maVals = [...technicalSeries.ma5, ...technicalSeries.ma20].filter(
+        (v): v is number => typeof v === 'number' && v > 0 && v >= minVal * 0.96 && v <= maxVal * 1.04
+      );
+      if (maVals.length > 0) {
+        minVal = Math.min(minVal, ...maVals);
+        maxVal = Math.max(maxVal, ...maVals);
+      }
+    }
+
+    // Incorporate Bollinger only if reasonably close
+    if (showBollinger && technicalSeries?.bollinger) {
+      const bbVals = [...technicalSeries.bollinger.upper, ...technicalSeries.bollinger.lower].filter(
+        (v): v is number => typeof v === 'number' && v > 0 && v >= minVal * 0.95 && v <= maxVal * 1.05
+      );
+      if (bbVals.length > 0) {
+        minVal = Math.min(minVal, ...bbVals);
+        maxVal = Math.max(maxVal, ...bbVals);
+      }
+    }
+
+    const diff = maxVal - minVal;
+    const pad = diff > 0 ? diff * 0.025 : (minVal * 0.005 || 0.5);
+    return {
+      min: Math.max(0.01, Number((minVal - pad).toFixed(2))),
+      max: Number((maxVal + pad).toFixed(2)),
+    };
+  }, [candles, showBollinger, showMA, technicalSeries]);
+
+  // Main Chart Options
+  const mainChartOptions = useMemo(() => {
+    if (!metaInfo || candles.length === 0) return {};
+
+    const annotations: any = {};
 
     return {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-      interaction: { mode: 'nearest' as const, axis: 'x' as const, intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#0f172a',
-          titleColor: '#38bdf8',
-          bodyColor: '#f8fafc',
-          borderColor: '#334155',
-          borderWidth: 1,
-          padding: 10,
-          displayColors: true,
-          callbacks: {
-            title: (items: Array<{ label: string }>) => `時間: ${items[0]?.label || ''}`,
-            label: (item: { raw: unknown; dataset: { label: string; yAxisID?: string } }) => {
-              if (item.raw === null || item.raw === undefined) return `${item.dataset.label}: --`;
-              const val = Number(item.raw) || 0;
-              if (item.dataset.yAxisID === 'y1') {
-                if (intradayData.market === 'us') {
-                  return `成交量: ${val.toLocaleString()} 股`;
-                }
-                const lots = Math.round(val / 1000);
-                return `成交量: ${val.toLocaleString()} 股 (${lots} 張)`;
-              }
-              const d = val - prevClose;
-              const dPct = prevClose > 0 ? (d / prevClose) * 100 : 0;
-              return `${item.dataset.label}: $${val.toFixed(2)} (${d >= 0 ? '+' : ''}${dPct.toFixed(2)}%)`;
-            },
-          },
-        },
-        annotation: {
-          annotations: {
-            prevCloseLine: {
-              type: 'line' as const,
-              yMin: prevClose,
-              yMax: prevClose,
-              borderColor: '#94a3b8',
-              borderWidth: 1.5,
-              borderDash: [4, 4],
-              label: {
-                content: `昨收 $${prevClose.toFixed(2)}`,
-                display: true,
-                position: 'start' as const,
-                backgroundColor: '#1e293b',
-                color: '#f8fafc',
-                font: { size: 10, weight: 'bold' as const },
-              },
-            },
-          },
-        },
-      },
       layout: {
         padding: {
-          left: 0,
-          right: 0,
           top: 2,
-          bottom: 0,
+          bottom: 2,
+          left: 2,
+          right: 2,
         },
+      },
+      interaction: { mode: 'index' as const, axis: 'x' as const, intersect: false },
+      plugins: {
+        legend: { display: false },
+        candlestickWicks: {
+          enabled: chartStyle === 'candlestick',
+          candles,
+          upColor,
+          downColor,
+        },
+        annotation: { annotations },
+        tooltip: {
+          enabled: false, // We use custom high-contrast HUD and in-chart live inspector
+        },
+      },
+      onHover: (evt: any, elements: any[], chart: any) => {
+        const c = chart || evt?.chart;
+        if (elements && elements.length > 0) {
+          const index = elements[0].index;
+          if (typeof index === 'number' && index >= 0 && index < candles.length && index !== hoveredIndexRef.current) {
+            hoveredIndexRef.current = index;
+            setHoveredCandle(candles[index]);
+            return;
+          }
+        }
+        if (c && c.scales && c.scales.x && evt?.x !== undefined) {
+          const rawIdx = Math.round(c.scales.x.getValueForPixel(evt.x));
+          if (rawIdx >= 0 && rawIdx < candles.length && rawIdx !== hoveredIndexRef.current) {
+            hoveredIndexRef.current = rawIdx;
+            setHoveredCandle(candles[rawIdx]);
+            return;
+          }
+        }
       },
       scales: {
         x: {
-          grid: { color: 'rgba(0,0,0,0.04)' },
+          grid: { color: 'rgba(255, 255, 255, 0.06)' },
           ticks: {
-            color: '#64748b',
-            maxTicksLimit: 6,
-            padding: 1,
-            font: { family: 'sans-serif', size: 9, weight: 'bold' as const },
+            color: '#94a3b8',
+            maxTicksLimit: 7,
+            font: { family: 'monospace', size: 10, weight: 'bold' as const },
           },
         },
         y: {
           type: 'linear' as const,
-          position: 'left' as const,
-          min: intradayData.market === 'us' ? undefined : intradayData.limitDownPrice,
-          max: intradayData.market === 'us' ? undefined : intradayData.limitUpPrice,
-          grid: { color: 'rgba(0,0,0,0.06)', borderDash: [4, 4] },
+          position: 'right' as const,
+          beginAtZero: false,
+          grace: 0,
+          min: yBounds.min,
+          max: yBounds.max,
+          grid: { color: 'rgba(255, 255, 255, 0.08)', borderDash: [2, 2] },
           ticks: {
-            color: '#334155',
-            padding: 1,
-            maxTicksLimit: 4,
-            font: { family: 'monospace', size: 9, weight: 'bold' as const },
+            color: '#cbd5e1',
+            font: { family: 'monospace', size: 10, weight: 'bold' as const },
             callback: (val: string | number) => {
               const num = Number(val);
               return num >= 1000 ? `$${Math.round(num)}` : `$${num.toFixed(1)}`;
             },
           },
         },
-        y1: {
+      },
+    };
+  }, [
+    metaInfo,
+    candles,
+    chartStyle,
+    upColor,
+    downColor,
+    yBounds,
+  ]);
+
+  // Sub Indicator Chart Datasets & Options
+  const subChartData = useMemo(() => {
+    if (candles.length === 0 || subIndicator === 'none' || !technicalSeries) return null;
+
+    const labels = candles.map((c) => c.timeStr);
+    const datasets: any[] = [];
+
+    if (subIndicator === 'volume') {
+      const volColors = candles.map((c) =>
+        c.close >= c.open ? upColor + '99' : downColor + '99'
+      );
+
+      datasets.push({
+        type: 'bar' as const,
+        label: '成交量',
+        data: candles.map((c) => c.volume),
+        backgroundColor: volColors,
+        borderWidth: 0,
+        barPercentage: 0.75,
+        yAxisID: 'y',
+        order: 2,
+      });
+
+      datasets.push({
+        type: 'line' as const,
+        label: 'VOL MA5',
+        data: technicalSeries.volMa5,
+        borderColor: '#eab308',
+        borderWidth: 1.2,
+        fill: false,
+        pointRadius: 0,
+        yAxisID: 'y',
+        order: 1,
+      });
+
+      datasets.push({
+        type: 'line' as const,
+        label: 'VOL MA20',
+        data: technicalSeries.volMa20,
+        borderColor: '#8b5cf6',
+        borderWidth: 1.2,
+        fill: false,
+        pointRadius: 0,
+        yAxisID: 'y',
+        order: 1,
+      });
+    } else if (subIndicator === 'kd') {
+      datasets.push({
+        type: 'line' as const,
+        label: '%K (9,3)',
+        data: technicalSeries.kd.k,
+        borderColor: '#f59e0b',
+        borderWidth: 1.6,
+        fill: false,
+        pointRadius: 0,
+        tension: 0.2,
+        yAxisID: 'y',
+      });
+
+      datasets.push({
+        type: 'line' as const,
+        label: '%D (3)',
+        data: technicalSeries.kd.d,
+        borderColor: '#6366f1',
+        borderWidth: 1.6,
+        fill: false,
+        pointRadius: 0,
+        tension: 0.2,
+        yAxisID: 'y',
+      });
+    } else if (subIndicator === 'rsi') {
+      datasets.push({
+        type: 'line' as const,
+        label: 'RSI (14)',
+        data: technicalSeries.rsi,
+        borderColor: '#ec4899',
+        borderWidth: 1.8,
+        fill: false,
+        pointRadius: 0,
+        tension: 0.2,
+        yAxisID: 'y',
+      });
+    } else if (subIndicator === 'macd') {
+      const oscColors = technicalSeries.macd.osc.map((val) =>
+        val !== null && val >= 0 ? upColor + 'bb' : downColor + 'bb'
+      );
+
+      datasets.push({
+        type: 'bar' as const,
+        label: 'MACD 柱體 (OSC)',
+        data: technicalSeries.macd.osc,
+        backgroundColor: oscColors,
+        borderWidth: 0,
+        barPercentage: 0.75,
+        yAxisID: 'y',
+        order: 2,
+      });
+
+      datasets.push({
+        type: 'line' as const,
+        label: 'DIF 快線',
+        data: technicalSeries.macd.dif,
+        borderColor: '#eab308',
+        borderWidth: 1.4,
+        fill: false,
+        pointRadius: 0,
+        yAxisID: 'y',
+        order: 1,
+      });
+
+      datasets.push({
+        type: 'line' as const,
+        label: 'DEM 慢線',
+        data: technicalSeries.macd.dem,
+        borderColor: '#3b82f6',
+        borderWidth: 1.4,
+        fill: false,
+        pointRadius: 0,
+        yAxisID: 'y',
+        order: 1,
+      });
+    }
+
+    return { labels, datasets };
+  }, [candles, subIndicator, technicalSeries, upColor, downColor]);
+
+  // Dynamic volume maximum bound calculation to ensure volume bars use full subchart height
+  const volumeMax = useMemo(() => {
+    if (subIndicator !== 'volume' || candles.length === 0) return undefined;
+    const volList = candles.map((c) => c.volume || 0);
+    const ma5List = technicalSeries?.volMa5?.filter((v): v is number => typeof v === 'number' && !isNaN(v)) || [];
+    const ma20List = technicalSeries?.volMa20?.filter((v): v is number => typeof v === 'number' && !isNaN(v)) || [];
+    const maxV = Math.max(...volList, ...ma5List, ...ma20List, 10);
+    return Math.ceil(maxV * 1.08); // 8% headroom so volume bars fill the height instead of leaving 60% empty
+  }, [subIndicator, candles, technicalSeries]);
+
+  const subChartOptions = useMemo(() => {
+    if (subIndicator === 'none') return {};
+
+    const annotations: any = {};
+    if (subIndicator === 'kd') {
+      annotations.overbought = {
+        type: 'line' as const,
+        yMin: 80,
+        yMax: 80,
+        borderColor: '#f43f5e',
+        borderWidth: 1,
+        borderDash: [3, 3],
+      };
+      annotations.oversold = {
+        type: 'line' as const,
+        yMin: 20,
+        yMax: 20,
+        borderColor: '#10b981',
+        borderWidth: 1,
+        borderDash: [3, 3],
+      };
+    } else if (subIndicator === 'rsi') {
+      annotations.overbought = {
+        type: 'line' as const,
+        yMin: 70,
+        yMax: 70,
+        borderColor: '#f43f5e',
+        borderWidth: 1,
+        borderDash: [3, 3],
+      };
+      annotations.oversold = {
+        type: 'line' as const,
+        yMin: 30,
+        yMax: 30,
+        borderColor: '#10b981',
+        borderWidth: 1,
+        borderDash: [3, 3],
+      };
+      annotations.mid = {
+        type: 'line' as const,
+        yMin: 50,
+        yMax: 50,
+        borderColor: '#94a3b8',
+        borderWidth: 1,
+        borderDash: [2, 2],
+      };
+    }
+
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      layout: {
+        padding: {
+          top: 2,
+          bottom: 2,
+          left: 2,
+          right: 2,
+        },
+      },
+      interaction: { mode: 'index' as const, axis: 'x' as const, intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false },
+        annotation: { annotations },
+      },
+      onHover: (_evt: any, elements: any[]) => {
+        if (elements && elements.length > 0) {
+          const index = elements[0].index;
+          if (typeof index === 'number' && index !== hoveredIndexRef.current && candles[index]) {
+            hoveredIndexRef.current = index;
+            setHoveredCandle(candles[index]);
+          }
+        } else if (hoveredIndexRef.current !== null) {
+          hoveredIndexRef.current = null;
+          setHoveredCandle(null);
+        }
+      },
+      scales: {
+        x: {
+          display: false,
+        },
+        y: {
           type: 'linear' as const,
           position: 'right' as const,
-          display: false, // Hide right volume axis labels to remove right gutter and maximize width
-          grid: { display: false },
-          max: maxVolume * 3.8, // keeps volume bars confined to bottom 25% of chart height
+          beginAtZero: true,
+          grace: 0,
+          min: subIndicator === 'kd' ? 0 : subIndicator === 'rsi' ? 0 : subIndicator === 'volume' ? 0 : undefined,
+          max: subIndicator === 'kd' ? 100 : subIndicator === 'rsi' ? 100 : subIndicator === 'volume' ? volumeMax : undefined,
+          grid: { color: 'rgba(255, 255, 255, 0.06)' },
+          ticks: {
+            color: '#94a3b8',
+            font: { family: 'monospace', size: 9, weight: 'bold' as const },
+            maxTicksLimit: 3,
+            callback: (val: string | number) => {
+              const num = Number(val);
+              if (subIndicator === 'volume') {
+                return num >= 1000000 ? `${(num / 1000000).toFixed(1)}M` : num >= 1000 ? `${Math.round(num / 1000)}K` : String(num);
+              }
+              return String(Math.round(num));
+            },
+          },
         },
       },
     };
-  }, [intradayData, maxVolume, showVolumeBars]);
+  }, [subIndicator, candles, volumeMax]);
+
+  // Active Index for hovering on charts
+  const activeIdx = useMemo(() => {
+    if (!candles.length) return -1;
+    if (hoveredCandle) {
+      const idx = candles.findIndex((c) => c.timestamp === hoveredCandle.timestamp);
+      if (idx >= 0) return idx;
+    }
+    return candles.length - 1;
+  }, [candles, hoveredCandle]);
+
+  // Derived Active Technical Values for Real-time HUD and Subchart Header
+  const activeSubValues = useMemo(() => {
+    if (activeIdx < 0 || !technicalSeries || candles.length === 0) return null;
+    const candle = candles[activeIdx];
+    const vol = candle?.volume || 0;
+    const volMa5 = technicalSeries.volMa5[activeIdx];
+    const volMa20 = technicalSeries.volMa20[activeIdx];
+    const k = technicalSeries.kd.k[activeIdx];
+    const d = technicalSeries.kd.d[activeIdx];
+    const rsi = technicalSeries.rsi[activeIdx];
+    const dif = technicalSeries.macd.dif[activeIdx];
+    const dem = technicalSeries.macd.dem[activeIdx];
+    const osc = technicalSeries.macd.osc[activeIdx];
+    const ma5 = technicalSeries.ma5[activeIdx];
+    const ma10 = technicalSeries.ma10[activeIdx];
+    const ma20 = technicalSeries.ma20[activeIdx];
+    const ma60 = technicalSeries.ma60[activeIdx];
+    const bbUpper = technicalSeries.bollinger.upper[activeIdx];
+    const bbMid = technicalSeries.bollinger.middle[activeIdx];
+    const bbLower = technicalSeries.bollinger.lower[activeIdx];
+    const vwap = technicalSeries.vwapData[activeIdx];
+    return {
+      vol,
+      volMa5,
+      volMa20,
+      k,
+      d,
+      rsi,
+      dif,
+      dem,
+      osc,
+      ma5,
+      ma10,
+      ma20,
+      ma60,
+      bbUpper,
+      bbMid,
+      bbLower,
+      vwap,
+    };
+  }, [activeIdx, technicalSeries, candles]);
 
   if (!isOpen) return null;
 
-  const diff = intradayData ? intradayData.latestPrice - intradayData.prevClose : 0;
-  const diffPct =
-    intradayData && intradayData.prevClose > 0 ? (diff / intradayData.prevClose) * 100 : 0;
-  const isUp = diff >= 0;
-
-  // Strength status text & indicator
-  const strengthPct = intradayData ? Math.min(100, Math.max(0, intradayData.rangePct)) : 50;
-  const strengthText =
-    strengthPct >= 80
-      ? '多強'
-      : strengthPct >= 60
-      ? '偏強'
-      : strengthPct >= 40
-      ? '震盪'
-      : strengthPct >= 20
-      ? '偏弱'
-      : '低檔';
+  const currentCandle = hoveredCandle || (candles.length > 0 ? candles[candles.length - 1] : null);
+  const activePrice = currentCandle ? currentCandle.close : (metaInfo?.close || 0);
+  const activePrevClose = metaInfo ? metaInfo.prevClose : activePrice;
+  const activeDiff = activePrice - activePrevClose;
+  const activeDiffPct = activePrevClose > 0 ? (activeDiff / activePrevClose) * 100 : 0;
+  const isActiveUp = activeDiff >= 0;
 
   // Format Volume string nicely in compact format
   const formatVolumeShort = (shares: number, market: MarketType) => {
     if (!shares || shares <= 0) return '--';
     if (market === 'us') {
       return shares >= 1000000
-        ? `${(shares / 1000000).toFixed(2)}M`
-        : `${(shares / 1000).toFixed(1)}K`;
+        ? `${(shares / 1000000).toFixed(2)}M 股`
+        : `${(shares / 1000).toFixed(1)}K 股`;
     }
     const lots = Math.round(shares / 1000);
     return lots >= 10000 ? `${(lots / 10000).toFixed(1)}萬張` : `${lots.toLocaleString()}張`;
   };
 
-  return (
-    <div className="fixed inset-0 z-[96] w-full h-[100dvh] bg-slate-100 flex flex-col text-slate-900 overflow-hidden overscroll-none animate-fadeIn select-none modal-backdrop">
-      <div className="w-full flex-1 flex flex-col overflow-hidden">
-        {/* Top Professional Control Header Bar */}
-        <div className="bg-white border-b border-slate-200/90 px-2 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-1.5 shrink-0 shadow-2xs">
-          <div className="flex items-center gap-1 sm:gap-1.5 overflow-hidden">
-            <button
-              onClick={() => {
-                playClickSound();
-                onClose();
-              }}
-              className="flex items-center gap-1 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 px-1.5 py-1 sm:px-2 sm:py-1 rounded-lg border border-slate-200 text-xs font-bold transition btn-interact shrink-0"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="text-xs">返回</span>
-            </button>
+  // Target profit simulation math
+  const simPriceNum = parseFloat(targetSimPrice) || 0;
+  const userShares = matchedPortfolioItem ? matchedPortfolioItem.shares : 0;
+  const userCost = matchedPortfolioItem ? matchedPortfolioItem.cost : 0;
+  const simProfit = userShares > 0 && simPriceNum > 0 ? (simPriceNum - userCost) * userShares : 0;
+  const simROI = userCost > 0 && simPriceNum > 0 ? ((simPriceNum - userCost) / userCost) * 100 : 0;
 
-            <div className="overflow-hidden">
-              <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                <h2 className="text-xs sm:text-base font-extrabold text-slate-900 tracking-tight truncate">
-                  {selectedChartTarget.name || selectedChartTarget.symbol}
-                </h2>
-                <span className="text-[9px] sm:text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1 sm:px-1.5 py-0.2 rounded shrink-0">
-                  {selectedChartTarget.symbol}
-                </span>
-                <span className="text-[8px] sm:text-[9px] font-semibold px-1 py-0.2 rounded bg-slate-100 text-slate-600 shrink-0 uppercase">
-                  {selectedChartTarget.market === 'us' ? '美股' : selectedChartTarget.market === 'otc' ? '上櫃' : '上市'}
-                </span>
-                {intradayData && (
-                  <span
-                    className={`text-[8px] sm:text-[9px] font-bold px-1 py-0.2 rounded border font-mono flex items-center gap-0.5 shrink-0 ${
-                      intradayData.isMarketOpen
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-amber-50 text-amber-700 border-amber-200'
-                    }`}
-                  >
-                    {intradayData.isMarketOpen ? (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="hidden xs:inline">交易中</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>🌙</span>
-                        <span>{intradayData.tradingDateStr || ''} 收盤</span>
-                      </>
-                    )}
-                  </span>
-                )}
-              </div>
-            </div>
+  return (
+    <div className="fixed inset-0 z-[96] w-full h-[100dvh] max-h-screen bg-slate-950 flex flex-col text-slate-100 overflow-hidden overscroll-none select-none modal-backdrop">
+      {/* TOP COMMAND BAR (PRO TERMINAL HEADER) - Ultra Clean & Responsive */}
+      <div className="bg-slate-900 border-b border-slate-800 px-2 sm:px-3 py-1 flex items-center justify-between gap-1.5 shrink-0 shadow-md h-10 sm:h-11 z-20">
+        {/* Left: Return + Stock Identity + Live Price */}
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+          <button
+            onClick={() => {
+              playClickSound();
+              onClose();
+            }}
+            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-xs font-bold transition btn-interact shrink-0"
+            title="返回上一層"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-indigo-400" />
+          </button>
+
+          <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+            <span className="text-[11px] sm:text-xs font-mono font-black text-indigo-300 bg-indigo-950/90 border border-indigo-700/60 px-1.5 py-0.5 rounded shrink-0">
+              {selectedChartTarget.symbol}
+            </span>
+            <h1 className="text-xs sm:text-sm font-bold tracking-tight text-white truncate max-w-[80px] xs:max-w-[120px] sm:max-w-[180px] shrink-0">
+              {selectedChartTarget.name || selectedChartTarget.symbol}
+            </h1>
+            <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase shrink-0 hidden sm:inline">
+              {selectedChartTarget.market === 'us' ? '美股' : selectedChartTarget.market === 'otc' ? '上櫃' : '上市'}
+            </span>
           </div>
 
-          {/* Action Controls & Stock Stepper (< / >) */}
-          <div className="flex items-center gap-1 shrink-0">
-            {onOpenAICopilot && (
-              <button
-                onClick={() => {
-                  playClickSound();
-                  onOpenAICopilot();
-                }}
-                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-1.5 py-1 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center gap-1 shrink-0 btn-interact"
-                title="開啟 AI 戰情操盤顧問"
-              >
-                <Sparkles className="w-3 h-3 text-indigo-600 animate-spin" style={{ animationDuration: '6s' }} />
-                <span className="hidden sm:inline">AI 戰情</span>
-              </button>
-            )}
-
-            {portfolioList.length > 1 && (
-              <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5">
-                <button
-                  onClick={handlePrevStock}
-                  className="p-0.5 hover:bg-slate-100 text-slate-600 rounded transition"
-                  title="上一檔持股"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-[9px] font-mono px-0.5 text-slate-500 font-bold">
-                  {currentPortfolioIndex >= 0 ? `${currentPortfolioIndex + 1}/${portfolioList.length}` : '切換'}
-                </span>
-                <button
-                  onClick={handleNextStock}
-                  className="p-0.5 hover:bg-slate-100 text-slate-600 rounded transition"
-                  title="下一檔持股"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-
-            <button
-              onClick={() => {
-                playClickSound();
-                onClose();
-              }}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
-              title="關閉看盤視窗"
+          {/* Integrated Real-time Price & Change Badge */}
+          <div className="flex items-baseline gap-1 font-mono shrink-0 pl-1 border-l border-slate-800/80">
+            <span className="text-xs sm:text-sm font-black text-white tabular-nums">
+              ${activePrice.toFixed(2)}
+            </span>
+            <span
+              className={`text-[10px] sm:text-xs font-bold font-mono px-1 py-0.2 rounded ${
+                isActiveUp
+                  ? isRedUp
+                    ? 'text-rose-400 bg-rose-950/40 border border-rose-800/40'
+                    : 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40'
+                  : isRedUp
+                  ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40'
+                  : 'text-rose-400 bg-rose-950/40 border border-rose-800/40'
+              }`}
             >
-              <X className="w-3.5 h-3.5" />
-            </button>
+              {isActiveUp ? '+' : ''}{activeDiffPct.toFixed(2)}%
+            </span>
           </div>
         </div>
 
-        {/* Scrollable Content Area */}
-        <div className="p-1 sm:p-2 space-y-1 sm:space-y-1.5 overflow-y-auto flex-1 overscroll-contain modal-content-scroll">
-          {/* COMPACT AUXILIARY HUD: Essential price + micro stats */}
-          {intradayData && (
-            <div className="bg-slate-50 border border-slate-200/90 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg flex flex-wrap items-center justify-between gap-x-2.5 gap-y-1 shrink-0 text-xs font-mono">
-              {/* Primary Price & Live Indicator */}
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-lg sm:text-2xl font-black font-mono tracking-tight tabular-nums text-slate-900">
-                  ${intradayData.latestPrice.toFixed(2)}
-                </span>
-                <span
-                  className={`text-[11px] sm:text-xs font-bold flex items-center gap-0.5 ${
-                    isUp
-                      ? isRedUp
-                        ? 'text-rose-600'
-                        : 'text-emerald-600'
-                      : isRedUp
-                      ? 'text-emerald-600'
-                      : 'text-rose-600'
-                  }`}
-                >
-                  {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                  {isUp ? '+' : ''}
-                  {diff.toFixed(2)} ({isUp ? '+' : ''}
-                  {diffPct.toFixed(2)}%)
-                </span>
-              </div>
+        {/* Right: Compact Action Buttons */}
+        <div className="flex items-center gap-1 shrink-0">
+          {onOpenAICopilot && (
+            <button
+              onClick={() => {
+                playClickSound();
+                onOpenAICopilot();
+              }}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white p-1 sm:px-2 sm:py-0.5 rounded text-xs font-bold transition flex items-center gap-1 shadow-xs btn-interact shrink-0"
+              title="開啟 AI 深度量化操盤顧問"
+            >
+              <Sparkles className="w-3 h-3 text-amber-300" />
+              <span className="hidden sm:inline text-[10px]">AI診斷</span>
+            </button>
+          )}
 
-              {/* Auxiliary Quick Data Pills */}
-              <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap text-[10px] text-slate-600 font-sans">
-                <span className="flex items-center gap-0.5 bg-white border border-slate-200 px-1 py-0.5 rounded">
-                  <span className="text-slate-400 font-medium">量</span>
-                  <strong className="text-slate-900 font-mono font-bold">{formatVolumeShort(intradayData.totalVolume, intradayData.market)}</strong>
-                  {intradayData.estimatedVolume > 0 && (
-                    <span className="text-purple-700 font-mono font-bold">(估 {formatVolumeShort(intradayData.estimatedVolume, intradayData.market)})</span>
-                  )}
-                </span>
-                <span className="flex items-center gap-0.5 bg-white border border-slate-200 px-1 py-0.5 rounded">
-                  <span className="text-slate-400 font-medium">昨收</span>
-                  <strong className="text-slate-800 font-mono font-bold">${intradayData.prevClose.toFixed(2)}</strong>
-                </span>
-                <span className="flex items-center gap-0.5 bg-white border border-slate-200 px-1 py-0.5 rounded">
-                  <span className="text-slate-400 font-medium">高/低</span>
-                  <strong className="text-rose-600 font-mono font-bold">${intradayData.highPrice.toFixed(2)}</strong>
-                  <span className="text-slate-300">/</span>
-                  <strong className="text-emerald-600 font-mono font-bold">${intradayData.lowPrice.toFixed(2)}</strong>
-                </span>
-                <span className="hidden xs:flex items-center gap-0.5 bg-white border border-slate-200 px-1 py-0.5 rounded">
-                  <span className="text-slate-400 font-medium">振幅</span>
-                  <strong className="text-amber-600 font-mono font-bold">{intradayData.amplitudePct.toFixed(2)}%</strong>
-                </span>
-                <span className="hidden sm:flex items-center gap-0.5 bg-white border border-slate-200 px-1 py-0.5 rounded">
-                  <span className="text-slate-400 font-medium">位階</span>
-                  <strong className="text-indigo-600 font-mono font-bold">{strengthText}</strong>
-                </span>
-              </div>
+          {portfolioList.length > 1 && (
+            <div className="hidden sm:flex items-center bg-slate-800 border border-slate-700 rounded p-0.5 shrink-0">
+              <button
+                onClick={handlePrevStock}
+                className="p-0.5 hover:bg-slate-700 text-slate-300 rounded transition"
+                title="上一檔持股"
+              >
+                <ChevronLeft className="w-3 h-3" />
+              </button>
+              <span className="text-[10px] font-mono px-1 text-slate-400 font-bold">
+                {currentPortfolioIndex >= 0 ? `${currentPortfolioIndex + 1}/${portfolioList.length}` : '切換'}
+              </span>
+              <button
+                onClick={handleNextStock}
+                className="p-0.5 hover:bg-slate-700 text-slate-300 rounded transition"
+                title="下一檔持股"
+              >
+                <ChevronRight className="w-3 h-3" />
+              </button>
             </div>
           )}
 
-          {/* Maximized Edge-to-Edge Chart Canvas Section */}
-          <div className="bg-white p-1 sm:p-1.5 rounded-xl border border-slate-200 shadow-2xs relative flex flex-col justify-center w-full">
-            {/* Intraday Technical Overlay Toggles */}
-            <div className="flex items-center justify-between gap-1 flex-wrap mb-1 px-0.5">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => {
-                    playClickSound();
-                    setShowVWAP(!showVWAP);
-                  }}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition flex items-center gap-1 border ${
-                    showVWAP
-                      ? 'bg-amber-100 border-amber-300 text-amber-900'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showVWAP ? 'bg-amber-500' : 'bg-slate-300'}`} />
-                  VWAP 均價
-                </button>
-                <button
-                  onClick={() => {
-                    playClickSound();
-                    setShowMA5(!showMA5);
-                  }}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition flex items-center gap-1 border ${
-                    showMA5
-                      ? 'bg-purple-100 border-purple-300 text-purple-900'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showMA5 ? 'bg-purple-500' : 'bg-slate-300'}`} />
-                  MA5 均線
-                </button>
-                <button
-                  onClick={() => {
-                    playClickSound();
-                    setShowVolumeBars(!showVolumeBars);
-                  }}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition flex items-center gap-1 border ${
-                    showVolumeBars
-                      ? 'bg-indigo-100 border-indigo-300 text-indigo-900'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showVolumeBars ? 'bg-indigo-500' : 'bg-slate-300'}`} />
-                  成交量
-                </button>
-              </div>
+          <button
+            onClick={() => {
+              playClickSound();
+              fetchChartDataForTimeframe(selectedChartTarget, timeframe);
+            }}
+            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700 transition shrink-0"
+            title="手動重新整理"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
+          </button>
 
-              {/* Status or Time Frame Indicator */}
-              <div className="text-[10px] font-mono text-slate-600 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-slate-400" />
-                <span>1分K即時連線</span>
-                {intradayData && (
-                  <span className="text-slate-400 hidden xs:inline ml-1">
-                    ({intradayData.tradingDateStr})
-                  </span>
-                )}
+          <button
+            onClick={() => {
+              playClickSound();
+              onClose();
+            }}
+            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700 transition shrink-0"
+            title="關閉操盤終端"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* MOBILE TOP TAB BAR (Switch between Chart, Orderbook, Diagnosis, Position, and Switcher) */}
+      <div className="lg:hidden bg-slate-950 border-b border-slate-800 px-1 py-0.5 flex items-center justify-between gap-1 text-xs shrink-0 h-8 z-10">
+        <button
+          onClick={() => {
+            playClickSound();
+            setMobileTab('chart');
+          }}
+          className={`flex-1 py-1 rounded font-bold transition text-center text-[11px] flex items-center justify-center gap-1 ${
+            mobileTab === 'chart'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-400 hover:text-slate-200 bg-slate-900/60'
+          }`}
+        >
+          <Activity className="w-3 h-3" />
+          <span>K線</span>
+        </button>
+        <button
+          onClick={() => {
+            playClickSound();
+            setMobileTab('orderbook');
+            setSidebarTab('orderbook');
+          }}
+          className={`flex-1 py-1 rounded font-bold transition text-center text-[11px] flex items-center justify-center gap-1 ${
+            mobileTab === 'orderbook'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-400 hover:text-slate-200 bg-slate-900/60'
+          }`}
+        >
+          <BarChart2 className="w-3 h-3" />
+          <span>五檔</span>
+        </button>
+        <button
+          onClick={() => {
+            playClickSound();
+            setMobileTab('diagnosis');
+            setSidebarTab('diagnosis');
+          }}
+          className={`flex-1 py-1 rounded font-bold transition text-center text-[11px] flex items-center justify-center gap-1 ${
+            mobileTab === 'diagnosis'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-400 hover:text-slate-200 bg-slate-900/60'
+          }`}
+        >
+          <Compass className="w-3 h-3" />
+          <span>診斷</span>
+        </button>
+        <button
+          onClick={() => {
+            playClickSound();
+            setMobileTab('position');
+            setSidebarTab('position');
+          }}
+          className={`flex-1 py-1 rounded font-bold transition text-center text-[11px] flex items-center justify-center gap-1 ${
+            mobileTab === 'position'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-400 hover:text-slate-200 bg-slate-900/60'
+          }`}
+        >
+          <DollarSign className="w-3 h-3" />
+          <span>部位</span>
+        </button>
+        <button
+          onClick={() => {
+            playClickSound();
+            setMobileTab('switcher');
+            setSidebarTab('switcher');
+          }}
+          className={`flex-1 py-1 rounded font-bold transition text-center text-[11px] flex items-center justify-center gap-1 ${
+            mobileTab === 'switcher'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-400 hover:text-slate-200 bg-slate-900/60'
+          }`}
+        >
+          <Search className="w-3 h-3" />
+          <span>選股</span>
+        </button>
+      </div>
+
+      {/* MAIN WORKBENCH BODY: Split View Grid for Desktop */}
+      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 overflow-hidden min-h-0">
+        {/* LEFT / MAIN STAGE: CHART & TECHNICAL TOOLS (8 or 9 cols on Desktop) */}
+        <div className={`lg:col-span-8 xl:col-span-9 flex-col border-b lg:border-b-0 lg:border-r border-slate-800 bg-slate-950 overflow-hidden flex-1 min-h-0 ${mobileTab === 'chart' ? 'flex' : 'hidden lg:flex'}`}>
+          {/* TOOLBAR: Responsive 2-Row Layout on Mobile / Single-Row on Desktop */}
+          <div className="bg-slate-900 border-b border-slate-800 px-1.5 sm:px-3 py-1 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1 sm:gap-1.5 text-xs shrink-0 z-10">
+            {/* Timeframe Segmented Switcher (Full Width Grid on Mobile, Compact on Desktop) */}
+            <div className="w-full lg:w-auto">
+              <div className="grid grid-cols-7 lg:flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 font-mono w-full">
+                {(['1D', '5D', '1M', '3M', '6M', '1Y', '5Y'] as ChartTimeframe[]).map((tf) => (
+                  <button
+                    key={tf}
+                    onClick={() => {
+                      playClickSound();
+                      setTimeframe(tf);
+                    }}
+                    className={`py-1 lg:py-0.5 px-0.5 sm:px-2 rounded font-bold transition text-[11px] sm:text-xs text-center flex items-center justify-center ${
+                      timeframe === tf
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    {tf === '1D' ? '分時' : tf === '5D' ? '5日' : tf === '1M' ? '日K' : tf === '3M' ? '季K' : tf === '6M' ? '半年' : tf === '1Y' ? '週K' : '月K'}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {loading ? (
-              <div className="flex flex-col items-center justify-center text-indigo-600 font-mono text-xs py-14 gap-2">
-                <Activity className="w-5 h-5 animate-spin text-indigo-600" />
-                <span>即時行情加載中...</span>
-              </div>
-            ) : errorMsg ? (
-              <div className="text-center text-slate-500 font-mono text-xs py-14">
-                {errorMsg}
-              </div>
-            ) : chartData ? (
-              <div className="w-full h-[220px] xs:h-[240px] sm:h-[280px] md:h-[320px] lg:h-[350px] relative">
-                <Chart type="line" data={chartData} options={options} />
-              </div>
-            ) : null}
-          </div>
+            {/* Controls & Indicators: Guaranteed 100% Fit on Mobile Screen */}
+            <div className="flex items-center justify-between lg:justify-end gap-1 w-full lg:w-auto">
+              {/* Chart Style Selector */}
+              <select
+                value={chartStyle}
+                onChange={(e) => {
+                  playClickSound();
+                  setChartStyle(e.target.value as ChartRenderStyle);
+                }}
+                className="bg-slate-950 text-slate-200 border border-slate-800 text-[11px] font-bold rounded px-1.5 py-1 lg:py-0.5 focus:outline-none focus:border-indigo-500 font-mono cursor-pointer shrink-0"
+                aria-label="切換圖表模式"
+              >
+                <option value="candlestick">K線</option>
+                <option value="area">面積圖</option>
+                <option value="line">折線圖</option>
+              </select>
 
-          {/* Quick Switcher at Bottom */}
-          <div className="bg-slate-50 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-200 space-y-1.5">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5">
-              {/* Category Tabs */}
-              <div className="flex items-center bg-white p-0.5 sm:p-1 rounded-lg sm:rounded-xl border border-slate-200 text-[11px] sm:text-xs font-mono">
+              {/* Overlays: MA, Bollinger, VWAP */}
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => {
                     playClickSound();
-                    setSwitcherTab('portfolio');
+                    setShowMA(!showMA);
                   }}
-                  className={`px-2.5 py-1 rounded-md sm:rounded-lg font-bold transition flex items-center gap-1 ${
-                    switcherTab === 'portfolio'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                  className={`px-1.5 py-1 lg:py-0.5 rounded text-[11px] font-mono font-bold transition border flex items-center gap-1 ${
+                    showMA
+                      ? 'bg-amber-950/70 border-amber-600/70 text-amber-300'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                   }`}
+                  title="切換均線"
                 >
-                  <span>持股</span>
-                  <span className="bg-indigo-100 text-indigo-800 px-1 py-0.1 rounded text-[9px]">
-                    {portfolio.length}
-                  </span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${showMA ? 'bg-amber-400' : 'bg-slate-600'}`} />
+                  均線
                 </button>
 
                 <button
                   onClick={() => {
                     playClickSound();
-                    setSwitcherTab('indices');
+                    setShowBollinger(!showBollinger);
                   }}
-                  className={`px-2.5 py-1 rounded-md sm:rounded-lg font-bold transition ${
-                    switcherTab === 'indices'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                  className={`px-1.5 py-1 lg:py-0.5 rounded text-[11px] font-mono font-bold transition border flex items-center gap-1 ${
+                    showBollinger
+                      ? 'bg-blue-950/70 border-blue-600/70 text-blue-300'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                   }`}
+                  title="切換布林通道"
                 >
-                  <span>大盤</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${showBollinger ? 'bg-blue-400' : 'bg-slate-600'}`} />
+                  布林
                 </button>
 
-                <button
-                  onClick={() => {
-                    playClickSound();
-                    setSwitcherTab('hot');
-                  }}
-                  className={`px-2.5 py-1 rounded-md sm:rounded-lg font-bold transition flex items-center gap-1 ${
-                    switcherTab === 'hot'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Zap className="w-3 h-3 text-amber-500" />
-                  <span>熱門</span>
-                </button>
-              </div>
-
-              {/* In-Modal Search Box */}
-              <div ref={searchContainerRef} className="relative flex-1 max-w-full sm:max-w-xs">
-                <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={handleSearchChange}
-                  onFocus={() => {
-                    if (searchInput.trim() && searchResults.length === 0) {
-                      const local = searchLocalDictionary(searchInput, 10);
-                      if (local.length > 0) setSearchResults(local);
-                    }
-                  }}
-                  placeholder="搜尋代號/名稱切換..."
-                  className="w-full bg-white border border-slate-200 rounded-lg sm:rounded-xl pl-7 pr-7 py-1 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition font-mono"
-                />
-                {searchInput && (
+                {(timeframe === '1D' || timeframe === '5D') && (
                   <button
-                    type="button"
                     onClick={() => {
-                      setSearchInput('');
-                      setSearchResults([]);
+                      playClickSound();
+                      setShowVWAP(!showVWAP);
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    className={`px-1.5 py-1 lg:py-0.5 rounded text-[11px] font-mono font-bold transition border flex items-center gap-1 ${
+                      showVWAP
+                        ? 'bg-orange-950/70 border-orange-600/70 text-orange-300'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="VWAP"
                   >
-                    <X className="w-3 h-3" />
+                    <span className={`w-1.5 h-1.5 rounded-full ${showVWAP ? 'bg-orange-400' : 'bg-slate-600'}`} />
+                    VWAP
                   </button>
                 )}
+              </div>
 
-                {searchResults.length > 0 && (
-                  <div className="absolute bottom-full mb-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-50 max-h-48 overflow-y-auto ring-1 ring-black/5">
-                    {searchResults.map((item, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          playClickSound();
-                          onSelectChartTarget(item.symbol, item.market, item.name);
-                          setSearchInput('');
-                          setSearchResults([]);
-                        }}
-                        className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 flex justify-between items-center text-xs transition border-b border-slate-100 last:border-b-0"
-                      >
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <span className="font-bold text-slate-900 truncate">{item.name}</span>
-                          <span className="text-indigo-600 font-mono font-bold shrink-0">{item.symbol}</span>
-                        </div>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded uppercase bg-indigo-50 text-indigo-700 font-bold shrink-0">
-                          {item.market}
-                        </span>
-                      </button>
-                    ))}
+              {/* Sub-chart Indicator Dropdown */}
+              <div className="flex items-center bg-slate-950 px-1 py-0.5 rounded border border-slate-800 font-mono shrink-0">
+                <span className="text-[10px] text-slate-500 pr-0.5 font-bold hidden xs:inline">副圖:</span>
+                <select
+                  value={subIndicator}
+                  onChange={(e) => {
+                    playClickSound();
+                    setSubIndicator(e.target.value as SubChartIndicator);
+                  }}
+                  className="bg-transparent text-slate-200 text-[11px] font-bold focus:outline-none cursor-pointer py-0.5 pr-0.5 font-mono"
+                  aria-label="選擇副圖指標"
+                >
+                  <option value="volume" className="bg-slate-900 text-slate-200">量能</option>
+                  <option value="kd" className="bg-slate-900 text-slate-200">KD</option>
+                  <option value="rsi" className="bg-slate-900 text-slate-200">RSI</option>
+                  <option value="macd" className="bg-slate-900 text-slate-200">MACD</option>
+                  <option value="none" className="bg-slate-900 text-slate-400">關閉</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* UNIFIED DYNAMIC INSPECTOR HUD: Responsive 2-Row on Mobile, 1-Row on Desktop so text never overflows */}
+          <div className="bg-slate-950 border-b border-slate-800/80 px-2 sm:px-3 py-1 flex flex-col lg:flex-row lg:items-center lg:justify-between text-[10px] xs:text-[11px] sm:text-xs font-mono text-slate-300 shrink-0 gap-1 min-h-[28px]">
+            {currentCandle ? (
+              <>
+                {/* Row 1: Time + OHLC + Volume */}
+                <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2.5 w-full lg:w-auto overflow-x-auto no-scrollbar">
+                  <span className="text-slate-400 flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">
+                    <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-400" />
+                    <strong className="text-slate-200">{currentCandle.timeStr}</strong>
+                  </span>
+                  <div className="flex items-center gap-1.5 xs:gap-2 shrink-0">
+                    <span className="text-slate-300">
+                      開<strong className="text-slate-100 font-bold">${currentCandle.open.toFixed(2)}</strong>
+                    </span>
+                    <span className="text-slate-300">
+                      高<strong className="text-rose-400 font-bold">${currentCandle.high.toFixed(2)}</strong>
+                    </span>
+                    <span className="text-slate-300">
+                      低<strong className="text-emerald-400 font-bold">${currentCandle.low.toFixed(2)}</strong>
+                    </span>
+                    <span className="text-slate-300">
+                      收<strong className="text-slate-100 font-bold">${currentCandle.close.toFixed(2)}</strong>
+                    </span>
+                    <span className="text-slate-300">
+                      量<strong className="text-indigo-300 font-bold">{formatVolumeShort(currentCandle.volume, selectedChartTarget.market)}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Row 2 (or inline on Desktop): Moving Averages & Overlays */}
+                {(showMA || showBollinger || (showVWAP && (timeframe === '1D' || timeframe === '5D'))) && activeSubValues && (
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] xs:text-[11px] overflow-x-auto no-scrollbar lg:border-l lg:border-slate-800 lg:pl-2 shrink-0">
+                    {showMA && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-amber-400 font-bold">5M:{activeSubValues.ma5 ? activeSubValues.ma5.toFixed(2) : '--'}</span>
+                        <span className="text-cyan-400 font-bold">10M:{activeSubValues.ma10 ? activeSubValues.ma10.toFixed(2) : '--'}</span>
+                        <span className="text-purple-400 font-bold">20M:{activeSubValues.ma20 ? activeSubValues.ma20.toFixed(2) : '--'}</span>
+                        {activeSubValues.ma60 && (
+                          <span className="text-orange-400 font-bold">60M:{activeSubValues.ma60.toFixed(2)}</span>
+                        )}
+                      </div>
+                    )}
+                    {showBollinger && (
+                      <div className="flex items-center gap-1 shrink-0 pl-1 border-l border-slate-800">
+                        <span className="text-blue-400 font-bold">上:{activeSubValues.bbUpper ? activeSubValues.bbUpper.toFixed(2) : '--'}</span>
+                        <span className="text-slate-300 font-bold">中:{activeSubValues.bbMid ? activeSubValues.bbMid.toFixed(2) : '--'}</span>
+                        <span className="text-blue-400 font-bold">下:{activeSubValues.bbLower ? activeSubValues.bbLower.toFixed(2) : '--'}</span>
+                      </div>
+                    )}
+                    {showVWAP && activeSubValues?.vwap && (timeframe === '1D' || timeframe === '5D') && (
+                      <div className="flex items-center gap-1 shrink-0 pl-1 border-l border-slate-800">
+                        <span className="text-orange-400 font-bold">VWAP:{activeSubValues.vwap.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <span className="text-slate-500 text-xs py-0.5">點擊或游標滑動圖表檢視即時數據</span>
+            )}
+          </div>
+
+          {/* INTERACTIVE CHART CANVAS CONTAINER - PROPORTIONALLY MANAGED FLEX */}
+          <div className="flex-1 flex flex-col p-1 sm:p-2 relative overflow-hidden min-h-0">
+            {loading && !mainChartData ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-indigo-400 font-mono text-xs gap-3">
+                <Activity className="w-6 h-6 animate-spin text-indigo-400" />
+                <span>載入行情與深度技術指標中...</span>
+              </div>
+            ) : errorMsg && !mainChartData ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-rose-400 font-mono text-xs gap-2">
+                <ShieldAlert className="w-6 h-6 text-rose-400" />
+                <span>{errorMsg}</span>
+                <button
+                  onClick={() => fetchChartDataForTimeframe(selectedChartTarget, timeframe)}
+                  className="mt-2 px-3 py-1 bg-slate-800 text-slate-200 border border-slate-700 rounded-lg hover:bg-slate-700"
+                >
+                  重試
+                </button>
+              </div>
+            ) : mainChartData ? (
+              <div className="flex-1 flex flex-col w-full h-full min-h-0 relative">
+                {loading && (
+                  <div className="absolute top-2 right-2 z-20 bg-slate-900/85 text-indigo-400 border border-indigo-500/30 text-[10px] px-2 py-0.5 rounded-full font-mono flex items-center gap-1.5 backdrop-blur-xs shadow-md">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
+                    行情更新中...
+                  </div>
+                )}
+
+                {/* Main Price Chart (Zero Obstruction Canvas) */}
+                <div
+                  className={`w-full relative min-h-0 transition-all ${
+                    subIndicator === 'none' ? 'flex-1' : 'flex-[65] sm:flex-[70]'
+                  }`}
+                >
+                  <Chart type={chartStyle === 'candlestick' ? 'bar' : 'line'} data={mainChartData} options={mainChartOptions} />
+                </div>
+
+                {/* Sub Indicator Chart with Slim Header Bar outside Canvas */}
+                {subIndicator !== 'none' && subChartData && (
+                  <div className="w-full flex-[35] sm:flex-[30] min-h-[90px] sm:min-h-[110px] border-t border-slate-800 flex flex-col min-h-0 relative mt-0.5">
+                    {/* Non-overlapping Slim Subchart Header Strip */}
+                    <div className="w-full bg-slate-950/90 px-2 py-0.5 text-[10px] font-mono font-bold text-slate-300 flex items-center justify-between border-b border-slate-800/60 shrink-0 no-scrollbar overflow-x-auto">
+                      <div className="flex items-center gap-2 shrink-0">
+                        {subIndicator === 'volume' && (
+                          <>
+                            <span className="text-slate-400">成交量:</span>
+                            <span className="text-slate-100 font-bold">{activeSubValues?.vol?.toLocaleString() || 0} 股</span>
+                            {activeSubValues?.volMa5 !== null && activeSubValues?.volMa5 !== undefined && (
+                              <span className="text-amber-400 ml-1">5MA: {Math.round(activeSubValues.volMa5).toLocaleString()}</span>
+                            )}
+                            {activeSubValues?.volMa20 !== null && activeSubValues?.volMa20 !== undefined && (
+                              <span className="text-purple-400 ml-1">20MA: {Math.round(activeSubValues.volMa20).toLocaleString()}</span>
+                            )}
+                          </>
+                        )}
+                        {subIndicator === 'kd' && (
+                          <>
+                            <span className="text-slate-400">KD(9,3,3)</span>
+                            <span className="text-amber-400">K: {activeSubValues?.k !== undefined && activeSubValues?.k !== null ? activeSubValues.k.toFixed(1) : '--'}</span>
+                            <span className="text-indigo-400">D: {activeSubValues?.d !== undefined && activeSubValues?.d !== null ? activeSubValues.d.toFixed(1) : '--'}</span>
+                          </>
+                        )}
+                        {subIndicator === 'rsi' && (
+                          <>
+                            <span className="text-slate-400">RSI(14):</span>
+                            <span className={activeSubValues?.rsi && activeSubValues.rsi >= 70 ? 'text-rose-400 font-bold' : activeSubValues?.rsi && activeSubValues.rsi <= 30 ? 'text-emerald-400 font-bold' : 'text-pink-400 font-bold'}>
+                              {activeSubValues?.rsi !== undefined && activeSubValues?.rsi !== null ? activeSubValues.rsi.toFixed(1) : '--'}
+                            </span>
+                          </>
+                        )}
+                        {subIndicator === 'macd' && (
+                          <>
+                            <span className="text-slate-400">MACD(12,26,9)</span>
+                            <span className="text-amber-400">DIF: {activeSubValues?.dif !== undefined && activeSubValues?.dif !== null ? (activeSubValues.dif >= 0 ? `+${activeSubValues.dif.toFixed(2)}` : activeSubValues.dif.toFixed(2)) : '--'}</span>
+                            <span className="text-blue-400">DEM: {activeSubValues?.dem !== undefined && activeSubValues?.dem !== null ? (activeSubValues.dem >= 0 ? `+${activeSubValues.dem.toFixed(2)}` : activeSubValues.dem.toFixed(2)) : '--'}</span>
+                            <span className={activeSubValues?.osc !== undefined && activeSubValues?.osc !== null && activeSubValues.osc >= 0 ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
+                              OSC: {activeSubValues?.osc !== undefined && activeSubValues?.osc !== null ? (activeSubValues.osc >= 0 ? `+${activeSubValues.osc.toFixed(2)}` : activeSubValues.osc.toFixed(2)) : '--'}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-1 w-full h-full min-h-0 relative">
+                      <Chart type={subIndicator === 'macd' || subIndicator === 'volume' ? 'bar' : 'line'} data={subChartData} options={subChartOptions} />
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
+            ) : null}
+          </div>
+        </div>
 
-            {/* Quick Switcher Chips Grid */}
-            <div className="flex flex-wrap items-center gap-1 pt-0.5 max-h-20 overflow-y-auto">
-              {switcherTab === 'portfolio' ? (
-                portfolio.length === 0 ? (
-                  <span className="text-xs text-slate-400 font-mono">尚未持有任何標的</span>
+        {/* RIGHT / WORKSTATION SIDECAR: 4 DEDICATED PRO PANELS (4 or 3 cols on Desktop) */}
+        <div className={`lg:col-span-4 xl:col-span-3 flex-col bg-slate-900 border-t lg:border-t-0 border-slate-800 overflow-hidden flex-1 ${mobileTab !== 'chart' ? 'flex' : 'hidden lg:flex'}`}>
+          {/* Sidecar Tab Switcher (Desktop only to prevent duplicate tabs on mobile) */}
+          <div className="hidden lg:flex bg-slate-950 px-2 py-1.5 border-b border-slate-800 items-center justify-between gap-1 text-xs">
+            <button
+              onClick={() => {
+                playClickSound();
+                setSidebarTab('orderbook');
+                setMobileTab('orderbook');
+              }}
+              className={`flex-1 py-1.5 rounded-lg font-bold transition text-center text-[11px] sm:text-xs flex items-center justify-center gap-1 ${
+                sidebarTab === 'orderbook'
+                  ? 'bg-slate-800 text-indigo-300 border border-slate-700 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              <span>盤口五檔</span>
+            </button>
+
+            <button
+              onClick={() => {
+                playClickSound();
+                setSidebarTab('diagnosis');
+                setMobileTab('diagnosis');
+              }}
+              className={`flex-1 py-1.5 rounded-lg font-bold transition text-center text-[11px] sm:text-xs flex items-center justify-center gap-1 ${
+                sidebarTab === 'diagnosis'
+                  ? 'bg-slate-800 text-amber-300 border border-slate-700 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>多空診斷</span>
+            </button>
+
+            <button
+              onClick={() => {
+                playClickSound();
+                setSidebarTab('position');
+                setMobileTab('position');
+              }}
+              className={`flex-1 py-1.5 rounded-lg font-bold transition text-center text-[11px] sm:text-xs flex items-center justify-center gap-1 ${
+                sidebarTab === 'position'
+                  ? 'bg-slate-800 text-emerald-300 border border-slate-700 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+              <span>我的部位</span>
+            </button>
+
+            <button
+              onClick={() => {
+                playClickSound();
+                setSidebarTab('switcher');
+                setMobileTab('switcher');
+              }}
+              className={`flex-1 py-1.5 rounded-lg font-bold transition text-center text-[11px] sm:text-xs flex items-center justify-center gap-1 ${
+                sidebarTab === 'switcher'
+                  ? 'bg-slate-800 text-purple-300 border border-slate-700 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>選股切換</span>
+            </button>
+          </div>
+
+          {/* Sidecar Tab Content Area */}
+          <div className="flex-1 p-3 overflow-y-auto space-y-3 font-sans modal-content-scroll">
+            {/* PANEL 1: LEVEL-2 ORDER BOOK & DRIVE METER */}
+            {sidebarTab === 'orderbook' && (
+              <div className="space-y-3 animate-fadeIn">
+                {technicalSeries && (
+                  <>
+                    {/* In/Out Flow Meter */}
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+                      <div className="flex justify-between items-center text-xs font-mono">
+                        <span className="text-emerald-400 font-bold flex items-center gap-1">
+                          <ArrowUpRight className="w-3.5 h-3.5" /> 外盤買進 {technicalSeries.orderBook.outerDrivePct}%
+                        </span>
+                        <span className="text-rose-400 font-bold flex items-center gap-1">
+                          內盤賣出 {technicalSeries.orderBook.innerDrivePct}% <ArrowDownRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
+                        <div
+                          className="h-full bg-emerald-500 transition-all duration-500"
+                          style={{ width: `${technicalSeries.orderBook.outerDrivePct}%` }}
+                        />
+                        <div
+                          className="h-full bg-rose-500 transition-all duration-500"
+                          style={{ width: `${technicalSeries.orderBook.innerDrivePct}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 5-Tier Bid / Ask Depth Table */}
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
+                      <div className="flex justify-between items-center text-xs font-bold text-slate-400 border-b border-slate-800 pb-1.5">
+                        <span>委買量 (Bid)</span>
+                        <span className="font-mono text-slate-200">五檔價位</span>
+                        <span>委賣量 (Ask)</span>
+                      </div>
+
+                      {/* Asks (5 tiers - highest to lowest) */}
+                      <div className="space-y-1 font-mono text-xs">
+                        {technicalSeries.orderBook.asks.map((tier, idx) => (
+                          <div key={`ask-${idx}`} className="relative flex justify-between items-center py-0.5 px-1 rounded hover:bg-slate-900">
+                            <span className="text-slate-600 text-[10px]">--</span>
+                            <span className="font-bold text-rose-400 z-10">${tier.price.toFixed(2)}</span>
+                            <span className="text-slate-300 z-10 text-right w-16">{tier.volume}</span>
+                            <div
+                              className="absolute right-0 top-0 bottom-0 bg-rose-950/40 rounded-r transition-all"
+                              style={{ width: `${tier.pct}%` }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="py-1 px-2 bg-slate-900/90 rounded border border-slate-800 flex justify-between items-center text-xs font-mono">
+                        <span className="text-slate-400 font-bold">現價</span>
+                        <strong className="text-white text-sm">${activePrice.toFixed(2)}</strong>
+                        <span className={`font-bold ${isActiveUp ? (isRedUp ? 'text-rose-400' : 'text-emerald-400') : (isRedUp ? 'text-emerald-400' : 'text-rose-400')}`}>
+                          {isActiveUp ? '+' : ''}{activeDiff.toFixed(2)}
+                        </span>
+                      </div>
+
+                      {/* Bids (5 tiers - highest to lowest) */}
+                      <div className="space-y-1 font-mono text-xs">
+                        {technicalSeries.orderBook.bids.map((tier, idx) => (
+                          <div key={`bid-${idx}`} className="relative flex justify-between items-center py-0.5 px-1 rounded hover:bg-slate-900">
+                            <span className="text-slate-300 z-10 w-16 text-left">{tier.volume}</span>
+                            <span className="font-bold text-emerald-400 z-10">${tier.price.toFixed(2)}</span>
+                            <span className="text-slate-600 text-[10px]">--</span>
+                            <div
+                              className="absolute left-0 top-0 bottom-0 bg-emerald-950/40 rounded-l transition-all"
+                              style={{ width: `${tier.pct}%` }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-800 pt-1.5 font-mono">
+                        <span>買盤總量: <strong className="text-emerald-400">{technicalSeries.orderBook.totalBidVol}</strong></span>
+                        <span>賣盤總量: <strong className="text-rose-400">{technicalSeries.orderBook.totalAskVol}</strong></span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* PANEL 2: TECHNICAL & AI DIAGNOSIS */}
+            {sidebarTab === 'diagnosis' && (
+              <div className="space-y-3 animate-fadeIn">
+                {technicalSeries && (
+                  <>
+                    {/* Bullish / Bearish Score Gauge */}
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <div className="text-xs text-slate-400 font-medium">技術多空綜合評分</div>
+                        <div className="text-xl font-black font-mono tracking-tight mt-0.5" style={{ color: technicalSeries.diagnosis.signalColor }}>
+                          {technicalSeries.diagnosis.overallSignal} ({technicalSeries.diagnosis.score}分)
+                        </div>
+                      </div>
+                      <div className="w-12 h-12 rounded-full border-4 flex items-center justify-center font-mono font-black text-sm" style={{ borderColor: technicalSeries.diagnosis.signalColor, color: technicalSeries.diagnosis.signalColor }}>
+                        {technicalSeries.diagnosis.score}
+                      </div>
+                    </div>
+
+                    {/* Indicator Diagnostic Checklist */}
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2 text-xs">
+                      <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
+                        <span className="text-slate-400 font-medium">均線趨勢</span>
+                        <span className="font-bold text-slate-200">{technicalSeries.diagnosis.maTrend}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
+                        <span className="text-slate-400 font-medium">KD 狀態</span>
+                        <span className="font-bold text-slate-200">{technicalSeries.diagnosis.kdSignal}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
+                        <span className="text-slate-400 font-medium">RSI 強弱</span>
+                        <span className="font-bold text-slate-200">{technicalSeries.diagnosis.rsiSignal}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
+                        <span className="text-slate-400 font-medium">MACD 動能</span>
+                        <span className="font-bold text-slate-200">{technicalSeries.diagnosis.macdSignal}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400 font-medium">量能變化</span>
+                        <span className="font-bold text-slate-200">{technicalSeries.diagnosis.volumeSignal}</span>
+                      </div>
+                    </div>
+
+                    {/* Support & Resistance Levels */}
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                      <div className="text-xs font-bold text-slate-300 flex items-center gap-1">
+                        <Target className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>關鍵支撐與壓力關卡</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
+                          <div className="text-[10px] text-rose-400 font-bold">第 2 壓力位 (R2)</div>
+                          <div className="text-sm font-black text-white mt-0.5">${technicalSeries.levels.resistance2.toFixed(2)}</div>
+                        </div>
+                        <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
+                          <div className="text-[10px] text-rose-300 font-bold">第 1 壓力位 (R1)</div>
+                          <div className="text-sm font-black text-white mt-0.5">${technicalSeries.levels.resistance.toFixed(2)}</div>
+                        </div>
+                        <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
+                          <div className="text-[10px] text-emerald-300 font-bold">第 1 支撐位 (S1)</div>
+                          <div className="text-sm font-black text-white mt-0.5">${technicalSeries.levels.support.toFixed(2)}</div>
+                        </div>
+                        <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
+                          <div className="text-[10px] text-emerald-400 font-bold">第 2 支撐位 (S2)</div>
+                          <div className="text-sm font-black text-white mt-0.5">${technicalSeries.levels.support2.toFixed(2)}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Advice Card */}
+                    <div className="bg-indigo-950/40 p-3 rounded-xl border border-indigo-800/60 text-xs space-y-1">
+                      <div className="font-bold text-indigo-300 flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>操盤策略建議</span>
+                      </div>
+                      <p className="text-slate-300 leading-relaxed">{technicalSeries.diagnosis.keyAdvice}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* PANEL 3: MY POSITION & PROFIT SIMULATOR */}
+            {sidebarTab === 'position' && (
+              <div className="space-y-3 animate-fadeIn">
+                {matchedPortfolioItem ? (
+                  <>
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                      <div className="text-xs font-bold text-slate-300">我的持股部位</div>
+                      <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div className="bg-slate-900 p-2 rounded-lg">
+                          <span className="text-[10px] text-slate-400">持有股數</span>
+                          <div className="text-sm font-bold text-white mt-0.5">
+                            {matchedPortfolioItem.shares.toLocaleString()} 股
+                          </div>
+                        </div>
+                        <div className="bg-slate-900 p-2 rounded-lg">
+                          <span className="text-[10px] text-slate-400">買入均價</span>
+                          <div className="text-sm font-bold text-white mt-0.5">
+                            ${matchedPortfolioItem.cost.toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="bg-slate-900 p-2 rounded-lg">
+                          <span className="text-[10px] text-slate-400">目前市值</span>
+                          <div className="text-sm font-bold text-white mt-0.5">
+                            ${(matchedPortfolioItem.shares * activePrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </div>
+                        </div>
+                        <div className="bg-slate-900 p-2 rounded-lg">
+                          <span className="text-[10px] text-slate-400">未實現損益</span>
+                          <div
+                            className={`text-sm font-bold mt-0.5 ${
+                              activePrice >= matchedPortfolioItem.cost
+                                ? isRedUp
+                                  ? 'text-rose-400'
+                                  : 'text-emerald-400'
+                                : isRedUp
+                                ? 'text-emerald-400'
+                                : 'text-rose-400'
+                            }`}
+                          >
+                            {activePrice >= matchedPortfolioItem.cost ? '+' : ''}
+                            ${((activePrice - matchedPortfolioItem.cost) * matchedPortfolioItem.shares).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Target Price Profit Calculator */}
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                      <div className="text-xs font-bold text-slate-300 flex items-center gap-1">
+                        <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>目標價出場獲利試算</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 shrink-0 font-mono">若漲至:</span>
+                        <div className="relative flex-1">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs">$</span>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={targetSimPrice}
+                            onChange={(e) => setTargetSimPrice(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-6 pr-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+
+                      {simPriceNum > 0 && (
+                        <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800 space-y-1 text-xs font-mono">
+                          <div className="flex justify-between items-center text-slate-400">
+                            <span>預估淨獲利</span>
+                            <strong className={`text-sm font-bold ${simProfit >= 0 ? (isRedUp ? 'text-rose-400' : 'text-emerald-400') : (isRedUp ? 'text-emerald-400' : 'text-rose-400')}`}>
+                              {simProfit >= 0 ? '+' : ''}${simProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            </strong>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-400">
+                            <span>預估報酬率 (ROI)</span>
+                            <strong className={`font-bold ${simROI >= 0 ? (isRedUp ? 'text-rose-400' : 'text-emerald-400') : (isRedUp ? 'text-emerald-400' : 'text-rose-400')}`}>
+                              {simROI >= 0 ? '+' : ''}{simROI.toFixed(2)}%
+                            </strong>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 ) : (
-                  portfolio.map((item) => {
-                    const isSelected = item.symbol === selectedChartTarget.symbol;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          playClickSound();
-                          onSelectChartTarget(item.symbol, item.market === 'us' ? 'us' : 'tse', item.name);
-                        }}
-                        className={`px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold transition flex items-center gap-1 border btn-interact ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                            : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                        }`}
-                      >
-                        <span>{item.name}</span>
-                        <span className="opacity-75">({item.symbol})</span>
-                      </button>
-                    );
-                  })
-                )
-              ) : switcherTab === 'indices' ? (
-                MARKET_INDICES.map((item) => {
-                  const isSelected = item.symbol === selectedChartTarget.symbol;
-                  return (
+                  <div className="bg-slate-950 p-6 rounded-xl border border-slate-800 text-center space-y-2">
+                    <DollarSign className="w-8 h-8 text-slate-600 mx-auto" />
+                    <div className="text-sm font-bold text-slate-300">尚未持有此標的</div>
+                    <p className="text-xs text-slate-500">
+                      若要將此股票納入投資組合計算損益，請至首頁點選「新增持股」。
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* PANEL 4: WATCHLIST & FAST MARKET EXPLORER */}
+            {sidebarTab === 'switcher' && (
+              <div className="space-y-3 animate-fadeIn">
+                {/* In-Panel Search */}
+                <div ref={searchContainerRef} className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={handleSearchChange}
+                    placeholder="搜尋股票代號或名稱..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+                  />
+                  {searchInput && (
                     <button
-                      key={item.symbol}
                       onClick={() => {
-                        playClickSound();
-                        onSelectChartTarget(item.symbol, item.market, item.name);
+                        setSearchInput('');
+                        setSearchResults([]);
                       }}
-                      className={`px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold transition flex items-center gap-1 border btn-interact ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                     >
-                      <span>{item.name}</span>
-                      <span className="opacity-75">({item.symbol})</span>
+                      <X className="w-3 h-3" />
                     </button>
-                  );
-                })
-              ) : (
-                HOT_STOCKS.map((item) => {
-                  const isSelected = item.symbol === selectedChartTarget.symbol;
-                  return (
-                    <button
-                      key={item.symbol}
-                      onClick={() => {
-                        playClickSound();
-                        onSelectChartTarget(item.symbol, item.market, item.name);
-                      }}
-                      className={`px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold transition flex items-center gap-1 border btn-interact ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      <span>{item.name}</span>
-                      <span className="opacity-75">({item.symbol})</span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+                  )}
+
+                  {searchResults.length > 0 && (
+                    <div className="absolute top-full mt-1 left-0 right-0 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-48 overflow-y-auto">
+                      {searchResults.map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            playClickSound();
+                            onSelectChartTarget(item.symbol, item.market, item.name);
+                            setSearchInput('');
+                            setSearchResults([]);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-indigo-900/40 flex justify-between items-center text-xs transition border-b border-slate-800 last:border-b-0"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white">{item.name}</span>
+                            <span className="text-indigo-400 font-mono font-bold">{item.symbol}</span>
+                          </div>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded uppercase bg-indigo-950 text-indigo-300 font-bold">
+                            {item.market}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Category Filter Pills */}
+                <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 font-mono text-xs">
+                  <button
+                    onClick={() => {
+                      playClickSound();
+                      setSwitcherCategory('portfolio');
+                    }}
+                    className={`flex-1 py-1 rounded font-bold transition text-center ${
+                      switcherCategory === 'portfolio'
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    持股 ({portfolio.length})
+                  </button>
+                  <button
+                    onClick={() => {
+                      playClickSound();
+                      setSwitcherCategory('indices');
+                    }}
+                    className={`flex-1 py-1 rounded font-bold transition text-center ${
+                      switcherCategory === 'indices'
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    主要指數
+                  </button>
+                  <button
+                    onClick={() => {
+                      playClickSound();
+                      setSwitcherCategory('hot');
+                    }}
+                    className={`flex-1 py-1 rounded font-bold transition text-center ${
+                      switcherCategory === 'hot'
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    焦點熱門
+                  </button>
+                </div>
+
+                {/* Switcher Item List */}
+                <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                  {switcherCategory === 'portfolio' ? (
+                    portfolio.length === 0 ? (
+                      <div className="text-xs text-slate-500 py-4 text-center">尚未持有任何標的</div>
+                    ) : (
+                      portfolio.map((item) => {
+                        const isSelected = item.symbol.toUpperCase() === selectedChartTarget.symbol.toUpperCase();
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              playClickSound();
+                              onSelectChartTarget(item.symbol, item.market === 'us' ? 'us' : 'tse', item.name);
+                            }}
+                            className={`w-full p-2 rounded-lg text-left transition flex items-center justify-between border ${
+                              isSelected
+                                ? 'bg-indigo-950/70 border-indigo-600 text-white shadow-xs'
+                                : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-300'
+                            }`}
+                          >
+                            <div className="overflow-hidden">
+                              <div className="font-bold text-xs truncate">{item.name}</div>
+                              <div className="text-[10px] font-mono text-indigo-400">{item.symbol}</div>
+                            </div>
+                            {item.price && (
+                              <div className="text-right font-mono">
+                                <div className="text-xs font-bold text-white">${item.price.toFixed(2)}</div>
+                                <div className={`text-[10px] ${item.price >= (item.prevClose || item.price) ? (isRedUp ? 'text-rose-400' : 'text-emerald-400') : (isRedUp ? 'text-emerald-400' : 'text-rose-400')}`}>
+                                  {item.price >= (item.prevClose || item.price) ? '+' : ''}
+                                  {(((item.price - (item.prevClose || item.price)) / (item.prevClose || item.price)) * 100).toFixed(2)}%
+                                </div>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })
+                    )
+                  ) : switcherCategory === 'indices' ? (
+                    MARKET_INDICES.map((item) => {
+                      const isSelected = item.symbol === selectedChartTarget.symbol;
+                      return (
+                        <button
+                          key={item.symbol}
+                          onClick={() => {
+                            playClickSound();
+                            onSelectChartTarget(item.symbol, item.market, item.name);
+                          }}
+                          className={`w-full p-2 rounded-lg text-left transition flex items-center justify-between border ${
+                            isSelected
+                              ? 'bg-indigo-950/70 border-indigo-600 text-white shadow-xs'
+                              : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-300'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-bold text-xs">{item.name}</div>
+                            <div className="text-[10px] font-mono text-indigo-400">{item.symbol}</div>
+                          </div>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                            指數
+                          </span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    HOT_STOCKS.map((item) => {
+                      const isSelected = item.symbol.toUpperCase() === selectedChartTarget.symbol.toUpperCase();
+                      return (
+                        <button
+                          key={item.symbol}
+                          onClick={() => {
+                            playClickSound();
+                            onSelectChartTarget(item.symbol, item.market, item.name);
+                          }}
+                          className={`w-full p-2 rounded-lg text-left transition flex items-center justify-between border ${
+                            isSelected
+                              ? 'bg-indigo-950/70 border-indigo-600 text-white shadow-xs'
+                              : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-300'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-bold text-xs">{item.name}</div>
+                            <div className="text-[10px] font-mono text-indigo-400">{item.symbol}</div>
+                          </div>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">
+                            {item.market}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

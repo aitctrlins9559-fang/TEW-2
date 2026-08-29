@@ -158,16 +158,19 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const matchedPortfolioItem = portfolio.find(
-    (p) => p.symbol === selectedChartTarget.symbol && p.market === selectedChartTarget.market
-  );
+  const portfolioRef = useRef(portfolio);
+  portfolioRef.current = portfolio;
 
   const fetchIntradayData = useCallback(
     async (target: ChartTarget) => {
       if (!target.symbol) return;
-      if (!intradayData || intradayData.symbol !== target.symbol) {
-        setLoading(true);
-      }
+      
+      setIntradayData((prev) => {
+        if (!prev || prev.symbol !== target.symbol) {
+          setLoading(true);
+        }
+        return prev;
+      });
       setErrorMsg(null);
 
       try {
@@ -203,8 +206,12 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
 
         const prevClose = meta.chartPreviousClose || meta.previousClose || validPrices[0];
         let latestPrice = validPrices[validPrices.length - 1];
-        if (matchedPortfolioItem?.price && matchedPortfolioItem.price > 0) {
-          latestPrice = matchedPortfolioItem.price;
+        
+        const matched = portfolioRef.current.find(
+          (p) => p.symbol.toUpperCase() === target.symbol.toUpperCase()
+        );
+        if (matched?.price && matched.price > 0) {
+          latestPrice = matched.price;
         }
 
         const highPrice = Math.max(...validPrices);
@@ -251,7 +258,7 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
         setLoading(false);
       }
     },
-    [matchedPortfolioItem]
+    []
   );
 
   useEffect(() => {
@@ -259,7 +266,7 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
       setSearchInput(selectedChartTarget.symbol);
       fetchIntradayData(selectedChartTarget);
     }
-  }, [selectedChartTarget, fetchIntradayData]);
+  }, [selectedChartTarget.symbol, selectedChartTarget.market, fetchIntradayData]);
 
   const [searchResults, setSearchResults] = useState<Array<{ symbol: string; name: string; market: MarketType }>>([]);
   const [showResults, setShowResults] = useState(false);
@@ -701,16 +708,24 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
 
       {/* Line Chart Canvas (Wide Responsive Aspect Ratio) */}
       <div className="bg-slate-50 p-1.5 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-200 h-[200px] sm:h-[280px] lg:h-[320px] min-h-[190px] relative w-full pt-1">
-        {loading ? (
+        {loading && !chartData ? (
           <div className="absolute inset-0 flex items-center justify-center text-indigo-600 font-mono text-xs">
             即時分時數據連線中...
           </div>
-        ) : errorMsg ? (
+        ) : errorMsg && !chartData ? (
           <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-mono text-xs">
             {errorMsg}
           </div>
         ) : chartData ? (
-          <Line data={chartData} options={options} />
+          <>
+            {loading && (
+              <div className="absolute top-2 right-2 z-10 bg-slate-900/80 text-white text-[10px] px-2 py-0.5 rounded-full font-mono flex items-center gap-1 shadow-sm backdrop-blur-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
+                更新中...
+              </div>
+            )}
+            <Line data={chartData} options={options} />
+          </>
         ) : null}
       </div>
 

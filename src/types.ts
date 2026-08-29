@@ -114,3 +114,8 @@ export interface AIAnalysisResult {
   actionAdvice: string;
   timestamp: string;
 }
+
+export type ChartTimeframe = '1D' | '5D' | '1M' | '3M' | '6M' | '1Y' | '5Y';
+export type ChartRenderStyle = 'candlestick' | 'area' | 'line';
+export type SubChartIndicator = 'volume' | 'kd' | 'rsi' | 'macd' | 'none';
+
