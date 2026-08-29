@@ -166,6 +166,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   const [showMA, setShowMA] = useState(true);
   const [showBollinger, setShowBollinger] = useState(false);
   const [showVWAP, setShowVWAP] = useState(true);
+  const [showPrevClose, setShowPrevClose] = useState(true);
 
   // Mobile View Mode & Desktop Sidecar Tab
   const [mobileTab, setMobileTab] = useState<'chart' | 'orderbook' | 'diagnosis' | 'position' | 'switcher'>('chart');
@@ -752,19 +753,57 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
       }
     }
 
+    // Incorporate previous close line if enabled and not massively deviated (ex-dividend protection: within 12% of price action)
+    if (showPrevClose && metaInfo && metaInfo.prevClose > 0) {
+      const pClose = metaInfo.prevClose;
+      const isCloseEnough = pClose >= minVal * 0.88 && pClose <= maxVal * 1.12;
+      if (isCloseEnough) {
+        minVal = Math.min(minVal, pClose);
+        maxVal = Math.max(maxVal, pClose);
+      }
+    }
+
     const diff = maxVal - minVal;
     const pad = diff > 0 ? diff * 0.025 : (minVal * 0.005 || 0.5);
     return {
       min: Math.max(0.01, Number((minVal - pad).toFixed(2))),
       max: Number((maxVal + pad).toFixed(2)),
     };
-  }, [candles, showBollinger, showMA, technicalSeries]);
+  }, [candles, showBollinger, showMA, showPrevClose, metaInfo, technicalSeries]);
 
   // Main Chart Options
   const mainChartOptions = useMemo(() => {
     if (!metaInfo || candles.length === 0) return {};
 
     const annotations: any = {};
+
+    // Intelligent Previous Close Line (Ex-dividend safe: only renders if within reasonable 15% range)
+    if (showPrevClose && metaInfo.prevClose > 0) {
+      const pClose = metaInfo.prevClose;
+      const candleMin = Math.min(...candles.map((c) => c.low).filter((v) => v > 0));
+      const candleMax = Math.max(...candles.map((c) => c.high).filter((v) => v > 0));
+      const isExDividendOrOutlier = pClose < candleMin * 0.85 || pClose > candleMax * 1.15;
+
+      if (!isExDividendOrOutlier) {
+        annotations.prevCloseLine = {
+          type: 'line' as const,
+          yMin: pClose,
+          yMax: pClose,
+          borderColor: '#94a3b8',
+          borderWidth: 1.2,
+          borderDash: [4, 4],
+          label: {
+            content: `昨收 $${pClose.toFixed(2)}`,
+            display: true,
+            position: 'end' as const,
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            color: '#cbd5e1',
+            font: { size: 9, weight: 'bold' as const, family: 'monospace' },
+            padding: { top: 2, bottom: 2, left: 4, right: 4 },
+          },
+        };
+      }
+    }
 
     return {
       responsive: true,
@@ -1438,6 +1477,22 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${showBollinger ? 'bg-blue-400' : 'bg-slate-600'}`} />
                   布林
+                </button>
+
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    setShowPrevClose(!showPrevClose);
+                  }}
+                  className={`px-1.5 py-1 lg:py-0.5 rounded text-[11px] font-mono font-bold transition border flex items-center gap-1 ${
+                    showPrevClose
+                      ? 'bg-slate-800 border-slate-600 text-slate-200'
+                      : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
+                  }`}
+                  title="切換昨收參考線"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${showPrevClose ? 'bg-slate-300' : 'bg-slate-700'}`} />
+                  昨收
                 </button>
 
                 {(timeframe === '1D' || timeframe === '5D') && (
