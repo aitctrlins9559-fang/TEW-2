@@ -265,18 +265,37 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
   const [showResults, setShowResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSearchQueryRef = useRef<string>('');
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
 
   const handleSearchInputChange = (val: string) => {
     setSearchInput(val);
+    lastSearchQueryRef.current = val;
+
     if (!val.trim()) {
       setShowResults(false);
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
     setShowResults(true);
 
-    const instantLocal = searchLocalDictionary(val, 8);
+    const instantLocal = searchLocalDictionary(val, 10);
     if (instantLocal.length > 0) {
       setSearchResults(instantLocal);
     }
@@ -285,17 +304,22 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
 
     searchTimerRef.current = setTimeout(async () => {
+      const currentQ = val;
       try {
-        const results = await apiSearchStock(val);
-        if (Array.isArray(results) && results.length > 0) {
-          setSearchResults(results.slice(0, 8));
+        const results = await apiSearchStock(currentQ);
+        if (lastSearchQueryRef.current === currentQ) {
+          if (Array.isArray(results)) {
+            setSearchResults(results.slice(0, 10));
+          }
         }
       } catch {
         // keep local results
       } finally {
-        setIsSearching(false);
+        if (lastSearchQueryRef.current === currentQ) {
+          setIsSearching(false);
+        }
       }
-    }, 150);
+    }, 120);
   };
 
   const selectSearchItem = (symbol: string, market: MarketType, name: string) => {
@@ -508,7 +532,7 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
           </select>
 
           {/* Search Input with Smart Autocomplete Dropdown */}
-          <div className="relative w-full sm:w-auto">
+          <div ref={searchContainerRef} className="relative w-full sm:w-auto">
             <form onSubmit={handleSearchSubmit} className="relative flex items-center w-full">
               <input
                 type="text"
@@ -516,7 +540,13 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
                 value={searchInput}
                 onChange={(e) => handleSearchInputChange(e.target.value)}
                 onFocus={() => {
-                  if (searchInput.trim()) setShowResults(true);
+                  if (searchInput.trim()) {
+                    setShowResults(true);
+                    if (searchResults.length === 0) {
+                      const local = searchLocalDictionary(searchInput, 10);
+                      if (local.length > 0) setSearchResults(local);
+                    }
+                  }
                 }}
                 className="glass-input rounded-lg sm:rounded-xl px-3 py-1.5 text-xs text-slate-900 outline-none w-full sm:w-56 font-medium pr-7 focus:border-indigo-500"
               />
@@ -541,6 +571,7 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
                     <button
                       key={idx}
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => selectSearchItem(item.symbol, item.market, item.name)}
                       className="w-full text-left p-2.5 hover:bg-slate-50 cursor-pointer flex justify-between items-center text-xs transition"
                     >
@@ -622,28 +653,28 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
 
       {/* 4 Core Metric Tiles */}
       {intradayData && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 text-xs w-full">
-          <div className="bg-slate-50 p-2 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
-            <div className="text-slate-500 font-medium text-[10px] sm:text-[11px] mb-0.5">昨日收盤</div>
-            <div className="text-xs sm:text-sm font-bold text-slate-900 font-mono tabular-nums">
+        <div className="grid grid-cols-4 gap-1 sm:gap-2 text-[10px] sm:text-xs w-full">
+          <div className="bg-slate-50 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
+            <div className="text-slate-500 font-medium text-[9px] sm:text-[11px] mb-0.5 truncate">昨日收盤</div>
+            <div className="text-[11px] sm:text-sm font-bold text-slate-900 font-mono tabular-nums">
               ${intradayData.prevClose.toFixed(2)}
             </div>
           </div>
-          <div className="bg-slate-50 p-2 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
-            <div className="text-slate-500 font-medium text-[10px] sm:text-[11px] mb-0.5">當日最高</div>
-            <div className="text-xs sm:text-sm font-bold text-rose-600 font-mono tabular-nums">
+          <div className="bg-slate-50 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
+            <div className="text-slate-500 font-medium text-[9px] sm:text-[11px] mb-0.5 truncate">當日最高</div>
+            <div className="text-[11px] sm:text-sm font-bold text-rose-600 font-mono tabular-nums">
               ${intradayData.highPrice.toFixed(2)}
             </div>
           </div>
-          <div className="bg-slate-50 p-2 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
-            <div className="text-slate-500 font-medium text-[10px] sm:text-[11px] mb-0.5">當日最低</div>
-            <div className="text-xs sm:text-sm font-bold text-emerald-600 font-mono tabular-nums">
+          <div className="bg-slate-50 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
+            <div className="text-slate-500 font-medium text-[9px] sm:text-[11px] mb-0.5 truncate">當日最低</div>
+            <div className="text-[11px] sm:text-sm font-bold text-emerald-600 font-mono tabular-nums">
               ${intradayData.lowPrice.toFixed(2)}
             </div>
           </div>
-          <div className="bg-slate-50 p-2 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
-            <div className="text-slate-500 font-medium text-[10px] sm:text-[11px] mb-0.5">當日振幅</div>
-            <div className="text-xs sm:text-sm font-bold text-amber-600 font-mono tabular-nums">
+          <div className="bg-slate-50 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
+            <div className="text-slate-500 font-medium text-[9px] sm:text-[11px] mb-0.5 truncate">當日振幅</div>
+            <div className="text-[11px] sm:text-sm font-bold text-amber-600 font-mono tabular-nums">
               {intradayData.amplitudePct.toFixed(2)}%
             </div>
           </div>
@@ -651,7 +682,7 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
       )}
 
       {/* Line Chart Canvas (Wide Responsive Aspect Ratio) */}
-      <div className="bg-slate-50 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-200 h-[240px] sm:h-[300px] lg:h-[340px] min-h-[220px] relative w-full pt-1">
+      <div className="bg-slate-50 p-1.5 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-200 h-[200px] sm:h-[280px] lg:h-[320px] min-h-[190px] relative w-full pt-1">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center text-indigo-600 font-mono text-xs">
             即時分時數據連線中...

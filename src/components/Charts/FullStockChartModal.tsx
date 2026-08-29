@@ -232,6 +232,22 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
     Array<{ symbol: string; name: string; market: MarketType }>
   >([]);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSearchQueryRef = useRef<string>('');
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchResults([]);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
 
   // Match current target with portfolio item
   const matchedPortfolioItem = useMemo(() => {
@@ -244,6 +260,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setSearchInput(val);
+    lastSearchQueryRef.current = val;
 
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
 
@@ -252,21 +269,24 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
       return;
     }
 
-    const instantLocal = searchLocalDictionary(val, 8);
+    const instantLocal = searchLocalDictionary(val, 10);
     if (instantLocal.length > 0) {
       setSearchResults(instantLocal);
     }
 
     searchTimeoutRef.current = setTimeout(async () => {
+      const currentQ = val;
       try {
-        const res = await apiSearchStock(val);
-        if (Array.isArray(res) && res.length > 0) {
-          setSearchResults(res);
+        const res = await apiSearchStock(currentQ);
+        if (lastSearchQueryRef.current === currentQ) {
+          if (Array.isArray(res)) {
+            setSearchResults(res.slice(0, 10));
+          }
         }
       } catch {
         // Keep local matches if any
       }
-    }, 150);
+    }, 120);
   };
 
   // Fetch Intraday Data
@@ -678,38 +698,38 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-fadeIn h-[100dvh]">
-      <div className="w-full max-w-6xl xl:max-w-7xl bg-white border border-slate-200 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+      <div className="w-full sm:max-w-6xl xl:max-w-7xl bg-white sm:border sm:border-slate-200 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto sm:max-h-[94vh]">
         {/* Top Professional Control Header Bar */}
-        <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-2 shrink-0">
-          <div className="flex items-center gap-2 overflow-hidden">
+        <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 sm:px-4 sm:py-3 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
             <button
               onClick={() => {
                 playClickSound();
                 onClose();
               }}
-              className="flex items-center gap-1 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold transition btn-interact shrink-0"
+              className="flex items-center gap-1 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl border border-slate-200 text-xs font-bold transition btn-interact shrink-0"
             >
-              <ArrowLeft className="w-4 h-4 text-indigo-600" />
-              <span className="hidden sm:inline">返回</span>
+              <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
+              <span className="text-xs">返回</span>
             </button>
 
-            <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0 font-bold">
-              <BarChart2 className="w-4 h-4" />
+            <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0 font-bold hidden xs:block">
+              <BarChart2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
             <div className="overflow-hidden">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight truncate">
+              <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                <h2 className="text-sm sm:text-lg font-extrabold text-slate-900 tracking-tight truncate">
                   {selectedChartTarget.name || selectedChartTarget.symbol}
                 </h2>
-                <span className="text-xs font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md shrink-0">
+                <span className="text-[10px] sm:text-xs font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 sm:px-2 py-0.2 rounded shrink-0">
                   {selectedChartTarget.symbol}
                 </span>
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0 uppercase">
+                <span className="text-[9px] sm:text-[10px] font-semibold px-1 sm:px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 shrink-0 uppercase">
                   {selectedChartTarget.market === 'us' ? '美股' : selectedChartTarget.market === 'otc' ? '上櫃' : '上市'}
                 </span>
                 {intradayData && (
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded border font-mono flex items-center gap-1 shrink-0 ${
+                    className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded border font-mono flex items-center gap-1 shrink-0 ${
                       intradayData.isMarketOpen
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -718,12 +738,12 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     {intradayData.isMarketOpen ? (
                       <>
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        盤中交易中
+                        <span className="hidden xs:inline">盤中交易中</span>
                       </>
                     ) : (
                       <>
                         <span>🌙</span>
-                        <span>{intradayData.tradingDateStr || ''} 收盤價</span>
+                        <span>{intradayData.tradingDateStr || ''} 收盤</span>
                       </>
                     )}
                   </span>
@@ -733,39 +753,39 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
           </div>
 
           {/* Action Controls & Stock Stepper (< / >) */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {onOpenAICopilot && (
               <button
                 onClick={() => {
                   playClickSound();
                   onOpenAICopilot();
                 }}
-                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 btn-interact"
+                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1 shrink-0 btn-interact"
                 title="開啟 AI 戰情操盤顧問"
               >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600 animate-spin" style={{ animationDuration: '6s' }} />
+                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-600 animate-spin" style={{ animationDuration: '6s' }} />
                 <span className="hidden sm:inline">AI 戰情</span>
               </button>
             )}
 
             {portfolioList.length > 1 && (
-              <div className="flex items-center bg-white border border-slate-200 rounded-xl p-0.5">
+              <div className="flex items-center bg-white border border-slate-200 rounded-lg sm:rounded-xl p-0.5">
                 <button
                   onClick={handlePrevStock}
-                  className="p-1 hover:bg-slate-100 text-slate-600 rounded-lg transition"
+                  className="p-0.5 sm:p-1 hover:bg-slate-100 text-slate-600 rounded-md transition"
                   title="上一檔持股"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
-                <span className="text-[10px] font-mono px-1 text-slate-500 font-bold">
+                <span className="text-[9px] sm:text-[10px] font-mono px-0.5 sm:px-1 text-slate-500 font-bold">
                   {currentPortfolioIndex >= 0 ? `${currentPortfolioIndex + 1}/${portfolioList.length}` : '切換'}
                 </span>
                 <button
                   onClick={handleNextStock}
-                  className="p-1 hover:bg-slate-100 text-slate-600 rounded-lg transition"
+                  className="p-0.5 sm:p-1 hover:bg-slate-100 text-slate-600 rounded-md transition"
                   title="下一檔持股"
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               </div>
             )}
@@ -775,29 +795,29 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 playClickSound();
                 onClose();
               }}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
+              className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
               title="關閉看盤視窗"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="p-4 sm:p-5 space-y-3 overflow-y-auto">
+        <div className="p-2.5 sm:p-4 space-y-2 sm:space-y-3 overflow-y-auto flex-1">
           {/* ESSENTIAL CORE BANNER: Price + Volume + Key Action Status */}
           {intradayData && (
-            <div className="bg-slate-50 border border-slate-200/90 p-4 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="bg-slate-50 border border-slate-200/90 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3">
               {/* Left: Latest Price & Change */}
               <div className="flex flex-col gap-0.5">
-                <div className="text-[11px] font-bold font-mono text-slate-500">
+                <div className="text-[10px] sm:text-[11px] font-bold font-mono text-slate-500">
                   {intradayData.isMarketOpen ? (
                     <span className="text-emerald-700 flex items-center gap-1 font-bold">
-                      <span className="relative flex h-2 w-2">
+                      <span className="relative flex h-1.5 w-1.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                       </span>
-                      {intradayData.tradingDateStr} 盤中即時現價
+                      {intradayData.tradingDateStr} 盤中現價
                     </span>
                   ) : (
                     <span className="text-amber-800 font-bold inline-flex items-center gap-1">
@@ -806,12 +826,12 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     </span>
                   )}
                 </div>
-                <div className="flex items-baseline gap-2.5 flex-wrap">
-                  <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight tabular-nums text-slate-900">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-2xl sm:text-4xl font-black font-mono tracking-tight tabular-nums text-slate-900">
                     ${intradayData.latestPrice.toFixed(2)}
                   </span>
                   <span
-                    className={`text-sm sm:text-base font-mono font-bold flex items-center gap-1 ${
+                    className={`text-xs sm:text-base font-mono font-bold flex items-center gap-0.5 ${
                       isUp
                         ? isRedUp
                           ? 'text-rose-600'
@@ -821,7 +841,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                         : 'text-rose-600'
                     }`}
                   >
-                    {isUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                    {isUp ? <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                     {isUp ? '+' : ''}
                     {diff.toFixed(2)} ({isUp ? '+' : ''}
                     {diffPct.toFixed(2)}%)
@@ -830,11 +850,11 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
               </div>
 
               {/* Right: Essential Volume & Intraday VWAP Highlight Cards */}
-              <div className="flex items-center gap-2 font-mono text-xs flex-wrap">
-                <div className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xs">
-                  <Volume2 className="w-4 h-4 text-amber-600 shrink-0" />
+              <div className="flex items-center gap-1.5 sm:gap-2 font-mono text-[11px] sm:text-xs flex-wrap">
+                <div className="bg-white border border-slate-200 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 shadow-xs">
+                  <Volume2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                   <div>
-                    <span className="text-[10px] text-slate-500 block font-sans font-medium">成交量</span>
+                    <span className="text-[9px] sm:text-[10px] text-slate-500 block font-sans font-medium">成交量</span>
                     <strong className="text-slate-900 font-bold">
                       {formatVolumeStr(intradayData.totalVolume, intradayData.market)}
                     </strong>
@@ -842,10 +862,10 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 </div>
 
                 {intradayData.estimatedVolume > 0 && (
-                  <div className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xs">
-                    <Flame className="w-4 h-4 text-purple-600 shrink-0" />
+                  <div className="bg-white border border-slate-200 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 shadow-xs">
+                    <Flame className="w-3.5 h-3.5 text-purple-600 shrink-0" />
                     <div>
-                      <span className="text-[10px] text-slate-500 block font-sans font-medium">預估量</span>
+                      <span className="text-[9px] sm:text-[10px] text-slate-500 block font-sans font-medium">預估量</span>
                       <strong className="text-purple-700 font-bold">
                         {formatVolumeStr(intradayData.estimatedVolume, intradayData.market)}
                       </strong>
@@ -856,52 +876,52 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             </div>
           )}
 
-          {/* SECONDARY TRADING METRICS & PIVOT CARDS */}
+          {/* SECONDARY TRADING METRICS & PIVOT CARDS (6-Cols High Density) */}
           {intradayData && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs font-mono">
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-sans block">開盤價</span>
-                <strong className="text-slate-900 font-bold">${intradayData.openPrice.toFixed(2)}</strong>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 sm:gap-1.5 text-[11px] font-mono">
+              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
+                <span className="text-[9px] text-slate-500 font-sans block">開盤價</span>
+                <strong className="text-slate-900 font-bold text-xs">${intradayData.openPrice.toFixed(2)}</strong>
               </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-sans block">昨日收盤</span>
-                <strong className="text-slate-900 font-bold">${intradayData.prevClose.toFixed(2)}</strong>
+              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
+                <span className="text-[9px] text-slate-500 font-sans block">昨日收盤</span>
+                <strong className="text-slate-900 font-bold text-xs">${intradayData.prevClose.toFixed(2)}</strong>
               </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-sans block">最高價</span>
-                <strong className="text-rose-600 font-bold">${intradayData.highPrice.toFixed(2)}</strong>
+              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
+                <span className="text-[9px] text-slate-500 font-sans block">最高價</span>
+                <strong className="text-rose-600 font-bold text-xs">${intradayData.highPrice.toFixed(2)}</strong>
               </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-sans block">最低價</span>
-                <strong className="text-emerald-600 font-bold">${intradayData.lowPrice.toFixed(2)}</strong>
+              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
+                <span className="text-[9px] text-slate-500 font-sans block">最低價</span>
+                <strong className="text-emerald-600 font-bold text-xs">${intradayData.lowPrice.toFixed(2)}</strong>
               </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-sans block">當日振幅</span>
-                <strong className="text-amber-600 font-bold">{intradayData.amplitudePct.toFixed(2)}%</strong>
+              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
+                <span className="text-[9px] text-slate-500 font-sans block">當日振幅</span>
+                <strong className="text-amber-600 font-bold text-xs">{intradayData.amplitudePct.toFixed(2)}%</strong>
               </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-sans block">高低位階</span>
-                <strong className="text-indigo-600 font-bold">{strengthText} ({Math.round(strengthPct)}%)</strong>
+              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
+                <span className="text-[9px] text-slate-500 font-sans block">高低位階</span>
+                <strong className="text-indigo-600 font-bold text-xs">{strengthText} ({Math.round(strengthPct)}%)</strong>
               </div>
             </div>
           )}
 
           {/* Chart Canvas Section */}
-          <div className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-200 relative flex flex-col justify-center min-h-[320px]">
+          <div className="bg-slate-50 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-200 relative flex flex-col justify-center min-h-[220px] sm:min-h-[280px]">
             {/* Intraday Technical Overlay Toggles */}
-            <div className="sm:absolute sm:top-3 sm:right-4 z-10 flex items-center gap-1.5 flex-wrap mb-2 sm:mb-0">
+            <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap mb-1.5 sm:mb-2">
               <button
                 onClick={() => {
                   playClickSound();
                   setShowVWAP(!showVWAP);
                 }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1 border ${
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-mono font-bold transition flex items-center gap-1 border ${
                   showVWAP
                     ? 'bg-amber-100 border-amber-300 text-amber-900'
                     : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span className={`w-2 h-2 rounded-full ${showVWAP ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${showVWAP ? 'bg-amber-500' : 'bg-slate-300'}`} />
                 VWAP 均價線
               </button>
               <button
@@ -909,13 +929,13 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                   playClickSound();
                   setShowMA5(!showMA5);
                 }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1 border ${
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-mono font-bold transition flex items-center gap-1 border ${
                   showMA5
                     ? 'bg-purple-100 border-purple-300 text-purple-900'
                     : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span className={`w-2 h-2 rounded-full ${showMA5 ? 'bg-purple-500' : 'bg-slate-300'}`} />
+                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${showMA5 ? 'bg-purple-500' : 'bg-slate-300'}`} />
                 MA5 均線
               </button>
               <button
@@ -923,51 +943,51 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                   playClickSound();
                   setShowVolumeBars(!showVolumeBars);
                 }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1 border ${
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-mono font-bold transition flex items-center gap-1 border ${
                   showVolumeBars
                     ? 'bg-indigo-100 border-indigo-300 text-indigo-900'
                     : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <BarChart className="w-3 h-3 text-indigo-600" />
+                <BarChart className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-600" />
                 成交量柱
               </button>
             </div>
 
             {loading ? (
-              <div className="flex flex-col items-center justify-center text-indigo-600 font-mono text-xs py-16 gap-2">
-                <Activity className="w-6 h-6 animate-spin text-indigo-600" />
-                <span>盤中即時行情數據加載中...</span>
+              <div className="flex flex-col items-center justify-center text-indigo-600 font-mono text-xs py-12 gap-2">
+                <Activity className="w-5 h-5 animate-spin text-indigo-600" />
+                <span>即時行情加載中...</span>
               </div>
             ) : errorMsg ? (
-              <div className="text-center text-slate-500 font-mono text-xs py-16">
+              <div className="text-center text-slate-500 font-mono text-xs py-12">
                 {errorMsg}
               </div>
             ) : chartData ? (
-              <div className="w-full h-[300px] sm:h-[380px] relative pt-2">
+              <div className="w-full h-[220px] sm:h-[320px] lg:h-[360px] relative">
                 <Chart type="line" data={chartData} options={options} />
               </div>
             ) : null}
           </div>
 
           {/* Quick Switcher at Bottom */}
-          <div className="bg-slate-50 p-3 pb-6 sm:pb-3 rounded-2xl border border-slate-200 space-y-2">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+          <div className="bg-slate-50 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-200 space-y-1.5">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5">
               {/* Category Tabs */}
-              <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 text-xs font-mono">
+              <div className="flex items-center bg-white p-0.5 sm:p-1 rounded-lg sm:rounded-xl border border-slate-200 text-[11px] sm:text-xs font-mono">
                 <button
                   onClick={() => {
                     playClickSound();
                     setSwitcherTab('portfolio');
                   }}
-                  className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                  className={`px-2.5 py-1 rounded-md sm:rounded-lg font-bold transition flex items-center gap-1 ${
                     switcherTab === 'portfolio'
-                      ? 'bg-indigo-600 text-white shadow-sm'
+                      ? 'bg-indigo-600 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <span>持股</span>
-                  <span className="bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded text-[10px]">
+                  <span className="bg-indigo-100 text-indigo-800 px-1 py-0.1 rounded text-[9px]">
                     {portfolio.length}
                   </span>
                 </button>
@@ -977,13 +997,13 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     playClickSound();
                     setSwitcherTab('indices');
                   }}
-                  className={`px-3 py-1 rounded-lg font-bold transition ${
+                  className={`px-2.5 py-1 rounded-md sm:rounded-lg font-bold transition ${
                     switcherTab === 'indices'
-                      ? 'bg-indigo-600 text-white shadow-sm'
+                      ? 'bg-indigo-600 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <span>大盤指數</span>
+                  <span>大盤</span>
                 </button>
 
                 <button
@@ -991,57 +1011,66 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     playClickSound();
                     setSwitcherTab('hot');
                   }}
-                  className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1 ${
+                  className={`px-2.5 py-1 rounded-md sm:rounded-lg font-bold transition flex items-center gap-1 ${
                     switcherTab === 'hot'
-                      ? 'bg-indigo-600 text-white shadow-sm'
+                      ? 'bg-indigo-600 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <Zap className="w-3 h-3 text-amber-500" />
-                  <span>熱門標的</span>
+                  <span>熱門</span>
                 </button>
               </div>
 
               {/* In-Modal Search Box */}
-              <div className="relative flex-1 max-w-xs">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <div ref={searchContainerRef} className="relative flex-1 max-w-full sm:max-w-xs">
+                <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchInput}
                   onChange={handleSearchChange}
+                  onFocus={() => {
+                    if (searchInput.trim() && searchResults.length === 0) {
+                      const local = searchLocalDictionary(searchInput, 10);
+                      if (local.length > 0) setSearchResults(local);
+                    }
+                  }}
                   placeholder="搜尋代號/名稱切換..."
-                  className="w-full glass-input rounded-xl pl-8 pr-8 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none transition font-mono"
+                  className="w-full bg-white border border-slate-200 rounded-lg sm:rounded-xl pl-7 pr-7 py-1 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition font-mono"
                 />
                 {searchInput && (
                   <button
+                    type="button"
                     onClick={() => {
                       setSearchInput('');
                       setSearchResults([]);
                     }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-3 h-3" />
                   </button>
                 )}
 
                 {searchResults.length > 0 && (
-                  <div className="absolute bottom-full mb-2 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-30 max-h-48 overflow-y-auto">
+                  <div className="absolute bottom-full mb-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-50 max-h-48 overflow-y-auto ring-1 ring-black/5">
                     {searchResults.map((item, idx) => (
                       <button
                         key={idx}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
                           playClickSound();
                           onSelectChartTarget(item.symbol, item.market, item.name);
                           setSearchInput('');
                           setSearchResults([]);
                         }}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-50 flex justify-between items-center text-xs transition border-b border-slate-100 last:border-b-0"
+                        className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 flex justify-between items-center text-xs transition border-b border-slate-100 last:border-b-0"
                       >
                         <div className="flex items-center gap-2 overflow-hidden">
                           <span className="font-bold text-slate-900 truncate">{item.name}</span>
                           <span className="text-indigo-600 font-mono font-bold shrink-0">{item.symbol}</span>
                         </div>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded uppercase bg-slate-100 text-slate-600 shrink-0">
+                        <span className="text-[9px] px-1.5 py-0.2 rounded uppercase bg-indigo-50 text-indigo-700 font-bold shrink-0">
                           {item.market}
                         </span>
                       </button>
@@ -1052,7 +1081,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             </div>
 
             {/* Quick Switcher Chips Grid */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1 max-h-24 overflow-y-auto">
+            <div className="flex flex-wrap items-center gap-1 pt-0.5 max-h-20 overflow-y-auto">
               {switcherTab === 'portfolio' ? (
                 portfolio.length === 0 ? (
                   <span className="text-xs text-slate-400 font-mono">尚未持有任何標的</span>
@@ -1066,9 +1095,9 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                           playClickSound();
                           onSelectChartTarget(item.symbol, item.market === 'us' ? 'us' : 'tse', item.name);
                         }}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1 border btn-interact ${
+                        className={`px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold transition flex items-center gap-1 border btn-interact ${
                           isSelected
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                             : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
                         }`}
                       >
@@ -1088,9 +1117,9 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                         playClickSound();
                         onSelectChartTarget(item.symbol, item.market, item.name);
                       }}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1 border btn-interact ${
+                      className={`px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold transition flex items-center gap-1 border btn-interact ${
                         isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                           : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
                       }`}
                     >
@@ -1109,9 +1138,9 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                         playClickSound();
                         onSelectChartTarget(item.symbol, item.market, item.name);
                       }}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1 border btn-interact ${
+                      className={`px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold transition flex items-center gap-1 border btn-interact ${
                         isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                           : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
                       }`}
                     >

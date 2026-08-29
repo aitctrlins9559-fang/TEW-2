@@ -61,6 +61,7 @@ interface StockOpenApiCacheItem {
   prevClose: number;
   dayHigh: number;
   dayLow: number;
+  market: 'tse' | 'otc';
 }
 
 let twseOpenApiCache: Map<string, StockOpenApiCacheItem> = new Map();
@@ -96,6 +97,7 @@ async function getTwseOpenApiQuotes(): Promise<Map<string, StockOpenApiCacheItem
             prevClose: !isNaN(prevClose) && prevClose > 0 ? prevClose : close,
             dayHigh: high,
             dayLow: low,
+            market: 'tse',
           };
           newCache.set(code, item);
           newCache.set(`${code}.TW`, item);
@@ -127,6 +129,7 @@ async function getTwseOpenApiQuotes(): Promise<Map<string, StockOpenApiCacheItem
             prevClose: !isNaN(prevClose) && prevClose > 0 ? prevClose : close,
             dayHigh: high,
             dayLow: low,
+            market: 'otc',
           };
           newCache.set(code, item);
           newCache.set(`${code}.TWO`, item);
@@ -815,36 +818,282 @@ app.get('/api/dividends', async (req, res) => {
   });
 });
 
-// 4. Stock Search Endpoint
+// 4. Stock Search Endpoint (With Full Traditional Chinese Translation & TWSE/TPEx OpenAPI Lookup)
+const US_STOCK_CN_MAP: Record<string, string> = {
+  NVDA: 'NVIDIA 輝達',
+  TSM: '台積電 ADR',
+  AAPL: 'Apple 蘋果',
+  MSFT: 'Microsoft 微軟',
+  GOOGL: 'Alphabet 谷歌',
+  GOOG: 'Alphabet 谷歌 (Class C)',
+  AMZN: 'Amazon 亞馬遜',
+  META: 'Meta 臉書',
+  TSLA: 'Tesla 特斯拉',
+  AMD: 'AMD 超微半導體',
+  AVGO: 'Broadcom 博通',
+  PLTR: 'Palantir 帕蘭提爾',
+  SMCI: '超微電腦 Supermicro',
+  INTC: 'Intel 英特爾',
+  ARM: 'Arm 安謀控股',
+  QCOM: 'Qualcomm 高通',
+  TXN: '德州儀器 TI',
+  MU: 'Micron 美光',
+  AMAT: '應用材料 Applied Materials',
+  LRCX: '科林研發 Lam Research',
+  ASML: '艾司摩爾 ASML',
+  KLAC: '科磊 KLA',
+  MRVL: '邁威爾 Marvell',
+  ADI: '亞德諾半導體 ADI',
+  CRWD: 'CrowdStrike',
+  PANW: 'Palo Alto 派拓網路',
+  FTNT: 'Fortinet 飛塔資訊',
+  NOW: 'ServiceNow',
+  SNOW: 'Snowflake',
+  DDOG: 'Datadog',
+  NET: 'Cloudflare',
+  COIN: 'Coinbase 加密交易所',
+  MSTR: 'MicroStrategy 微策略',
+  LLY: 'Eli Lilly 禮來製藥',
+  NVO: 'Novo Nordisk 諾和諾德',
+  JNJ: 'Johnson & Johnson 強生',
+  PFE: 'Pfizer 輝瑞',
+  ABBV: 'AbbVie 艾伯維',
+  MRK: 'Merck 默克',
+  UNH: 'UnitedHealth 聯合健康',
+  ISRG: 'Intuitive 直覺外科 (達文西)',
+  COST: 'Costco 好市多',
+  WMT: 'Walmart 沃爾瑪',
+  TGT: 'Target 塔吉特',
+  HD: 'Home Depot 家得寶',
+  NKE: 'Nike 耐吉',
+  SBUX: 'Starbucks 星巴克',
+  MCD: "McDonald's 麥當勞",
+  KO: 'Coca-Cola 可口可樂',
+  PEP: 'PepsiCo 百事可樂',
+  PG: 'Procter & Gamble 寶僑',
+  DIS: 'Disney 迪士尼',
+  NFLX: 'Netflix 網飛',
+  CRM: 'Salesforce 賽富時',
+  ORCL: 'Oracle 甲骨文',
+  IBM: 'IBM 國際商業機器',
+  UBER: 'Uber 優步',
+  ABNB: 'Airbnb 愛彼迎',
+  JPM: 'JPMorgan 摩根大通',
+  BAC: 'Bank of America 美國銀行',
+  WFC: 'Wells Fargo 富國銀行',
+  C: 'Citigroup 花旗集團',
+  MS: 'Morgan Stanley 摩根士丹利',
+  GS: 'Goldman Sachs 高盛',
+  BLK: 'BlackRock 貝萊德',
+  V: 'Visa 維薩',
+  MA: 'Mastercard 萬事達卡',
+  AXP: 'American Express 美國運通',
+  PYPL: 'PayPal 貝寶',
+  SQ: 'Block (Square)',
+  'BRK.B': '波克夏·海瑟威 Berkshire B',
+  'BRK.A': '波克夏·海瑟威 Berkshire A',
+  XOM: 'ExxonMobil 埃克森美孚',
+  CVX: 'Chevron 雪佛龍',
+  CAT: 'Caterpillar 卡特彼勒',
+  BA: 'Boeing 波音',
+  GE: 'GE 奇異航太',
+  LMT: 'Lockheed Martin 洛克希德馬丁',
+  SPY: 'SPDR 標普500 ETF',
+  VOO: 'Vanguard 標普500 ETF',
+  IVV: 'iShares 標普500 ETF',
+  QQQ: 'Invesco 納斯達克100 ETF',
+  QQQM: 'Invesco 納指100 迷你ETF',
+  VTI: 'Vanguard 全美市場 ETF',
+  VT: 'Vanguard 全球股票 ETF',
+  SOXX: 'iShares 費城半導體 ETF',
+  SMH: 'VanEck 半導體 ETF',
+  IWM: 'iShares 羅素2000 小型股 ETF',
+  DIA: 'SPDR 道瓊工業指數 ETF',
+  XLK: '科技類股精選 SPDR ETF',
+  XLF: '金融類股精選 SPDR ETF',
+  XLE: '能源類股精選 SPDR ETF',
+  XLV: '生醫保健精選 SPDR ETF',
+  TQQQ: 'ProShares 3倍做多納指 ETF',
+  SQQQ: 'ProShares 3倍做空納指 ETF',
+  SOXL: 'Direxion 3倍做多半導體 ETF',
+  SOXS: 'Direxion 3倍做空半導體 ETF',
+  NVDL: 'GraniteShares 2倍做多輝達 ETF',
+  TSLL: 'Direxion 2倍做多特斯拉 ETF',
+  CONY: 'YieldMax Coinbase 期權高息 ETF',
+  TSLY: 'YieldMax 特斯拉期權高息 ETF',
+  JEPI: 'JPMorgan 股票溢價收益 ETF',
+  JEPQ: 'JPMorgan 納斯達克股票溢價 ETF',
+  TLT: 'iShares 20年期以上美國公債 ETF',
+  IEF: 'iShares 7-10年期美國公債 ETF',
+  SHY: 'iShares 1-3年期美國公債 ETF',
+  BND: 'Vanguard 總體債券市場 ETF',
+  AGG: 'iShares 核心美國總體債券 ETF',
+  GLD: 'SPDR 黃金 ETF',
+  SLV: 'iShares 白銀 ETF',
+  USO: 'United States 原油基金 ETF',
+  IBIT: 'iShares 比特幣現貨 ETF',
+  FBTC: 'Fidelity 比特幣現貨 ETF',
+};
+
 app.get('/api/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (!q) return res.json({ success: true, results: [] });
 
+  const upperQ = q.toUpperCase().replace(/\.(TW|TWO)$/i, '');
+  const isTwNumeric = /^\d{4,6}[A-Z]?$/i.test(upperQ);
+
   try {
-    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=zh-Hant-TW&region=TW&quotesCount=10&newsCount=0`;
-    const data = await fetchWithTimeout(url, 5000);
-    const quotes = data?.quotes || [];
+    // 1. 取得 TWSE / TPEx 官方中文名稱快取
+    const openApiMap = await getTwseOpenApiQuotes();
+    const candidateMap = new Map<string, { symbol: string; name: string; market: 'tse' | 'otc' | 'us' }>();
 
-    const results = quotes
-      .filter((item: { quoteType?: string }) => item.quoteType === 'EQUITY' || item.quoteType === 'ETF')
-      .map((item: { symbol: string; shortname?: string; longname?: string }) => {
-        let symbol = item.symbol;
-        let market: 'tse' | 'otc' | 'us' = 'us';
-        if (symbol.endsWith('.TW')) {
-          symbol = symbol.slice(0, -3);
-          market = 'tse';
-        } else if (symbol.endsWith('.TWO')) {
-          symbol = symbol.slice(0, -4);
-          market = 'otc';
+    // 2. 比對 TWSE / TPEx 官方快取資料庫（全台股上市公司與上櫃公司）
+    openApiMap.forEach((item) => {
+      if (item.symbol.endsWith('.TW') || item.symbol.endsWith('.TWO')) return; // 略過帶後綴的鍵
+      const symUpper = item.symbol.toUpperCase();
+      const sName = item.shortName;
+
+      // 檢查是否符合搜尋條件
+      if (
+        symUpper === upperQ ||
+        sName === q ||
+        symUpper.startsWith(upperQ) ||
+        sName.startsWith(q) ||
+        sName.includes(q) ||
+        symUpper.includes(upperQ)
+      ) {
+        candidateMap.set(symUpper, {
+          symbol: symUpper,
+          name: item.shortName,
+          market: item.market,
+        });
+      }
+    });
+
+    // 3. 同步並行查詢 TWSE MIS (若輸入精確代號但快取中未命中) 與 Yahoo Finance
+    const promises: Promise<void>[] = [];
+
+    if (isTwNumeric && !candidateMap.has(upperQ)) {
+      promises.push(
+        (async () => {
+          try {
+            const misUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${upperQ}.tw|otc_${upperQ}.tw&_=${Date.now()}`;
+            const misData = await fetchWithTimeout(misUrl, 2000);
+            const msg = misData?.msgArray?.[0];
+            if (msg && msg.c) {
+              const realName = (msg.n && msg.n.trim() !== '-' && msg.n.trim() !== '') 
+                ? msg.n.trim() 
+                : ((msg.nf && msg.nf.trim() !== '-' && msg.nf.trim() !== '') ? msg.nf.trim() : '');
+              
+              // 僅在 TWSE/TPEx 官方回傳明確股票名稱時才納入，避免無效代碼顯示假標的
+              if (realName) {
+                const mkt: 'tse' | 'otc' = msg.ex === 'otc' ? 'otc' : 'tse';
+                candidateMap.set(msg.c.toUpperCase(), {
+                  symbol: msg.c.toUpperCase(),
+                  name: realName,
+                  market: mkt,
+                });
+              }
+            }
+          } catch {
+            // ignore
+          }
+        })()
+      );
+    }
+
+    promises.push(
+      (async () => {
+        try {
+          const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=zh-Hant-TW&region=TW&quotesCount=15&newsCount=0`;
+          const data = await fetchWithTimeout(url, 2500);
+          const quotes = data?.quotes || [];
+
+          quotes
+            .filter((item: { quoteType?: string }) => item.quoteType === 'EQUITY' || item.quoteType === 'ETF')
+            .forEach((item: { symbol: string; shortname?: string; longname?: string }) => {
+              let symbol = item.symbol;
+              let market: 'tse' | 'otc' | 'us' = 'us';
+              if (symbol.endsWith('.TW')) {
+                symbol = symbol.slice(0, -3);
+                market = 'tse';
+              } else if (symbol.endsWith('.TWO')) {
+                symbol = symbol.slice(0, -4);
+                market = 'otc';
+              }
+
+              const cleanSymUpper = symbol.toUpperCase();
+              if (candidateMap.has(cleanSymUpper)) return;
+
+              let finalName = item.shortname || item.longname || '';
+
+              if (market === 'tse' || market === 'otc' || /^\d{4,6}[A-Z]?$/i.test(symbol)) {
+                const cached = openApiMap.get(cleanSymUpper) || openApiMap.get(`${cleanSymUpper}.TW`) || openApiMap.get(`${cleanSymUpper}.TWO`);
+                if (cached && cached.shortName) {
+                  finalName = cached.shortName;
+                  market = cached.market;
+                }
+              } else if (market === 'us') {
+                if (US_STOCK_CN_MAP[cleanSymUpper]) {
+                  finalName = US_STOCK_CN_MAP[cleanSymUpper];
+                }
+              }
+
+              // 僅在有有效名稱且非無效純代號字串時納入
+              if (finalName && finalName !== cleanSymUpper) {
+                candidateMap.set(cleanSymUpper, {
+                  symbol: cleanSymUpper,
+                  name: finalName,
+                  market,
+                });
+              }
+            });
+        } catch {
+          // ignore
         }
-        return {
-          symbol,
-          name: item.shortname || item.longname || symbol,
-          market,
-        };
-      });
+      })()
+    );
 
-    res.json({ success: true, results });
+    await Promise.allSettled(promises);
+
+    // 4. 嚴格依照「輸入順序 (Prefix / Sequential Matching)」計算權重排序
+    const allCandidates = Array.from(candidateMap.values());
+
+    allCandidates.sort((a, b) => {
+      const aSym = a.symbol.toUpperCase();
+      const bSym = b.symbol.toUpperCase();
+      const aName = a.name;
+      const bName = b.name;
+
+      const calcScore = (sym: string, name: string) => {
+        // 1. 完全相同
+        if (sym === upperQ) return 1000;
+        if (name === q) return 950;
+        // 2. 代號前綴相同（按照輸入順序比對，如輸入 23 優先匹配 23xx）
+        if (sym.startsWith(upperQ)) return 800 - (sym.length - upperQ.length) * 2;
+        // 3. 名稱前綴相同
+        if (name.startsWith(q)) return 700 - (name.length - q.length);
+        // 4. 名稱包含
+        const nameIdx = name.indexOf(q);
+        if (nameIdx !== -1) return 600 - nameIdx * 10;
+        // 5. 代號中間包含
+        const symIdx = sym.indexOf(upperQ);
+        if (symIdx !== -1) return 400 - symIdx * 10;
+        return 0;
+      };
+
+      const scoreA = calcScore(aSym, aName);
+      const scoreB = calcScore(bSym, bName);
+
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
+      }
+
+      // 同分時，依代號自然順序升冪排列 (2301, 2303, 2308, 2317, 2330...)
+      return aSym.localeCompare(bSym, undefined, { numeric: true });
+    });
+
+    res.json({ success: true, results: allCandidates.slice(0, 10) });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
@@ -1113,6 +1362,8 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 資產戰情室 Server running on http://0.0.0.0:${PORT}`);
+    // Pre-warm OpenAPI cache in background
+    getTwseOpenApiQuotes().catch(() => {});
   });
 }
 

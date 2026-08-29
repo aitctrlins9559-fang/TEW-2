@@ -418,37 +418,67 @@ export async function apiSearchStock(query: string) {
   }
 
   // Combine local and remote results, preferring local Chinese names when symbol matches
-  const merged: Array<{ symbol: string; name: string; market: 'tse' | 'otc' | 'us' }> = [...localMatches];
+  const candidateMap = new Map<string, { symbol: string; name: string; market: 'tse' | 'otc' | 'us' }>();
 
-  remoteResults.forEach((remote) => {
-    // Check if symbol exists in local dictionary for Chinese name lookup
-    const localInfo = lookupStockInfo(remote.symbol);
-    const chineseName = localInfo ? localInfo.name : remote.name;
+  // 1. Put matching remote or local results, resolving Chinese names
+  const allCandidates = [...localMatches, ...remoteResults];
 
-    const existingIdx = merged.findIndex((m) => m.symbol.toUpperCase() === remote.symbol.toUpperCase());
-    if (existingIdx === -1) {
-      merged.push({
-        symbol: remote.symbol,
-        name: chineseName,
-        market: localInfo ? localInfo.market : remote.market,
-      });
-    } else {
-      const currentName = merged[existingIdx].name;
-      const isPlaceholder =
-        !currentName ||
-        currentName.startsWith('台股標的') ||
-        currentName.startsWith('美股標的') ||
-        currentName.startsWith('搜尋') ||
-        currentName === merged[existingIdx].symbol;
+  allCandidates.forEach((cand) => {
+    const symUpper = cand.symbol.toUpperCase().replace(/\.(TW|TWO)$/i, '');
+    if (candidateMap.has(symUpper)) return;
 
-      if (localInfo) {
-        merged[existingIdx].name = localInfo.name;
-        merged[existingIdx].market = localInfo.market;
-      } else if (isPlaceholder && remote.name && remote.name !== remote.symbol) {
-        merged[existingIdx].name = remote.name;
-        merged[existingIdx].market = remote.market;
+    const localInfo = lookupStockInfo(symUpper);
+    let resolvedName = localInfo ? localInfo.name : cand.name;
+    const resolvedMarket = localInfo ? localInfo.market : cand.market;
+
+    const isTaiwanStock = resolvedMarket === 'tse' || resolvedMarket === 'otc' || /^\d{4,6}[A-Z]?$/i.test(symUpper);
+
+    // If it's a Taiwan stock but candidate name is missing/equal to symbol, check localInfo
+    if (isTaiwanStock && (!resolvedName || resolvedName === symUpper)) {
+      if (localInfo && localInfo.name) {
+        resolvedName = localInfo.name;
       }
     }
+
+    // 僅在有明確股票名稱且非純代碼/假佔位符時才納入
+    if (resolvedName && resolvedName !== symUpper && !resolvedName.startsWith('搜尋')) {
+      candidateMap.set(symUpper, {
+        symbol: symUpper,
+        name: resolvedName,
+        market: resolvedMarket,
+      });
+    }
+  });
+
+  const upperQ = q.toUpperCase().replace(/\.(TW|TWO)$/i, '');
+  const merged = Array.from(candidateMap.values());
+
+  // 依照輸入順序 (Prefix / Sequential Matching) 排序
+  merged.sort((a, b) => {
+    const aSym = a.symbol.toUpperCase();
+    const bSym = b.symbol.toUpperCase();
+    const aName = a.name;
+    const bName = b.name;
+
+    const calcScore = (sym: string, name: string) => {
+      if (sym === upperQ) return 1000;
+      if (name === q) return 950;
+      if (sym.startsWith(upperQ)) return 800 - (sym.length - upperQ.length) * 2;
+      if (name.startsWith(q)) return 700 - (name.length - q.length);
+      const nameIdx = name.indexOf(q);
+      if (nameIdx !== -1) return 600 - nameIdx * 10;
+      const symIdx = sym.indexOf(upperQ);
+      if (symIdx !== -1) return 400 - symIdx * 10;
+      return 0;
+    };
+
+    const scoreA = calcScore(aSym, aName);
+    const scoreB = calcScore(bSym, bName);
+
+    if (scoreB !== scoreA) {
+      return scoreB - scoreA;
+    }
+    return aSym.localeCompare(bSym, undefined, { numeric: true });
   });
 
   return merged.slice(0, 10);

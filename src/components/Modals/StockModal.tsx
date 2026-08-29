@@ -43,6 +43,22 @@ export const StockModal: React.FC<StockModalProps> = ({
   const [showResults, setShowResults] = useState(false);
 
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSearchQueryRef = useRef<string>('');
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     if (editStock) {
@@ -85,12 +101,17 @@ export const StockModal: React.FC<StockModalProps> = ({
       if (q && typeof q.regularMarketPrice === 'number') {
         setLivePrice(`$${q.regularMarketPrice} ${mkt === 'us' ? 'USD' : 'NT$'}`);
         if (q.shortName) {
-          setName((prevName) => {
-            if (!prevName || prevName.startsWith('台股標的') || prevName.startsWith('美股標的') || prevName.startsWith('搜尋') || prevName === sym) {
-              return q.shortName!;
-            }
-            return prevName;
-          });
+          const isTaiwanStock = mkt === 'tse' || mkt === 'otc' || /^\d{4,6}[A-Z]?$/i.test(sym);
+          const isAsciiName = /^[A-Za-z0-9\s.,&'-]+$/.test(q.shortName);
+          // Only overwrite if it's not an English raw name for a Taiwan stock when we already have a Chinese name
+          if (!isTaiwanStock || !isAsciiName || !info) {
+            setName((prevName) => {
+              if (!prevName || prevName.startsWith('台股標的') || prevName.startsWith('美股標的') || prevName.startsWith('搜尋') || prevName === sym) {
+                return (isTaiwanStock && isAsciiName && info) ? info.name : q.shortName!;
+              }
+              return prevName;
+            });
+          }
         }
       } else {
         setLivePrice('無即時報價');
@@ -113,16 +134,19 @@ export const StockModal: React.FC<StockModalProps> = ({
 
   const handleSearchChange = (val: string) => {
     setSearchInput(val);
+    lastSearchQueryRef.current = val;
+
     if (!val.trim()) {
       setShowResults(false);
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
     setShowResults(true);
 
-    // Instant local dictionary lookup first
-    const instantLocal = searchLocalDictionary(val, 8);
+    // Instant local dictionary lookup first (0ms latency)
+    const instantLocal = searchLocalDictionary(val, 10);
     if (instantLocal.length > 0) {
       setSearchResults(instantLocal);
     }
@@ -132,17 +156,23 @@ export const StockModal: React.FC<StockModalProps> = ({
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
 
     searchTimerRef.current = setTimeout(async () => {
+      const currentQ = val;
       try {
-        const results = await apiSearchStock(val);
-        if (Array.isArray(results) && results.length > 0) {
-          setSearchResults(results.slice(0, 8));
+        const results = await apiSearchStock(currentQ);
+        // Stale query protection: only update if query still matches current input
+        if (lastSearchQueryRef.current === currentQ) {
+          if (Array.isArray(results)) {
+            setSearchResults(results.slice(0, 10));
+          }
         }
       } catch {
         // keep local results if any
       } finally {
-        setIsSearching(false);
+        if (lastSearchQueryRef.current === currentQ) {
+          setIsSearching(false);
+        }
       }
-    }, 150);
+    }, 120);
   };
 
   const selectSuggestion = (sSymbol: string, sName: string, sMarket: MarketType) => {
@@ -184,268 +214,303 @@ export const StockModal: React.FC<StockModalProps> = ({
         playClickSound();
         onClose();
       }}
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 transition-all duration-300 h-[100dvh]"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-[2rem] sm:rounded-3xl p-5 md:p-8 w-full max-w-lg shadow-[0_12px_40px_rgb(0,0,0,0.15)] flex flex-col max-h-[85dvh] sm:max-h-[88vh] border border-slate-100 text-slate-900"
+        className="bg-white rounded-none sm:rounded-3xl p-3.5 sm:p-6 w-full max-w-lg shadow-[0_12px_40px_rgb(0,0,0,0.15)] flex flex-col h-[100dvh] sm:h-auto sm:max-h-[90vh] border-0 sm:border sm:border-slate-100 text-slate-900 overflow-hidden"
       >
-        <div className="flex justify-between items-center border-b border-slate-100 pb-4 shrink-0">
-          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2.5">
-            <PlusCircle className="w-5 h-5 text-indigo-600" />
-            {editStock ? '編輯監控部位' : '新增監控部位'}
-          </h3>
+        {/* Modal Header */}
+        <div className="flex justify-between items-center border-b border-slate-100 pb-2.5 sm:pb-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">
+              <PlusCircle className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 leading-tight">
+                {editStock ? '編輯監控持股部位' : '新增監控持股部位'}
+              </h3>
+              <p className="text-[10px] text-slate-500 font-medium hidden sm:block">
+                支援台股上市/上櫃與美股，輸入後自動取得即時報價
+              </p>
+            </div>
+          </div>
           <button
             type="button"
             onClick={() => {
               playClickSound();
               onClose();
             }}
-            className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition btn-interact"
+            className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-1.5 rounded-full transition btn-interact"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0 text-sm">
-          <div className="flex-1 overflow-y-auto space-y-4 py-3 pr-1">
-          {/* Search Input */}
-          <div className="relative">
-            <div className="flex justify-between items-center mb-1.5">
-              <label className="text-slate-700 font-bold text-xs tracking-wider flex items-center gap-1.5">
-                <Search className="w-3.5 h-3.5 text-indigo-600" /> 智慧搜尋標的 (台美股) *
-              </label>
-              {isSearching && (
-                <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-medium flex items-center gap-1 border border-indigo-100">
-                  <Loader2 className="w-3 h-3 animate-spin" /> 搜尋中
-                </span>
-              )}
-            </div>
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="例如: 台積電 / 2330 / NVDA / 兆聯實業"
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 font-medium outline-none text-sm focus:border-indigo-600 focus:bg-white transition"
-            />
-
-            {/* Auto-complete Dropdown */}
-            {showResults && (
-              <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-56 overflow-y-auto z-50 divide-y divide-slate-100">
-                {searchResults.length === 0 ? (
-                  <div className="p-4 text-xs text-slate-500 text-center">
-                    找不到符合標的。可直接手動輸入代號與名稱。
-                  </div>
-                ) : (
-                  searchResults.map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => selectSuggestion(item.symbol, item.name, item.market)}
-                      className="w-full text-left p-3.5 hover:bg-slate-50 cursor-pointer flex justify-between items-center text-sm transition"
-                    >
-                      <div>
-                        <span className="font-bold text-slate-900 mr-3">{item.name}</span>
-                        <span className="text-indigo-600 font-mono font-bold">{item.symbol}</span>
-                      </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded font-semibold uppercase bg-indigo-50 text-indigo-700 border border-indigo-100">
-                        {item.market === 'us' ? '美股' : item.market === 'otc' ? '上櫃' : '上市'}
-                      </span>
-                    </button>
-                  ))
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0 text-xs">
+          <div className="flex-1 overflow-y-auto space-y-2.5 sm:space-y-3 py-2.5 pr-0.5">
+            {/* Search Input Box */}
+            <div ref={searchContainerRef} className="relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-slate-700 font-bold text-[11px] sm:text-xs tracking-wider flex items-center gap-1">
+                  <Search className="w-3.5 h-3.5 text-indigo-600" /> 智慧搜尋標的 (台美股) *
+                </label>
+                {isSearching && (
+                  <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded font-medium flex items-center gap-1 border border-indigo-100">
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" /> 搜尋中
+                  </span>
                 )}
               </div>
-            )}
-          </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={() => {
+                    if (searchInput.trim()) {
+                      setShowResults(true);
+                      if (searchResults.length === 0) {
+                        const local = searchLocalDictionary(searchInput, 10);
+                        if (local.length > 0) setSearchResults(local);
+                      }
+                    }
+                  }}
+                  placeholder="輸入代號或名稱 (如: 2330 / 台積電 / NVDA)"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 font-bold outline-none text-xs sm:text-sm focus:border-indigo-600 focus:bg-white transition"
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchInput('');
+                      setShowResults(false);
+                      setSearchResults([]);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
 
-          {/* Live Price Reference */}
-          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-1 text-xs">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-600 flex items-center gap-1.5 font-bold">
+              {/* Auto-complete Dropdown */}
+              {showResults && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-52 overflow-y-auto z-50 divide-y divide-slate-100 ring-1 ring-black/5">
+                  {searchResults.length === 0 ? (
+                    <div className="p-3 text-[11px] text-slate-500 text-center">
+                      找不到符合標的。可直接於下方手動填寫代號與名稱。
+                    </div>
+                  ) : (
+                    searchResults.map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => selectSuggestion(item.symbol, item.name, item.market)}
+                        className="w-full text-left p-2.5 hover:bg-indigo-50/60 cursor-pointer flex justify-between items-center text-xs transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{item.name}</span>
+                          <span className="text-indigo-600 font-mono font-bold">{item.symbol}</span>
+                        </div>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          {item.market === 'us' ? '美股' : item.market === 'otc' ? '上櫃' : '上市'}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Live Price Reference Bar */}
+            <div className="bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 flex justify-between items-center text-[11px] font-mono">
+              <span className="text-slate-600 flex items-center gap-1 font-bold">
                 即時參考價:{' '}
-                <strong className="text-slate-900 font-mono tabular-nums text-sm tracking-wide">
+                <strong className="text-slate-900 font-mono tabular-nums text-xs sm:text-sm tracking-wide">
                   {livePrice}
                 </strong>
               </span>
               <span className="text-slate-600 font-bold">
-                當前匯率:{' '}
-                <strong className="text-amber-700 font-mono tabular-nums text-sm tracking-wide">
+                即期匯率:{' '}
+                <strong className="text-amber-700 font-mono tabular-nums text-xs sm:text-sm tracking-wide">
                   {usdTwdRate.toFixed(2)}
                 </strong>
               </span>
             </div>
-          </div>
 
-          {/* Market, Symbol, Name Inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-200">
-            <div>
-              <label className="block text-slate-700 font-bold mb-1.5">市場類別</label>
-              <select
-                value={market}
-                onChange={(e) => {
-                  playClickSound();
-                  const m = e.target.value as MarketType;
-                  setMarket(m);
-                  fetchLivePreview(symbol, m);
-                }}
-                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-indigo-700 font-bold outline-none cursor-pointer"
-              >
-                <option value="tse">台股上市</option>
-                <option value="otc">台股上櫃</option>
-                <option value="us">美股</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-bold mb-1.5">股票代號</label>
-              <input
-                type="text"
-                required
-                value={symbol}
-                onChange={(e) => {
-                  const s = e.target.value.toUpperCase();
-                  setSymbol(s);
-                  fetchLivePreview(s, market);
-                }}
-                placeholder="代號"
-                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 font-bold uppercase outline-none tracking-wider"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-bold mb-1.5">股票名稱</label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="名稱"
-                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 font-medium outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Shares, Cost, Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-slate-700 font-bold mb-1.5 text-xs">持有股數 *</label>
-              <input
-                type="number"
-                step="any"
-                min="0.0001"
-                required
-                value={shares}
-                onChange={(e) => setShares(e.target.value)}
-                placeholder="填寫股數"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 outline-none text-sm font-mono tabular-nums focus:bg-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-bold mb-1.5 text-xs">
-                買入均價 * <span className="text-[10px] text-amber-700 font-bold">(配股填0)</span>
-              </label>
-              <input
-                type="number"
-                step="any"
-                min="0"
-                required
-                value={cost}
-                onChange={(e) => setCost(e.target.value)}
-                placeholder="買入成本"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 outline-none text-sm font-mono tabular-nums focus:bg-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-bold mb-1.5 text-xs">買入日期</label>
-              <input
-                type="date"
-                value={buyDate}
-                onChange={(e) => setBuyDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 outline-none text-sm font-mono tabular-nums focus:bg-white"
-              />
-            </div>
-          </div>
-
-          {/* US Buy Rate Input */}
-          {market === 'us' && (
-            <div>
-              <label className="block text-amber-800 mb-1.5 text-xs font-bold">
-                買入當時匯率 (USD/TWD) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={buyRate}
-                onChange={(e) => setBuyRate(e.target.value)}
-                placeholder="例如: 32.15"
-                className="w-full bg-amber-50 border border-amber-300 text-amber-900 rounded-xl px-4 py-3 outline-none text-sm font-mono tabular-nums font-bold"
-              />
-            </div>
-          )}
-
-          {/* Transaction Cost Estimations (手續費與證交稅預估) */}
-          {market !== 'us' && Number(shares) > 0 && Number(cost) > 0 && (
-            <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 space-y-2 text-xs">
-              <div className="text-emerald-800 font-bold flex justify-between items-center">
-                <span>預估交易成本 (券商 28 折 + 證交稅)</span>
-                <span className="text-[10px] bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded text-emerald-900 font-mono font-bold">
-                  NT$ {Math.round(
-                    Math.max(20, Number(shares) * Number(cost) * 0.001425 * 0.28) +
-                    Math.max(20, Number(shares) * Number(cost) * 0.001425 * 0.28) +
-                    Number(shares) * Number(cost) * (symbol.startsWith('00') ? 0.001 : 0.003)
-                  ).toLocaleString()}
-                </span>
+            {/* Market, Symbol, Name Inputs (Compact 3-Cols Grid) */}
+            <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 sm:p-3 rounded-xl border border-slate-200 text-xs">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1 text-[10px] sm:text-[11px]">市場</label>
+                <select
+                  value={market}
+                  onChange={(e) => {
+                    playClickSound();
+                    const m = e.target.value as MarketType;
+                    setMarket(m);
+                    fetchLivePreview(symbol, m);
+                  }}
+                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-indigo-700 font-bold outline-none cursor-pointer text-xs"
+                >
+                  <option value="tse">台股上市</option>
+                  <option value="otc">台股上櫃</option>
+                  <option value="us">美股</option>
+                </select>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-[11px] font-mono text-slate-800 bg-white p-2.5 rounded-lg border border-emerald-100">
-                <div>
-                  <span className="text-[10px] text-slate-500 block font-sans font-bold">買入手續費</span>
-                  ${Math.round(Math.max(20, Number(shares) * Number(cost) * 0.001425 * 0.28))} NT$
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block font-sans font-bold">預估賣出手續費</span>
-                  ${Math.round(Math.max(20, Number(shares) * Number(cost) * 0.001425 * 0.28))} NT$
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block font-sans font-bold">預估證交稅 ({symbol.startsWith('00') ? '0.1%' : '0.3%'})</span>
-                  ${Math.round(Number(shares) * Number(cost) * (symbol.startsWith('00') ? 0.001 : 0.003))} NT$
-                </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1 text-[10px] sm:text-[11px]">代號 *</label>
+                <input
+                  type="text"
+                  required
+                  value={symbol}
+                  onChange={(e) => {
+                    const s = e.target.value.toUpperCase();
+                    setSymbol(s);
+                    fetchLivePreview(s, market);
+                  }}
+                  placeholder="2330"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-900 font-bold uppercase outline-none font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1 text-[10px] sm:text-[11px]">名稱 *</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="台積電"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-900 font-bold outline-none text-xs"
+                />
               </div>
             </div>
-          )}
 
-          {/* Risk Control Estimations */}
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
-            <div className="text-indigo-700 font-bold flex items-center gap-1.5">
-              <Target className="w-4 h-4" /> 風控估算價 (估算)
+            {/* Shares, Cost, Date (Compact 3-Cols Grid) */}
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1 text-[10px] sm:text-[11px]">持有股數 *</label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0.0001"
+                  required
+                  value={shares}
+                  onChange={(e) => setShares(e.target.value)}
+                  placeholder="股數"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-slate-900 outline-none text-xs sm:text-sm font-mono tabular-nums focus:bg-white font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1 text-[10px] sm:text-[11px] truncate">
+                  買入均價 *
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  required
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  placeholder="價格(配股填0)"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-slate-900 outline-none text-xs sm:text-sm font-mono tabular-nums focus:bg-white font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1 text-[10px] sm:text-[11px]">買入日期</label>
+                <input
+                  type="date"
+                  value={buyDate}
+                  onChange={(e) => setBuyDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-1.5 py-2 text-slate-900 outline-none text-[11px] sm:text-xs font-mono tabular-nums focus:bg-white"
+                />
+              </div>
             </div>
-            <div className="flex justify-between items-center bg-white border border-slate-200 px-3 py-2 rounded-lg">
-              <span className="text-slate-600 font-bold">停利 Target (+10%)</span>
-              <strong className="text-emerald-600 font-mono tabular-nums text-sm">{tpPrice}</strong>
-            </div>
-            <div className="flex justify-between items-center bg-white border border-slate-200 px-3 py-2 rounded-lg">
-              <span className="text-slate-600 font-bold">停損 Stop-Loss (-5%)</span>
-              <strong className="text-rose-600 font-mono tabular-nums text-sm">{slPrice}</strong>
+
+            {/* US Buy Rate Input */}
+            {market === 'us' && (
+              <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200">
+                <label className="block text-amber-900 mb-1 text-[11px] font-bold">
+                  買入當時匯率 (USD/TWD) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={buyRate}
+                  onChange={(e) => setBuyRate(e.target.value)}
+                  placeholder="例如: 32.15"
+                  className="w-full bg-white border border-amber-300 text-amber-900 rounded-lg px-3 py-1.5 outline-none text-xs font-mono tabular-nums font-bold"
+                />
+              </div>
+            )}
+
+            {/* Transaction Cost Estimations */}
+            {market !== 'us' && Number(shares) > 0 && Number(cost) > 0 && (
+              <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200 space-y-1.5 text-[11px]">
+                <div className="text-emerald-900 font-bold flex justify-between items-center">
+                  <span>預估手續費折讓(28折) + 證交稅</span>
+                  <span className="text-[10px] bg-emerald-100 border border-emerald-200 px-1.5 py-0.2 rounded text-emerald-900 font-mono font-bold">
+                    NT$ {Math.round(
+                      Math.max(20, Number(shares) * Number(cost) * 0.001425 * 0.28) +
+                      Math.max(20, Number(shares) * Number(cost) * 0.001425 * 0.28) +
+                      Number(shares) * Number(cost) * (symbol.startsWith('00') ? 0.001 : 0.003)
+                    ).toLocaleString()}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 text-[10px] font-mono text-slate-800 bg-white p-2 rounded-lg border border-emerald-100">
+                  <div>
+                    <span className="text-[9px] text-slate-500 block font-sans">買入手續費</span>
+                    ${Math.round(Math.max(20, Number(shares) * Number(cost) * 0.001425 * 0.28))}
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-500 block font-sans">賣出手續費</span>
+                    ${Math.round(Math.max(20, Number(shares) * Number(cost) * 0.001425 * 0.28))}
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-500 block font-sans">預估證交稅</span>
+                    ${Math.round(Number(shares) * Number(cost) * (symbol.startsWith('00') ? 0.001 : 0.003))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Risk Control Estimations */}
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5 text-[11px]">
+              <div className="text-indigo-700 font-bold flex items-center gap-1">
+                <Target className="w-3.5 h-3.5" /> 風控估算參考價
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex justify-between items-center bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg">
+                  <span className="text-slate-600 font-bold text-[10px]">停利 (+10%)</span>
+                  <strong className="text-emerald-600 font-mono tabular-nums text-xs">{tpPrice}</strong>
+                </div>
+                <div className="flex justify-between items-center bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg">
+                  <span className="text-slate-600 font-bold text-[10px]">停損 (-5%)</span>
+                  <strong className="text-rose-600 font-mono tabular-nums text-xs">{slPrice}</strong>
+                </div>
+              </div>
             </div>
           </div>
 
-          </div>
-
-          <div className="pt-3 pb-2 sm:pb-0 flex gap-3 border-t border-slate-100 bg-white shrink-0">
+          {/* Sticky Bottom Action Buttons */}
+          <div className="pt-2.5 pb-2 sm:pb-0 flex gap-2.5 border-t border-slate-100 bg-white shrink-0">
             <button
               type="button"
               onClick={() => {
                 playClickSound();
                 onClose();
               }}
-              className="w-1/3 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 py-3 rounded-xl font-bold text-sm transition btn-interact"
+              className="w-1/3 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition btn-interact"
             >
               取消
             </button>
             <button
               type="submit"
-              className="w-2/3 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm transition shadow-sm btn-interact"
+              className="w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold text-xs sm:text-sm transition shadow-sm btn-interact"
             >
               確認儲存
             </button>

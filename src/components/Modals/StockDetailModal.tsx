@@ -87,28 +87,28 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-fadeIn h-[100dvh]">
-      <div className="w-full max-w-xl bg-white border border-slate-100 rounded-t-3xl sm:rounded-3xl shadow-[0_12px_40px_rgb(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[88vh]">
+      <div className="w-full max-w-xl bg-white border-0 sm:border sm:border-slate-100 rounded-none sm:rounded-3xl shadow-[0_12px_40px_rgb(0,0,0,0.15)] overflow-hidden flex flex-col h-[100dvh] sm:h-auto sm:max-h-[88vh]">
         {/* Top Sticky Navigation Bar */}
-        <div className="bg-white border-b border-slate-100 px-4 py-3.5 flex items-center justify-between gap-3 shrink-0">
+        <div className="bg-white border-b border-slate-100 px-3.5 py-2.5 sm:px-4 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3 shrink-0">
           <button
             onClick={() => {
               playClickSound();
               onClose();
             }}
-            className="flex items-center gap-1.5 text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-100 text-xs font-bold transition btn-interact shrink-0"
+            className="flex items-center gap-1 sm:gap-1.5 text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg sm:rounded-xl border border-slate-100 text-xs font-bold transition btn-interact shrink-0"
           >
-            <ArrowLeft className="w-4 h-4 text-indigo-600" />
+            <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
             <span>返回清單</span>
           </button>
 
           <div className="flex flex-col items-center min-w-0">
-            <div className="flex items-center gap-2 max-w-full">
-              <span className="text-base font-extrabold text-slate-900 truncate">{stock.name}</span>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
+            <div className="flex items-center gap-1.5 max-w-full">
+              <span className="text-sm sm:text-base font-extrabold text-slate-900 truncate">{stock.name}</span>
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
                 {stock.market.toUpperCase()}
               </span>
             </div>
-            <span className="text-[11px] font-mono text-slate-500">{stock.symbol}</span>
+            <span className="text-[10px] sm:text-[11px] font-mono text-slate-500">{stock.symbol}</span>
           </div>
 
           <button
@@ -116,14 +116,14 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
               playClickSound();
               onClose();
             }}
-            className="text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 p-2 rounded-xl border border-slate-200 transition btn-interact shrink-0"
+            className="text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 p-1.5 rounded-lg sm:rounded-xl border border-slate-200 transition btn-interact shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+        <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1">
           {/* Price & Real-time Hero Banner */}
           <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3 shadow-xs text-slate-900">
             <div className="flex justify-between items-baseline">
