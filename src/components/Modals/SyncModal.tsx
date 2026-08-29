@@ -31,54 +31,49 @@ export const SyncModal: React.FC<SyncModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div
-      onClick={() => {
-        playClickSound();
-        onClose();
-      }}
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300 overscroll-none modal-backdrop"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-[2rem] sm:rounded-3xl p-5 md:p-8 w-full max-w-lg shadow-2xl flex flex-col max-h-[85dvh] sm:max-h-[88vh] overflow-y-auto border border-slate-200 text-slate-900 overscroll-contain modal-content-scroll"
-      >
-        <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-2.5">
-            <CloudCog className="w-6 h-6 text-indigo-600" />
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                雲端同步與數據維護
-                <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-full font-mono font-bold">
-                  🔒 已加密鎖定
-                </span>
-              </h3>
-              <p className="text-xs text-slate-500">設備端本機存取與 Google Cloud / GAS 雙向同步</p>
-            </div>
+    <div className="fixed inset-0 z-[90] w-full h-[100dvh] bg-slate-100 flex flex-col text-slate-900 overflow-hidden overscroll-none animate-fadeIn select-none modal-backdrop">
+      {/* Top Sticky Navigation Bar */}
+      <div className="bg-white border-b border-slate-200/90 px-3.5 py-2.5 sm:px-5 sm:py-3 flex items-center justify-between gap-2 shrink-0 shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 shrink-0">
+            <CloudCog className="w-5 h-5" />
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              playClickSound();
-              onClose();
-            }}
-            className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition btn-interact"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div>
+            <h3 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-1.5 leading-tight">
+              雲端同步與數據維護
+              <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-full font-mono font-bold">
+                🔒 已加密鎖定
+              </span>
+            </h3>
+            <p className="text-[11px] text-slate-500 font-medium">設備端本機存取與 Google Cloud / GAS 雙向同步</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            playClickSound();
+            onClose();
+          }}
+          className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2 rounded-xl border border-slate-200 transition btn-interact shrink-0"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Body Content */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-5 max-w-2xl mx-auto w-full space-y-3 overscroll-contain modal-content-scroll text-sm">
+        {/* Local storage note */}
+        <div className="p-3.5 bg-white border border-emerald-200/90 rounded-2xl flex items-start gap-2.5 text-xs text-emerald-800 shadow-2xs">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <div>
+            <strong className="font-bold block text-emerald-900 mb-0.5">設備端離線儲存保護中</strong>
+            您在外使用時，所有的持股增刪修訂皆已自動保存在此設備 (LocalStorage) 中，隨時開啟即用。
+          </div>
         </div>
 
-        <div className="space-y-4 text-sm">
-          {/* Local storage note */}
-          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-2.5 text-xs text-emerald-800">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            <div>
-              <strong className="font-bold block text-emerald-900 mb-0.5">設備端離線儲存保護中</strong>
-              您在外使用時，所有的持股增刪修訂皆已自動保存在此設備 (LocalStorage) 中，隨時開啟即用。
-            </div>
-          </div>
-
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 space-y-3 shadow-2xs">
           <div>
-            <label className="block text-slate-700 mb-1.5 font-bold tracking-wide flex items-center gap-1.5">
+            <label className="block text-slate-700 mb-1.5 font-bold tracking-wide flex items-center gap-1.5 text-xs">
               <Lock className="w-3.5 h-3.5 text-amber-600" />
               <span>Google Apps Script 雲端同步網址 (Web App URL)</span>
             </label>
@@ -87,7 +82,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
               value={inputUrl}
               onChange={(e) => setInputUrl(e.target.value)}
               placeholder="https://script.google.com/macros/s/.../exec"
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 font-mono text-xs outline-none focus:border-indigo-600"
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 font-mono text-xs outline-none focus:border-indigo-600"
             />
             <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-medium">
               貼上您的 Google Apps Script 網址後點擊『儲存網址設定』。在其他設備輸入相同網址，即可雙向拉取與推送持股。
@@ -107,7 +102,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
           </div>
 
           {/* Action buttons */}
-          <div className="pt-2 grid grid-cols-2 gap-3">
+          <div className="pt-2 grid grid-cols-2 gap-2.5">
             <button
               type="button"
               disabled={isOperating || !inputUrl.trim()}
@@ -118,7 +113,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
                   setIsOperating(false);
                 }
               }}
-              className="flex items-center justify-center gap-2 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 py-3 rounded-xl font-bold text-xs transition disabled:opacity-40 btn-interact"
+              className="flex items-center justify-center gap-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 py-2.5 rounded-xl font-bold text-xs transition disabled:opacity-40 btn-interact"
             >
               <Download className="w-4 h-4" />
               <span>📥 從雲端讀取持股</span>
@@ -134,36 +129,37 @@ export const SyncModal: React.FC<SyncModalProps> = ({
                   setIsOperating(false);
                 }
               }}
-              className="flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-3 rounded-xl font-bold text-xs transition disabled:opacity-40 btn-interact"
+              className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-2.5 rounded-xl font-bold text-xs transition disabled:opacity-40 btn-interact"
             >
               <Upload className="w-4 h-4" />
               <span>📤 備份推送到雲端</span>
             </button>
           </div>
-
-          <div className="pt-3 pb-6 sm:pb-0 border-t border-slate-100 flex gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                playClickSound();
-                onClose();
-              }}
-              className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold text-xs transition btn-interact border border-slate-200"
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onSaveSyncUrl(inputUrl.trim());
-              }}
-              className="w-2/3 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5 btn-interact"
-            >
-              <Save className="w-4 h-4" />
-              <span>儲存網址設定</span>
-            </button>
-          </div>
         </div>
+      </div>
+
+      {/* Footer Controls */}
+      <div className="p-3 bg-white border-t border-slate-200/90 shrink-0 max-w-2xl mx-auto w-full shadow-2xs flex gap-2.5">
+        <button
+          type="button"
+          onClick={() => {
+            playClickSound();
+            onClose();
+          }}
+          className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-xs transition btn-interact border border-slate-200"
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onSaveSyncUrl(inputUrl.trim());
+          }}
+          className="w-2/3 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 btn-interact"
+        >
+          <Save className="w-4 h-4" />
+          <span>儲存網址設定</span>
+        </button>
       </div>
     </div>
   );

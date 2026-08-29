@@ -76,90 +76,79 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
   if (!isOpen) return null;
 
   return (
-    <div
-      onClick={() => {
-        playClickSound();
-        onClose();
-      }}
-      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn overscroll-none modal-backdrop"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-2xl rounded-t-3xl sm:rounded-3xl border border-slate-200 shadow-2xl p-5 md:p-8 flex flex-col max-h-[85dvh] sm:max-h-[88vh] overflow-hidden text-slate-900"
-      >
-        {/* Header */}
-        <div className="flex justify-between items-center border-b border-slate-100 pb-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600">
-              <Rocket className="w-6 h-6 animate-bounce" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                版本更新紀錄 <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-mono font-bold">Changelog</span>
-              </h2>
-              <p className="text-xs text-slate-500 font-medium">系統版本演進歷程與最新功能說明</p>
-            </div>
+    <div className="fixed inset-0 z-[90] w-full h-[100dvh] bg-slate-100 flex flex-col text-slate-900 overflow-hidden overscroll-none animate-fadeIn select-none modal-backdrop">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200/90 px-3.5 py-2.5 sm:px-5 sm:py-3 flex items-center justify-between gap-2 shrink-0 shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 shrink-0">
+            <Rocket className="w-5 h-5" />
           </div>
-          <button
-            onClick={() => {
-              playClickSound();
-              onClose();
-            }}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div>
+            <h2 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-1.5 leading-tight">
+              版本更新紀錄 <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-mono font-bold">Changelog</span>
+            </h2>
+            <p className="text-[11px] text-slate-500 font-medium">系統版本演進歷程與最新功能說明</p>
+          </div>
         </div>
+        <button
+          onClick={() => {
+            playClickSound();
+            onClose();
+          }}
+          className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
 
-        {/* Content - Scrollable */}
-        <div className="overflow-y-auto pr-1 space-y-6 flex-1 divide-y divide-slate-100 overscroll-contain modal-content-scroll">
-          {VERSION_LOGS.map((item, idx) => (
-            <div key={idx} className={`${idx !== 0 ? 'pt-6' : ''} space-y-3`}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm font-black font-mono text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-xl">
-                    {item.version}
-                  </span>
-                  {item.badge && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> {item.badge}
-                    </span>
-                  )}
-                </div>
-                <span className="text-xs font-mono text-slate-500 flex items-center gap-1 font-medium">
-                  <Calendar className="w-3.5 h-3.5" /> {item.date}
+      {/* Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-5 max-w-3xl mx-auto w-full space-y-3 overscroll-contain modal-content-scroll">
+        {VERSION_LOGS.map((item, idx) => (
+          <div key={idx} className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black font-mono text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
+                  {item.version}
                 </span>
+                {item.badge && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> {item.badge}
+                  </span>
+                )}
               </div>
-
-              <h3 className="text-base font-bold text-slate-900">{item.title}</h3>
-
-              <ul className="space-y-2 pl-1">
-                {item.highlights.map((h, hIdx) => (
-                  <li key={hIdx} className="text-xs text-slate-700 flex items-start gap-2 leading-relaxed font-medium">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <span>{h}</span>
-                  </li>
-                ))}
-              </ul>
+              <span className="text-[11px] font-mono text-slate-500 flex items-center gap-1 font-medium">
+                <Calendar className="w-3.5 h-3.5" /> {item.date}
+              </span>
             </div>
-          ))}
-        </div>
 
-        {/* Footer */}
-        <div className="pt-4 pb-2 sm:pb-0 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500 shrink-0">
-          <div className="flex items-center gap-1 text-slate-600 font-medium">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" /> 持股監控投資雷達 • 穩定極速體驗
+            <h3 className="text-sm sm:text-base font-bold text-slate-900">{item.title}</h3>
+
+            <ul className="space-y-1.5 pl-0.5">
+              {item.highlights.map((h, hIdx) => (
+                <li key={hIdx} className="text-xs text-slate-700 flex items-start gap-2 leading-relaxed font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{h}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <button
-            onClick={() => {
-              playClickSound();
-              onClose();
-            }}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl transition btn-interact shadow-sm"
-          >
-            瞭解並關閉
-          </button>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="p-3 bg-white border-t border-slate-200/90 shrink-0 max-w-3xl mx-auto w-full shadow-2xs flex justify-between items-center text-xs text-slate-500">
+        <div className="flex items-center gap-1 text-slate-600 font-medium text-[11px]">
+          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" /> 持股監控投資雷達 • 穩定極速體驗
         </div>
+        <button
+          onClick={() => {
+            playClickSound();
+            onClose();
+          }}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl transition btn-interact shadow-xs text-xs"
+        >
+          瞭解並關閉
+        </button>
       </div>
     </div>
   );

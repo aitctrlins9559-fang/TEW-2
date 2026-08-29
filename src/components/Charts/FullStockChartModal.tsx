@@ -697,10 +697,10 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-fadeIn h-[100dvh] overscroll-none modal-backdrop">
-      <div className="w-full sm:max-w-6xl xl:max-w-7xl bg-white sm:border sm:border-slate-200 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto sm:max-h-[94vh]">
+    <div className="fixed inset-0 z-[90] w-full h-[100dvh] bg-slate-100 flex flex-col text-slate-900 overflow-hidden overscroll-none animate-fadeIn select-none modal-backdrop">
+      <div className="w-full flex-1 flex flex-col overflow-hidden">
         {/* Top Professional Control Header Bar */}
-        <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 sm:px-4 sm:py-3 flex items-center justify-between gap-2 shrink-0">
+        <div className="bg-white border-b border-slate-200/90 px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 shrink-0 shadow-2xs">
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
             <button
               onClick={() => {

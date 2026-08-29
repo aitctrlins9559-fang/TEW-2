@@ -114,46 +114,37 @@ export const GuideModal: React.FC<GuideModalProps> = ({
   const IconComponent = currentStep.icon;
 
   return (
-    <div
-      onClick={() => {
-        playClickSound();
-        onClose();
-      }}
-      className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn overscroll-none modal-backdrop"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden"
-      >
-        {/* Header */}
-        <div className="p-3.5 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-indigo-50/80 via-white to-emerald-50/40 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
-              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
-                系統使用指南與說明
-              </h2>
-              <p className="text-[10px] sm:text-xs text-slate-500 font-medium">
-                快速了解即時損益、除權息現金流與本機資料儲存機制
-              </p>
-            </div>
+    <div className="fixed inset-0 z-[90] w-full h-[100dvh] bg-slate-100 flex flex-col text-slate-900 overflow-hidden overscroll-none animate-fadeIn select-none modal-backdrop">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200/90 px-3.5 py-2.5 sm:px-5 sm:py-3 flex items-center justify-between bg-gradient-to-r from-indigo-50/80 via-white to-emerald-50/40 shrink-0 shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
+            <Sparkles className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </div>
-          <button
-            onClick={() => {
-              playClickSound();
-              onClose();
-            }}
-            className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition"
-            title="關閉"
-          >
-            <X className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
+          <div>
+            <h2 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
+              系統使用指南與說明
+            </h2>
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium">
+              快速了解即時損益、除權息現金流與本機資料儲存機制
+            </p>
+          </div>
         </div>
+        <button
+          onClick={() => {
+            playClickSound();
+            onClose();
+          }}
+          className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-700 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition"
+          title="關閉"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
 
-        {/* Step Selector Tabs (Simple Pills) */}
-        <div className="grid grid-cols-3 gap-1.5 p-2.5 sm:p-3 bg-slate-50 border-b border-slate-100">
+      {/* Step Selector Tabs */}
+      <div className="bg-slate-50/90 border-b border-slate-200/90 px-3 py-2 shrink-0">
+        <div className="max-w-2xl mx-auto grid grid-cols-3 gap-2">
           {steps.map((step, idx) => (
             <button
               key={step.id}
@@ -161,147 +152,145 @@ export const GuideModal: React.FC<GuideModalProps> = ({
                 playClickSound();
                 setActiveStep(idx);
               }}
-              className={`py-2 px-1.5 rounded-xl text-center transition flex flex-col items-center justify-center gap-0.5 btn-interact ${
+              className={`py-1.5 px-2 rounded-xl text-center transition flex items-center justify-center gap-1.5 btn-interact ${
                 activeStep === idx
-                  ? 'bg-white text-indigo-700 font-black shadow-xs border border-indigo-100'
+                  ? 'bg-white text-indigo-700 font-black shadow-xs border border-indigo-200'
                   : 'text-slate-500 font-bold hover:text-slate-800'
               }`}
             >
-              <div className="flex items-center gap-1">
-                <span
-                  className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
-                    activeStep === idx
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  {idx + 1}
-                </span>
-                <span className="text-[11px] sm:text-xs truncate">{step.badge}</span>
-              </div>
+              <span
+                className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold shrink-0 ${
+                  activeStep === idx
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-200 text-slate-600'
+                }`}
+              >
+                {idx + 1}
+              </span>
+              <span className="text-xs truncate">{step.badge}</span>
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Main Content Area */}
-        <div className="p-3.5 sm:p-6 overflow-y-auto space-y-3.5 sm:space-y-4 flex-1 overscroll-contain modal-content-scroll">
-          {/* Step Hero Card */}
-          <div
-            className={`p-3.5 sm:p-4 rounded-2xl border ${
-              activeStep === 0
-                ? 'bg-indigo-50/60 border-indigo-100/90'
-                : activeStep === 1
-                ? 'bg-emerald-50/60 border-emerald-100/90'
-                : 'bg-sky-50/60 border-sky-100/90'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <div
-                className={`p-2.5 rounded-xl text-white font-bold shrink-0 ${
-                  activeStep === 0
-                    ? 'bg-indigo-600'
-                    : activeStep === 1
-                    ? 'bg-emerald-600'
-                    : 'bg-sky-600'
-                }`}
-              >
-                <IconComponent className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-extrabold tracking-wider uppercase opacity-70 text-slate-700">
-                  STEP {activeStep + 1} OF 3
-                </div>
-                <h3 className="text-sm sm:text-base font-black text-slate-900 leading-snug">
-                  {currentStep.title}
-                </h3>
-                <p className="text-[11px] sm:text-xs text-slate-600 font-medium mt-0.5">
-                  {currentStep.subtitle}
-                </p>
-              </div>
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-5 max-w-2xl mx-auto w-full space-y-3 overscroll-contain modal-content-scroll">
+        {/* Step Hero Card */}
+        <div
+          className={`p-3.5 sm:p-4 rounded-2xl border ${
+            activeStep === 0
+              ? 'bg-white border-indigo-200 shadow-2xs'
+              : activeStep === 1
+              ? 'bg-white border-emerald-200 shadow-2xs'
+              : 'bg-white border-sky-200 shadow-2xs'
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <div
+              className={`p-2.5 rounded-xl text-white font-bold shrink-0 ${
+                activeStep === 0
+                  ? 'bg-indigo-600'
+                  : activeStep === 1
+                  ? 'bg-emerald-600'
+                  : 'bg-sky-600'
+              }`}
+            >
+              <IconComponent className="w-5 h-5" />
             </div>
-          </div>
-
-          {/* Key Feature Bullets */}
-          <div className="space-y-2">
-            {currentStep.points.map((pt, i) => (
-              <div
-                key={i}
-                className="p-2.5 sm:p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/80 flex items-start gap-2.5 transition"
-              >
-                <CheckCircle2
-                  className={`w-4 h-4 mt-0.5 shrink-0 ${
-                    activeStep === 0
-                      ? 'text-indigo-600'
-                      : activeStep === 1
-                      ? 'text-emerald-600'
-                      : 'text-sky-600'
-                  }`}
-                />
-                <div className="text-xs">
-                  <span className="font-bold text-slate-900 mr-1.5">{pt.label}:</span>
-                  <span className="text-slate-600 leading-relaxed">{pt.desc}</span>
-                </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-extrabold tracking-wider uppercase opacity-70 text-slate-700">
+                STEP {activeStep + 1} OF 3
               </div>
-            ))}
-          </div>
-
-          {/* Dedicated Storage Highlight for Step 3 */}
-          {activeStep === 2 && (
-            <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/90 text-xs text-amber-950 space-y-1">
-              <div className="font-bold flex items-center gap-1.5 text-amber-900">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>個人設備端使用提醒 (Important Note)</span>
-              </div>
-              <p className="text-[11px] text-amber-900/80 leading-relaxed">
-                本系統為<strong>個人離線優先 (Local-First)</strong> 設計，無帳號註冊且不保留任何伺服器紀錄。請避免在公共電腦使用無痕模式進行長期紀錄；建議在調整大額持股後，隨時使用<strong>「匯出備份 (JSON)」</strong>留存一份備份檔案至個人硬碟或信箱。
+              <h3 className="text-sm sm:text-base font-black text-slate-900 leading-snug">
+                {currentStep.title}
+              </h3>
+              <p className="text-[11px] sm:text-xs text-slate-600 font-medium mt-0.5">
+                {currentStep.subtitle}
               </p>
             </div>
-          )}
-
-          {/* Quick Tip Pill */}
-          <div className="p-2 bg-slate-100/70 rounded-xl border border-slate-200/60 flex items-center justify-between text-[11px] text-slate-600 px-3">
-            <span className="flex items-center gap-1 font-medium">
-              <Smartphone className="w-3.5 h-3.5 text-slate-500" />
-              手機隨開即用，支援免安裝主畫面捷徑 (PWA)
-            </span>
-            <span className="text-[10px] font-bold text-indigo-600 font-mono">100% PRIVACY</span>
           </div>
         </div>
 
-        {/* Footer Navigation */}
-        <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/90 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-          <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-600 hover:text-slate-900 select-none">
-            <input
-              type="checkbox"
-              checked={dontShowAgain}
-              onChange={(e) => setDontShowAgain(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-            />
-            <span className="text-[11px] sm:text-xs">7 天內不再自動顯示</span>
-          </label>
+        {/* Key Feature Bullets */}
+        <div className="space-y-2">
+          {currentStep.points.map((pt, i) => (
+            <div
+              key={i}
+              className="p-3 bg-white hover:bg-slate-50 rounded-2xl border border-slate-200/90 flex items-start gap-2.5 transition shadow-2xs"
+            >
+              <CheckCircle2
+                className={`w-4 h-4 mt-0.5 shrink-0 ${
+                  activeStep === 0
+                    ? 'text-indigo-600'
+                    : activeStep === 1
+                    ? 'text-emerald-600'
+                    : 'text-sky-600'
+                }`}
+              />
+              <div className="text-xs">
+                <span className="font-bold text-slate-900 mr-1.5">{pt.label}:</span>
+                <span className="text-slate-600 leading-relaxed">{pt.desc}</span>
+              </div>
+            </div>
+          ))}
+        </div>
 
-          <div className="flex items-center gap-1.5 w-full sm:w-auto">
-            {activeStep < steps.length - 1 ? (
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setActiveStep((prev) => prev + 1);
-                }}
-                className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm btn-interact"
-              >
-                <span>下一步</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <button
-                onClick={handleConfirm}
-                className="w-full sm:w-auto px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1 shadow-sm btn-interact"
-              >
-                <span>開始使用</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            )}
+        {/* Dedicated Storage Highlight for Step 3 */}
+        {activeStep === 2 && (
+          <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-950 space-y-1">
+            <div className="font-bold flex items-center gap-1.5 text-amber-900">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>個人設備端使用提醒 (Important Note)</span>
+            </div>
+            <p className="text-[11px] text-amber-900/80 leading-relaxed">
+              本系統為<strong>個人離線優先 (Local-First)</strong> 設計，無帳號註冊且不保留任何伺服器紀錄。請避免在公共電腦使用無痕模式進行長期紀錄；建議在調整大額持股後，隨時使用<strong>「匯出備份 (JSON)」</strong>留存一份備份檔案至個人硬碟或信箱。
+            </p>
           </div>
+        )}
+
+        {/* Quick Tip Pill */}
+        <div className="p-2.5 bg-white rounded-2xl border border-slate-200/90 flex items-center justify-between text-[11px] text-slate-600 px-3.5 shadow-2xs">
+          <span className="flex items-center gap-1.5 font-medium">
+            <Smartphone className="w-3.5 h-3.5 text-slate-500" />
+            手機隨開即用，支援免安裝主畫面捷徑 (PWA)
+          </span>
+          <span className="text-[10px] font-bold text-indigo-600 font-mono">100% PRIVACY</span>
+        </div>
+      </div>
+
+      {/* Footer Navigation */}
+      <div className="p-3 bg-white border-t border-slate-200/90 shrink-0 max-w-2xl mx-auto w-full shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-2.5">
+        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-600 hover:text-slate-900 select-none">
+          <input
+            type="checkbox"
+            checked={dontShowAgain}
+            onChange={(e) => setDontShowAgain(e.target.checked)}
+            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+          />
+          <span className="text-[11px] sm:text-xs">7 天內不再自動顯示</span>
+        </label>
+
+        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+          {activeStep < steps.length - 1 ? (
+            <button
+              onClick={() => {
+                playClickSound();
+                setActiveStep((prev) => prev + 1);
+              }}
+              className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm btn-interact"
+            >
+              <span>下一步</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              onClick={handleConfirm}
+              className="w-full sm:w-auto px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1 shadow-sm btn-interact"
+            >
+              <span>開始使用</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
     </div>

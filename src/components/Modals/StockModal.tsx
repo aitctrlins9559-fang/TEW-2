@@ -238,7 +238,7 @@ export const StockModal: React.FC<StockModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 w-full h-[100dvh] bg-slate-900/60 backdrop-blur-xs z-[99] flex flex-col justify-between text-slate-900 animate-in fade-in duration-200 select-none">
+    <div className="fixed inset-0 w-full h-[100dvh] bg-slate-100 z-[99] flex flex-col text-slate-900 animate-in fade-in duration-200 select-none">
       {/* 1. 滿版頂部導航 Header */}
       <header className="w-full bg-white border-b border-slate-200 px-4 py-2.5 sm:px-6 sm:py-3 flex items-center justify-between shrink-0 shadow-2xs z-20">
         <div className="flex items-center gap-2.5">
@@ -295,8 +295,26 @@ export const StockModal: React.FC<StockModalProps> = ({
             <div className="relative">
               <input
                 type="text"
+                enterKeyHint="done"
                 value={searchInput}
                 onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (searchResults.length > 0) {
+                      const top = searchResults[0];
+                      selectSuggestion(top.symbol, top.name, top.market);
+                    } else if (searchInput.trim()) {
+                      const parts = searchInput.split(/[|\s]+/);
+                      const sym = parts[0]?.trim();
+                      const n = parts[1]?.trim() || sym;
+                      if (sym) {
+                        selectSuggestion(sym, n, market);
+                      }
+                    }
+                    (e.target as HTMLElement).blur();
+                  }
+                }}
                 onFocus={() => {
                   if (searchInput.trim()) {
                     setShowResults(true);
@@ -307,7 +325,7 @@ export const StockModal: React.FC<StockModalProps> = ({
                   }
                 }}
                 placeholder="輸入代號/名稱 (如 2330 / NVDA / 蘋果)"
-                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2.5 text-slate-900 font-bold outline-none text-xs focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-100 transition truncate"
+                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2.5 text-slate-900 font-bold outline-none text-base sm:text-xs focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-100 transition truncate"
               />
               {searchInput && (
                 <button
@@ -384,6 +402,7 @@ export const StockModal: React.FC<StockModalProps> = ({
                 <input
                   type="text"
                   required
+                  enterKeyHint="next"
                   value={symbol}
                   onChange={(e) => {
                     const s = e.target.value.toUpperCase();
@@ -391,7 +410,7 @@ export const StockModal: React.FC<StockModalProps> = ({
                     fetchLivePreview(s, market);
                   }}
                   placeholder="2330"
-                  className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 font-mono font-bold uppercase outline-none text-xs focus:border-indigo-600 focus:bg-white truncate"
+                  className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 font-mono font-bold uppercase outline-none text-base sm:text-xs focus:border-indigo-600 focus:bg-white truncate"
                 />
               </div>
 
@@ -400,10 +419,11 @@ export const StockModal: React.FC<StockModalProps> = ({
                 <input
                   type="text"
                   required
+                  enterKeyHint="next"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="台積電"
-                  className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 font-bold outline-none text-xs focus:border-indigo-600 focus:bg-white truncate"
+                  className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 font-bold outline-none text-base sm:text-xs focus:border-indigo-600 focus:bg-white truncate"
                 />
               </div>
             </div>
@@ -438,10 +458,11 @@ export const StockModal: React.FC<StockModalProps> = ({
                 step="any"
                 min="0.0001"
                 required
+                enterKeyHint="next"
                 value={shares}
                 onChange={(e) => setShares(e.target.value)}
                 placeholder="例: 1000"
-                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 outline-none text-xs font-mono font-bold tabular-nums focus:border-indigo-600 focus:bg-white transition"
+                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 outline-none text-base sm:text-xs font-mono font-bold tabular-nums focus:border-indigo-600 focus:bg-white transition"
               />
               {/* 快捷股數按鈕 */}
               <div className="flex items-center gap-1 pt-0.5">
@@ -499,10 +520,11 @@ export const StockModal: React.FC<StockModalProps> = ({
                 step="any"
                 min="0"
                 required
+                enterKeyHint="next"
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
                 placeholder="配股填 0"
-                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 outline-none text-xs font-mono font-bold tabular-nums focus:border-indigo-600 focus:bg-white transition"
+                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 outline-none text-base sm:text-xs font-mono font-bold tabular-nums focus:border-indigo-600 focus:bg-white transition"
               />
               <div className="flex justify-between items-center text-[10px] text-slate-500 pt-0.5 leading-none">
                 <span>停利:<strong className="text-emerald-600 font-mono ml-0.5 font-bold">{tpPrice}</strong></span>
@@ -519,9 +541,10 @@ export const StockModal: React.FC<StockModalProps> = ({
               </label>
               <input
                 type="date"
+                enterKeyHint="done"
                 value={buyDate}
                 onChange={(e) => setBuyDate(e.target.value)}
-                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 py-0 text-slate-900 outline-none text-xs font-mono tabular-nums focus:border-indigo-600 focus:bg-white transition block max-w-full truncate"
+                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 py-0 text-slate-900 outline-none text-base sm:text-xs font-mono tabular-nums focus:border-indigo-600 focus:bg-white transition block max-w-full truncate"
               />
             </div>
 
@@ -533,10 +556,11 @@ export const StockModal: React.FC<StockModalProps> = ({
                 <input
                   type="number"
                   step="0.01"
+                  enterKeyHint="done"
                   value={buyRate}
                   onChange={(e) => setBuyRate(e.target.value)}
                   placeholder="32.15"
-                  className="w-full h-8 bg-white border border-amber-300 rounded-lg px-2 py-0 text-amber-900 font-bold outline-none text-xs font-mono tabular-nums focus:border-amber-500 block max-w-full truncate"
+                  className="w-full h-8 bg-white border border-amber-300 rounded-lg px-2 py-0 text-amber-900 font-bold outline-none text-base sm:text-xs font-mono tabular-nums focus:border-amber-500 block max-w-full truncate"
                 />
               </div>
             ) : (
@@ -567,32 +591,29 @@ export const StockModal: React.FC<StockModalProps> = ({
             </div>
           </div>
 
+          {/* (F) 底部操作按鈕 (放於表單流內，不懸浮遮擋鍵盤) */}
+          <div className="pt-2 pb-6 sm:pb-8 flex gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                playClickSound();
+                onClose();
+              }}
+              className="w-1/3 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition active:scale-98 shadow-2xs flex items-center justify-center"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              className="w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold text-xs sm:text-sm transition shadow-sm shadow-emerald-200 active:scale-98 flex items-center justify-center gap-1.5"
+            >
+              <Check className="w-4 h-4" />
+              <span>確認儲存部位</span>
+            </button>
+          </div>
+
         </form>
       </main>
-
-      {/* 3. 滿版底部操作按鈕 Footer */}
-      <footer className="w-full bg-white border-t border-slate-200 px-4 sm:px-6 py-2.5 sm:py-3 shrink-0 shadow-sm pb-[max(0.75rem,env(safe-area-inset-bottom))] z-20">
-        <div className="max-w-lg mx-auto flex gap-2.5">
-          <button
-            type="button"
-            onClick={() => {
-              playClickSound();
-              onClose();
-            }}
-            className="w-1/3 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition active:scale-98"
-          >
-            取消
-          </button>
-          <button
-            type="submit"
-            form="stock-position-form"
-            className="w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition shadow-sm shadow-emerald-200 active:scale-98 flex items-center justify-center gap-1.5"
-          >
-            <Check className="w-4 h-4" />
-            <span>確認儲存部位</span>
-          </button>
-        </div>
-      </footer>
     </div>
   );
 };

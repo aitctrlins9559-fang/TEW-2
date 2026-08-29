@@ -14,6 +14,7 @@ import {
   Search,
   SlidersHorizontal,
   ChevronDown,
+  ChevronRight,
   Globe,
   Table as TableIcon,
   LayoutGrid,
@@ -313,10 +314,10 @@ export const StockTable: React.FC<StockTableProps> = ({
                       setLocalDiscount(d);
                       if (onUpdateBrokerDiscount) onUpdateBrokerDiscount(d);
                     }}
-                    className="w-full bg-white border border-slate-200 text-indigo-700 font-bold rounded-lg px-2 py-1.5 outline-none cursor-pointer text-xs font-mono shadow-2xs"
+                    className="w-full bg-white border border-slate-200 text-indigo-700 font-bold rounded-lg px-2 py-1.5 outline-none cursor-pointer text-xs font-sans shadow-2xs"
                   >
                     {DISCOUNT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
+                      <option key={opt.value} value={opt.value} className="text-xs font-sans text-slate-800">
                         {opt.label}
                       </option>
                     ))}
@@ -498,9 +499,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                       <th className="p-3 text-right whitespace-nowrap">總市值 / 淨損益 (ROI)</th>
                       <th className="p-3 text-right whitespace-nowrap">預估成本 (手續費+稅)</th>
                       <th className="p-3 text-right whitespace-nowrap">殖利率 (預估年息)</th>
-                      <th className="p-3 text-center whitespace-nowrap sticky right-0 bg-slate-50 z-20 border-l border-slate-200/80 shadow-[-4px_0_10px_rgba(0,0,0,0.04)]">
-                        快捷操作
-                      </th>
+                      <th className="p-3 w-8"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
@@ -607,66 +606,9 @@ export const StockTable: React.FC<StockTableProps> = ({
                             </div>
                           </td>
 
-                          {/* Action buttons (Sticky on Right) */}
-                          <td
-                            className="p-3 text-center whitespace-nowrap sticky right-0 bg-white group-hover:bg-indigo-50/90 transition-colors z-10 border-l border-slate-100 shadow-[-4px_0_10px_rgba(0,0,0,0.04)]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="flex items-center justify-center gap-1">
-                              {pendingShares > 0 && onApplyPendingStockShares && (
-                                <button
-                                  onClick={() => {
-                                    playClickSound();
-                                    onApplyPendingStockShares(item.id);
-                                  }}
-                                  className="p-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-0.5 text-[10px] font-bold px-1.5 shadow-xs"
-                                  title={`一鍵將 +${pendingShares} 股配股撥入持股總數`}
-                                >
-                                  <CheckCircle2 className="w-3 h-3" />
-                                  <span>撥入</span>
-                                </button>
-                              )}
-                              <button
-                                onClick={() => {
-                                  playClickSound();
-                                  onSelectChartTarget(item.symbol, item.market === 'us' ? 'us' : 'tse', item.name);
-                                }}
-                                className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition"
-                                title="K線走勢"
-                              >
-                                <BarChart2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  playClickSound();
-                                  onOpenEditModal(item.id);
-                                }}
-                                className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition"
-                                title="編輯持股"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  playClickSound();
-                                  onOpenTxHistory(item.id);
-                                }}
-                                className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
-                                title="交易紀錄"
-                              >
-                                <History className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  playClickSound();
-                                  onDeleteStock(item.id);
-                                }}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                                title="刪除部位"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                          {/* Subtle chevron indicator */}
+                          <td className="p-3 text-right text-slate-300 group-hover:text-indigo-600 transition-colors w-8">
+                            <ChevronRight className="w-4 h-4 ml-auto" />
                           </td>
                         </tr>
                       );
@@ -675,20 +617,17 @@ export const StockTable: React.FC<StockTableProps> = ({
                 </table>
               </div>
 
-              {/* Mobile Table View (Optimized Stacked Edge-to-Edge, Minimal Dragging) */}
-              <div className="block sm:hidden rounded-xl border border-slate-200 bg-white shadow-2xs w-full overflow-x-auto">
-                <table className="w-full min-w-[360px] text-left text-xs border-collapse">
+              {/* Mobile Table View (Optimized Clean 4-Column Layout, Click Row for Actions) */}
+              <div className="block sm:hidden rounded-xl border border-slate-200 bg-white shadow-2xs w-full overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 text-[10px] uppercase tracking-wider font-mono">
-                      <th className="p-2 sticky left-0 bg-slate-50 z-20 border-r border-slate-200/80 shadow-xs whitespace-nowrap">
+                      <th className="p-2.5 whitespace-nowrap">
                         標的 / 代號
                       </th>
-                      <th className="p-2 text-right whitespace-nowrap">現價 / 均價</th>
-                      <th className="p-2 text-right whitespace-nowrap">總市值 / 損益</th>
-                      <th className="p-2 text-right whitespace-nowrap">殖利率</th>
-                      <th className="p-2 text-center sticky right-0 bg-slate-50 z-20 border-l border-slate-200/80 shadow-[-3px_0_6px_rgba(0,0,0,0.03)] whitespace-nowrap">
-                        操作
-                      </th>
+                      <th className="p-2.5 text-right whitespace-nowrap">現價 / 均價</th>
+                      <th className="p-2.5 text-right whitespace-nowrap">總市值 / 損益</th>
+                      <th className="p-2.5 text-right whitespace-nowrap">殖利率</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-[11px]">
@@ -719,9 +658,9 @@ export const StockTable: React.FC<StockTableProps> = ({
                           className="hover:bg-indigo-50/40 active:bg-indigo-50/60 cursor-pointer transition text-slate-800"
                         >
                           {/* Stacked Symbol & Name */}
-                          <td className="p-2 sticky left-0 bg-white z-10 border-r border-slate-100 shadow-xs whitespace-nowrap">
+                          <td className="p-2.5 whitespace-nowrap">
                             <div className="flex flex-col">
-                              <div className="font-extrabold text-slate-900 truncate max-w-[95px] text-xs leading-tight">
+                              <div className="font-extrabold text-slate-900 truncate max-w-[105px] text-xs leading-tight">
                                 {item.name}
                               </div>
                               <div className="flex items-center gap-1 mt-0.5">
@@ -736,7 +675,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                           </td>
 
                           {/* Stacked Price & Shares/Cost */}
-                          <td className="p-2 text-right font-mono whitespace-nowrap">
+                          <td className="p-2.5 text-right font-mono whitespace-nowrap">
                             <div className="font-black text-slate-900 text-xs">
                               {safePrice === null ? '--' : `$${safePrice}`}
                             </div>
@@ -751,7 +690,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                           </td>
 
                           {/* Stacked Market Value & Net Profit */}
-                          <td className="p-2 text-right font-mono whitespace-nowrap">
+                          <td className="p-2.5 text-right font-mono whitespace-nowrap">
                             <div className="font-bold text-slate-900 text-xs">
                               {itemMarketValTWD === null ? '--' : formatMoney(itemMarketValTWD, isPrivacy)}
                             </div>
@@ -763,51 +702,12 @@ export const StockTable: React.FC<StockTableProps> = ({
                           </td>
 
                           {/* Stacked Dividend Yield & Income */}
-                          <td className="p-2 text-right font-mono whitespace-nowrap">
+                          <td className="p-2.5 text-right font-mono whitespace-nowrap">
                             <div className="text-emerald-700 font-bold text-xs">
                               {divInfo.dividendYieldPct.toFixed(1)}%
                             </div>
                             <div className="text-[9px] text-slate-500">
                               年領 {formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
-                            </div>
-                          </td>
-
-                          {/* Sticky Right Actions */}
-                          <td className="p-1.5 text-center sticky right-0 bg-white z-10 border-l border-slate-100 shadow-[-3px_0_6px_rgba(0,0,0,0.03)] whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  playClickSound();
-                                  onSelectChartTarget(item.symbol, item.market === 'us' ? 'us' : 'tse', item.name);
-                                }}
-                                className="p-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition"
-                                title="K線走勢"
-                              >
-                                <BarChart2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  playClickSound();
-                                  onOpenEditModal(item.id);
-                                }}
-                                className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
-                                title="編輯"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  playClickSound();
-                                  onDeleteStock(item.id);
-                                }}
-                                className="p-1 rounded bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
-                                title="刪除"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
                             </div>
                           </td>
                         </tr>
@@ -847,19 +747,18 @@ export const StockTable: React.FC<StockTableProps> = ({
                 return (
                   <div
                     key={item.id}
-                    className="glass-card p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 bg-white shadow-xs hover:shadow-md hover:border-indigo-200 transition space-y-3 relative group"
+                    onClick={() => {
+                      playClickSound();
+                      setDetailModalStock(item);
+                    }}
+                    className="glass-card p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 bg-white shadow-xs hover:shadow-md hover:border-indigo-300 transition space-y-3 relative group cursor-pointer active:scale-[0.99]"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div
-                        onClick={() => {
-                          playClickSound();
-                          setDetailModalStock(item);
-                        }}
-                        className="cursor-pointer min-w-0 flex-1"
-                      >
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="text-sm sm:text-base font-black text-slate-900 group-hover:text-indigo-600 transition truncate max-w-[140px] xs:max-w-[200px]">
-                            {item.name}
+                          <h3 className="text-sm sm:text-base font-black text-slate-900 group-hover:text-indigo-600 transition truncate max-w-[140px] xs:max-w-[200px] flex items-center gap-1">
+                            <span>{item.name}</span>
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-600 transition shrink-0" />
                           </h3>
                           <span className="text-[10px] sm:text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
                             {item.symbol}
@@ -934,71 +833,6 @@ export const StockTable: React.FC<StockTableProps> = ({
                           </span>
                         )}
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-4 sm:flex sm:flex-wrap items-center justify-end gap-1.5 pt-1 border-t border-slate-100 text-xs">
-                      {pendingShares > 0 && onApplyPendingStockShares && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playClickSound();
-                            onApplyPendingStockShares(item.id);
-                          }}
-                          className="col-span-4 sm:col-span-1 px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-1 transition btn-interact shadow-xs text-[11px]"
-                          title={`一鍵將 +${pendingShares} 股配股撥入持股總數`}
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>撥入 +{pendingShares}股</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          playClickSound();
-                          onSelectChartTarget(item.symbol, item.market === 'us' ? 'us' : 'tse', item.name);
-                        }}
-                        className="px-2 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-100 flex items-center justify-center gap-1 transition btn-interact text-[11px]"
-                      >
-                        <BarChart2 className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>K線</span>
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          playClickSound();
-                          onOpenTxHistory(item.id);
-                        }}
-                        className="px-2 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold border border-slate-200 flex items-center justify-center gap-1 transition btn-interact text-[11px]"
-                      >
-                        <History className="w-3.5 h-3.5 text-slate-500" />
-                        <span>交易</span>
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          playClickSound();
-                          onOpenEditModal(item.id);
-                        }}
-                        className="px-2 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold border border-slate-200 flex items-center justify-center gap-1 transition btn-interact text-[11px]"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                        <span>編輯</span>
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          playClickSound();
-                          onDeleteStock(item.id);
-                        }}
-                        className="p-1.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 flex items-center justify-center transition btn-interact"
-                        title="刪除部位"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 );
