@@ -432,11 +432,11 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
       switch (tf) {
         case '1D':
           range = '1d';
-          interval = '5m';
+          interval = '1m';
           break;
         case '5D':
           range = '5d';
-          interval = '15m';
+          interval = '5m';
           break;
         case '1M':
           range = '1mo';
@@ -1364,154 +1364,211 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
     <div className={`fixed inset-0 z-[96] w-full h-[100dvh] max-h-screen flex flex-col overflow-hidden overscroll-none select-none modal-backdrop ${
       isLight ? 'bg-slate-100 text-slate-800' : 'bg-slate-950 text-slate-100'
     }`}>
-      {/* TOP COMMAND BAR (PRO TERMINAL HEADER) - Ultra Clean & Responsive */}
-      <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} border-b px-2 py-0.5 flex items-center justify-between gap-1 shrink-0 shadow-xs h-8 sm:h-9 z-20`}>
-        {/* Left: Return + Stock Identity + Live Price */}
-        <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-          <button
-            onClick={() => {
-              playClickSound();
-              onClose();
-            }}
-            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border text-xs font-bold transition btn-interact shrink-0 ${
-              isLight
-                ? 'text-slate-700 bg-slate-100 hover:bg-slate-200 border-slate-200'
-                : 'text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border-slate-700'
-            }`}
-            title="返回上一層"
-          >
-            <ArrowLeft className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`} />
-          </button>
-
-          <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-            <span className={`text-[11px] sm:text-xs font-mono font-black px-1.5 py-0.5 rounded shrink-0 border ${
-              isLight
-                ? 'text-indigo-700 bg-indigo-50 border-indigo-200'
-                : 'text-indigo-300 bg-indigo-950/90 border-indigo-700/60'
-            }`}>
-              {selectedChartTarget.symbol}
-            </span>
-            <h1 className={`text-xs sm:text-sm font-bold tracking-tight truncate max-w-[80px] xs:max-w-[120px] sm:max-w-[180px] shrink-0 ${
-              isLight ? 'text-slate-900' : 'text-white'
-            }`}>
-              {selectedChartTarget.name || selectedChartTarget.symbol}
-            </h1>
-            <span className={`text-[9px] font-bold px-1 py-0.2 rounded border uppercase shrink-0 hidden sm:inline ${
-              isLight ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-800 text-slate-400 border-slate-700'
-            }`}>
-              {selectedChartTarget.market === 'us' ? '美股' : selectedChartTarget.market === 'otc' ? '上櫃' : '上市'}
-            </span>
-          </div>
-
-          {/* Integrated Real-time Price & Change Badge */}
-          <div className={`flex items-baseline gap-1 font-mono shrink-0 pl-1 border-l ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
-            <span className={`text-xs sm:text-sm font-black tabular-nums ${isLight ? 'text-slate-900' : 'text-white'}`}>
-              ${activePrice.toFixed(2)}
-            </span>
-            <span
-              className={`text-[10px] sm:text-xs font-bold font-mono px-1 py-0.2 rounded border ${
-                isActiveUp
-                  ? isRedUp
-                    ? isLight ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-rose-400 bg-rose-950/40 border-rose-800/40'
-                    : isLight ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-emerald-400 bg-emerald-950/40 border-emerald-800/40'
-                  : isRedUp
-                  ? isLight ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-emerald-400 bg-emerald-950/40 border-emerald-800/40'
-                  : isLight ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-rose-400 bg-rose-950/40 border-rose-800/40'
-              }`}
-            >
-              {isActiveUp ? '+' : ''}{activeDiffPct.toFixed(2)}%
-            </span>
-          </div>
-        </div>
-
-        {/* Right: Compact Action Buttons */}
-        <div className="flex items-center gap-1 shrink-0">
-          {onOpenAICopilot && (
+      {/* LAYER 1: 最上方整合顯示股票資訊 (Top Header + Stock Quotation Grid - NO BUTTONS) */}
+      <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} border-b flex flex-col shrink-0 shadow-xs z-20`}>
+        {/* 1A. Top Command Bar Header */}
+        <div className="px-2 py-0.5 flex items-center justify-between gap-1 shrink-0 h-8 sm:h-9">
+          {/* Left: Return + Stock Identity + Live Price */}
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
             <button
               onClick={() => {
                 playClickSound();
-                onOpenAICopilot();
+                onClose();
               }}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white p-1 sm:px-2 sm:py-0.5 rounded text-xs font-bold transition flex items-center gap-1 shadow-xs btn-interact shrink-0"
-              title="開啟 AI 深度量化操盤顧問"
+              className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border text-xs font-bold transition btn-interact shrink-0 ${
+                isLight
+                  ? 'text-slate-700 bg-slate-100 hover:bg-slate-200 border-slate-200'
+                  : 'text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border-slate-700'
+              }`}
+              title="返回上一層"
             >
-              <Sparkles className="w-3 h-3 text-amber-300" />
-              <span className="hidden sm:inline text-[10px]">AI診斷</span>
+              <ArrowLeft className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`} />
             </button>
-          )}
 
-          {portfolioList.length > 1 && (
-            <div className={`hidden sm:flex items-center rounded p-0.5 shrink-0 border ${
-              isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'
-            }`}>
-              <button
-                onClick={handlePrevStock}
-                className={`p-0.5 rounded transition ${isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-slate-700 text-slate-300'}`}
-                title="上一檔持股"
-              >
-                <ChevronLeft className="w-3 h-3" />
-              </button>
-              <span className={`text-[10px] font-mono px-1 font-bold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                {currentPortfolioIndex >= 0 ? `${currentPortfolioIndex + 1}/${portfolioList.length}` : '切換'}
+            <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+              <span className={`text-[11px] sm:text-xs font-mono font-black px-1.5 py-0.5 rounded shrink-0 border ${
+                isLight
+                  ? 'text-indigo-700 bg-indigo-50 border-indigo-200'
+                  : 'text-indigo-300 bg-indigo-950/90 border-indigo-700/60'
+              }`}>
+                {selectedChartTarget.symbol}
               </span>
-              <button
-                onClick={handleNextStock}
-                className={`p-0.5 rounded transition ${isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-slate-700 text-slate-300'}`}
-                title="下一檔持股"
-              >
-                <ChevronRight className="w-3 h-3" />
-              </button>
+              <h1 className={`text-xs sm:text-sm font-bold tracking-tight truncate max-w-[80px] xs:max-w-[120px] sm:max-w-[180px] shrink-0 ${
+                isLight ? 'text-slate-900' : 'text-white'
+              }`}>
+                {selectedChartTarget.name || selectedChartTarget.symbol}
+              </h1>
+              <span className={`text-[9px] font-bold px-1 py-0.2 rounded border uppercase shrink-0 hidden sm:inline ${
+                isLight ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-800 text-slate-400 border-slate-700'
+              }`}>
+                {selectedChartTarget.market === 'us' ? '美股' : selectedChartTarget.market === 'otc' ? '上櫃' : '上市'}
+              </span>
             </div>
-          )}
 
-          {/* Theme Toggle Button (Light/Dark Switch) */}
-          <button
-            onClick={toggleTheme}
-            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border transition shrink-0 ${
-              isLight
-                ? 'text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border-slate-200'
-                : 'text-amber-300 hover:text-amber-200 bg-slate-800 hover:bg-slate-700 border-slate-700'
-            }`}
-            title={isLight ? '切換為暗黑專業操盤模式' : '切換為主頁亮色模式'}
-          >
-            {isLight ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-          </button>
 
-          <button
-            onClick={() => {
-              playClickSound();
-              fetchChartDataForTimeframe(selectedChartTarget, timeframe);
-            }}
-            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border transition shrink-0 ${
-              isLight
-                ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800 border-slate-700'
-            }`}
-            title="手動重新整理"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-500' : ''}`} />
-          </button>
+          </div>
 
-          <button
-            onClick={() => {
-              playClickSound();
-              onClose();
-            }}
-            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border transition shrink-0 ${
-              isLight
-                ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800 border-slate-700'
-            }`}
-            title="關閉操盤終端"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {/* Right: Compact Action Buttons */}
+          <div className="flex items-center gap-1 shrink-0">
+            {onOpenAICopilot && (
+              <button
+                onClick={() => {
+                  playClickSound();
+                  onOpenAICopilot();
+                }}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white p-1 sm:px-2 sm:py-0.5 rounded text-xs font-bold transition flex items-center gap-1 shadow-xs btn-interact shrink-0"
+                title="開啟 AI 深度量化操盤顧問"
+              >
+                <Sparkles className="w-3 h-3 text-amber-300" />
+                <span className="hidden sm:inline text-[10px]">AI診斷</span>
+              </button>
+            )}
+
+            {portfolioList.length > 1 && (
+              <div className={`hidden sm:flex items-center rounded p-0.5 shrink-0 border ${
+                isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'
+              }`}>
+                <button
+                  onClick={handlePrevStock}
+                  className={`p-0.5 rounded transition ${isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-slate-700 text-slate-300'}`}
+                  title="上一檔持股"
+                >
+                  <ChevronLeft className="w-3 h-3" />
+                </button>
+                <span className={`text-[10px] font-mono px-1 font-bold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  {currentPortfolioIndex >= 0 ? `${currentPortfolioIndex + 1}/${portfolioList.length}` : '切換'}
+                </span>
+                <button
+                  onClick={handleNextStock}
+                  className={`p-0.5 rounded transition ${isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-slate-700 text-slate-300'}`}
+                  title="下一檔持股"
+                >
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
+            {/* Theme Toggle Button (Light/Dark Switch) */}
+            <button
+              onClick={toggleTheme}
+              className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border transition shrink-0 ${
+                isLight
+                  ? 'text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border-slate-200'
+                  : 'text-amber-300 hover:text-amber-200 bg-slate-800 hover:bg-slate-700 border-slate-700'
+              }`}
+              title={isLight ? '切換為暗黑專業操盤模式' : '切換為主頁亮色模式'}
+            >
+              {isLight ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+            </button>
+
+            <button
+              onClick={() => {
+                playClickSound();
+                fetchChartDataForTimeframe(selectedChartTarget, timeframe);
+              }}
+              className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border transition shrink-0 ${
+                isLight
+                  ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800 border-slate-700'
+              }`}
+              title="手動重新整理"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-500' : ''}`} />
+            </button>
+
+            <button
+              onClick={() => {
+                playClickSound();
+                onClose();
+              }}
+              className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border transition shrink-0 ${
+                isLight
+                  ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800 border-slate-700'
+              }`}
+              title="關閉操盤終端"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* 1B. Intraday Real-time Large Quote & Technical Info Panel (No Buttons - Pure Stock Info) */}
+        <div className={`px-3 py-1.5 sm:py-2 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shrink-0 ${
+          isLight ? 'bg-white border-slate-200' : 'bg-slate-950 border-slate-800'
+        }`}>
+          {/* Left Price Block */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="flex flex-col">
+              <span className={`text-[10px] uppercase font-bold tracking-wider ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>即時成交價</span>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight tabular-nums ${
+                  isActiveUp
+                    ? isRedUp ? 'text-rose-600' : 'text-emerald-600'
+                    : isRedUp ? 'text-emerald-600' : 'text-rose-600'
+                }`}>
+                  ${activePrice.toFixed(2)}
+                </span>
+                <span className={`text-[11px] sm:text-xs font-bold font-mono px-1.5 py-0.5 rounded ${
+                  isActiveUp
+                    ? isRedUp
+                      ? 'text-rose-700 bg-rose-50 border border-rose-200/50 dark:text-rose-400 dark:bg-rose-950/30 dark:border-rose-800/30'
+                      : 'text-emerald-700 bg-emerald-50 border border-emerald-200/50 dark:text-emerald-400 dark:bg-emerald-950/30 dark:border-emerald-800/30'
+                    : isRedUp
+                    ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/50 dark:text-emerald-400 dark:bg-emerald-950/30 dark:border-emerald-800/30'
+                    : 'text-rose-700 bg-rose-50 border border-rose-200/50 dark:text-rose-400 dark:bg-rose-950/30 dark:border-rose-800/30'
+                }`}>
+                  {isActiveUp ? '▲' : '▼'}{activeDiff >= 0 ? '+' : ''}{activeDiff.toFixed(2)} ({isActiveUp ? '+' : ''}{activeDiffPct.toFixed(2)}%)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Statistics Grid */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-3 sm:gap-x-4 gap-y-1 flex-1 max-w-4xl font-mono">
+            <div className="flex flex-col">
+              <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>開盤</span>
+              <span className={`text-xs sm:text-[13px] font-bold tabular-nums ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+                ${currentCandle ? currentCandle.open.toFixed(2) : '--'}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>最高</span>
+              <span className={`text-xs sm:text-[13px] font-black tabular-nums ${isRedUp ? 'text-rose-500' : 'text-emerald-500'}`}>
+                ${currentCandle ? currentCandle.high.toFixed(2) : '--'}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>最低</span>
+              <span className={`text-xs sm:text-[13px] font-black tabular-nums ${isRedUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                ${currentCandle ? currentCandle.low.toFixed(2) : '--'}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>昨收</span>
+              <span className={`text-xs sm:text-[13px] font-bold tabular-nums ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                ${activePrevClose.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>成交量</span>
+              <span className="text-xs sm:text-[13px] font-black text-indigo-500 dark:text-indigo-400 tabular-nums">
+                {currentCandle ? formatVolumeShort(currentCandle.volume, selectedChartTarget.market) : '--'}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>更新時間</span>
+              <span className={`text-xs sm:text-[13px] font-medium tabular-nums ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                {currentCandle ? currentCandle.timeStr : '--'}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* MOBILE TOP TAB BAR (Switch between Chart, Orderbook, Diagnosis, Position, and Switcher) */}
-      <div className={`lg:hidden border-b px-1 py-0.5 flex items-center justify-between gap-0.5 text-[10px] shrink-0 h-7 z-10 ${
-        isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-950 border-slate-800'
+      {/* LAYER 2A: MOBILE INTERACTIVE TAB BUTTONS (Always Visible Navigation Bar: K線 / 五檔 / 診斷 / 部位 / 選股) */}
+      <div className={`lg:hidden border-b px-1 py-1 flex items-center justify-between gap-1 text-[10px] shrink-0 z-20 ${
+        isLight ? 'bg-slate-100/90 border-slate-200' : 'bg-slate-950 border-slate-800'
       }`}>
         <button
           onClick={() => {
@@ -1605,12 +1662,14 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
         <div className={`lg:col-span-8 xl:col-span-9 flex-col border-b lg:border-b-0 lg:border-r overflow-hidden flex-1 min-h-0 ${
           isLight ? 'border-slate-200 bg-white' : 'border-slate-800 bg-slate-950'
         } ${mobileTab === 'chart' ? 'flex' : 'hidden lg:flex'}`}>
-          {/* TOOLBAR: Responsive 2-Row Layout on Mobile / Single-Row on Desktop */}
-          <div className={`${isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-900 border-slate-800 text-slate-100'} border-b px-1 sm:px-2 py-0.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-0.5 text-xs shrink-0 z-10`}>
-            {/* Timeframe Segmented Switcher (Full Width Grid on Mobile, Compact on Desktop) */}
-            <div className="w-full lg:w-auto">
-              <div className={`grid grid-cols-7 lg:flex items-center p-0.5 rounded border font-mono w-full ${
-                isLight ? 'bg-slate-200/70 border-slate-200' : 'bg-slate-950 border-slate-800'
+
+          {/* LAYER 2: INTERACTIVE BUTTONS & INDICATOR NUMERICAL DATA (2. 互動按鈕, 數字資訊) */}
+          <div className={`${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} flex flex-col shrink-0 z-10`}>
+
+            {/* 2B. Timeframe Switcher Buttons (分時 / 5日 / 日K / 季K / 半年 / 週K / 月K) */}
+            <div className={`px-1 py-0.5 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'} flex items-center justify-center`}>
+              <div className={`flex items-center p-0.5 rounded border font-mono w-full max-w-lg ${
+                isLight ? 'bg-slate-200/50 border-slate-200' : 'bg-slate-950 border-slate-800'
               }`}>
                 {(['1D', '5D', '1M', '3M', '6M', '1Y', '5Y'] as ChartTimeframe[]).map((tf) => (
                   <button
@@ -1619,7 +1678,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                       playClickSound();
                       setTimeframe(tf);
                     }}
-                    className={`py-0.5 px-0.5 sm:px-2 h-[20px] rounded font-bold transition text-[10px] sm:text-xs text-center flex items-center justify-center leading-none ${
+                    className={`flex-1 py-0.5 h-[20px] rounded font-bold transition text-[10px] sm:text-xs text-center flex items-center justify-center leading-none ${
                       timeframe === tf
                         ? 'bg-indigo-600 text-white shadow-xs'
                         : isLight
@@ -1633,105 +1692,107 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
               </div>
             </div>
 
-            {/* Controls & Indicators: Guaranteed 100% Fit on Mobile Screen */}
-            <div className="flex items-center justify-between lg:justify-end gap-0.5 w-full lg:w-auto overflow-x-auto no-scrollbar">
-              {/* Chart Style Selector */}
-              <CustomSelect
-                value={chartStyle}
-                options={[
-                  { value: 'candlestick', label: 'K線' },
-                  { value: 'tick', label: '即時 Tick' },
-                  { value: 'area', label: '面積圖' },
-                  { value: 'line', label: '折線圖' },
-                ]}
-                onChange={(val) => setChartStyle(val)}
-                isLight={isLight}
-                ariaLabel="切換圖表模式"
-              />
+            {/* 2C. Indicator Control Buttons & Selectors (K線, 均線, 布林, 昨收, VWAP, 量能) */}
+            <div className={`px-1.5 sm:px-3 py-0.5 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'} flex items-center justify-between gap-1 overflow-x-auto no-scrollbar`}>
+              <div className="flex items-center gap-1 shrink-0">
+                {/* Chart Style Selector */}
+                <CustomSelect
+                  value={chartStyle}
+                  options={[
+                    { value: 'candlestick', label: 'K線' },
+                    { value: 'tick', label: '即時 Tick' },
+                    { value: 'area', label: '面積圖' },
+                    { value: 'line', label: '折線圖' },
+                  ]}
+                  onChange={(val) => setChartStyle(val)}
+                  isLight={isLight}
+                  ariaLabel="切換圖表模式"
+                />
 
-              {/* Overlays: MA, Bollinger, VWAP, PrevClose */}
-              <div className="flex items-center gap-0.5 shrink-0">
-                <button
-                  onClick={() => {
-                    playClickSound();
-                    setShowMA(!showMA);
-                  }}
-                  className={`px-1 h-[20px] rounded text-[9px] sm:text-[10px] font-medium transition border flex items-center gap-0.5 ${
-                    showMA
-                      ? isLight
-                        ? 'bg-amber-50 border-amber-300 text-amber-800 font-semibold'
-                        : 'bg-amber-950/70 border-amber-600/70 text-amber-300 font-semibold'
-                      : isLight
-                      ? 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                  }`}
-                  title="切換均線"
-                >
-                  <span className={`w-1 h-1 rounded-full ${showMA ? 'bg-amber-500' : 'bg-slate-400'}`} />
-                  均線
-                </button>
-
-                <button
-                  onClick={() => {
-                    playClickSound();
-                    setShowBollinger(!showBollinger);
-                  }}
-                  className={`px-1 h-[20px] rounded text-[9px] sm:text-[10px] font-medium transition border flex items-center gap-0.5 ${
-                    showBollinger
-                      ? isLight
-                        ? 'bg-blue-50 border-blue-300 text-blue-800 font-semibold'
-                        : 'bg-blue-950/70 border-blue-600/70 text-blue-300 font-semibold'
-                      : isLight
-                      ? 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                  }`}
-                  title="切換布林通道"
-                >
-                  <span className={`w-1 h-1 rounded-full ${showBollinger ? 'bg-blue-500' : 'bg-slate-400'}`} />
-                  布林
-                </button>
-
-                <button
-                  onClick={() => {
-                    playClickSound();
-                    setShowPrevClose(!showPrevClose);
-                  }}
-                  className={`px-1 h-[20px] rounded text-[9px] sm:text-[10px] font-medium transition border flex items-center gap-0.5 ${
-                    showPrevClose
-                      ? isLight
-                        ? 'bg-slate-200 border-slate-300 text-slate-800 font-semibold'
-                        : 'bg-slate-800 border-slate-600 text-slate-200 font-semibold'
-                      : isLight
-                      ? 'bg-white border-slate-200 text-slate-500 hover:text-slate-800'
-                      : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
-                  }`}
-                  title="切換昨收參考線"
-                >
-                  <span className={`w-1 h-1 rounded-full ${showPrevClose ? 'bg-slate-600' : 'bg-slate-400'}`} />
-                  昨收
-                </button>
-
-                {(timeframe === '1D' || timeframe === '5D') && (
+                {/* Overlays: MA, Bollinger, PrevClose, VWAP */}
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => {
                       playClickSound();
-                      setShowVWAP(!showVWAP);
+                      setShowMA(!showMA);
                     }}
-                    className={`px-1 h-[20px] rounded text-[9px] sm:text-[10px] font-medium transition border flex items-center gap-0.5 ${
-                      showVWAP
+                    className={`px-1.5 h-[20px] rounded text-[10px] sm:text-[11px] font-medium transition border flex items-center gap-1 ${
+                      showMA
                         ? isLight
-                          ? 'bg-orange-50 border-orange-300 text-orange-800 font-semibold'
-                          : 'bg-orange-950/70 border-orange-600/70 text-orange-300 font-semibold'
+                          ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold'
+                          : 'bg-amber-950/70 border-amber-600/70 text-amber-300 font-bold'
                         : isLight
                         ? 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                     }`}
-                    title="VWAP"
+                    title="切換均線"
                   >
-                    <span className={`w-1 h-1 rounded-full ${showVWAP ? 'bg-orange-500' : 'bg-slate-400'}`} />
-                    VWAP
+                    <span className={`w-1.5 h-1.5 rounded-full ${showMA ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                    均線
                   </button>
-                )}
+
+                  <button
+                    onClick={() => {
+                      playClickSound();
+                      setShowBollinger(!showBollinger);
+                    }}
+                    className={`px-1.5 h-[20px] rounded text-[10px] sm:text-[11px] font-medium transition border flex items-center gap-1 ${
+                      showBollinger
+                        ? isLight
+                          ? 'bg-blue-50 border-blue-300 text-blue-800 font-bold'
+                          : 'bg-blue-950/70 border-blue-600/70 text-blue-300 font-bold'
+                        : isLight
+                        ? 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="切換布林通道"
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${showBollinger ? 'bg-blue-500' : 'bg-slate-400'}`} />
+                    布林
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      playClickSound();
+                      setShowPrevClose(!showPrevClose);
+                    }}
+                    className={`px-1.5 h-[20px] rounded text-[10px] sm:text-[11px] font-medium transition border flex items-center gap-1 ${
+                      showPrevClose
+                        ? isLight
+                          ? 'bg-slate-200 border-slate-300 text-slate-800 font-bold'
+                          : 'bg-slate-800 border-slate-600 text-slate-200 font-bold'
+                        : isLight
+                        ? 'bg-white border-slate-200 text-slate-500 hover:text-slate-800'
+                        : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
+                    }`}
+                    title="切換昨收參考線"
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${showPrevClose ? 'bg-slate-600' : 'bg-slate-400'}`} />
+                    昨收
+                  </button>
+
+                  {(timeframe === '1D' || timeframe === '5D') && (
+                    <button
+                      onClick={() => {
+                        playClickSound();
+                        setShowVWAP(!showVWAP);
+                      }}
+                      className={`px-1.5 h-[20px] rounded text-[10px] sm:text-[11px] font-medium transition border flex items-center gap-1 ${
+                        showVWAP
+                          ? isLight
+                            ? 'bg-orange-50 border-orange-300 text-orange-800 font-bold'
+                            : 'bg-orange-950/70 border-orange-600/70 text-orange-300 font-bold'
+                          : isLight
+                          ? 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="VWAP"
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${showVWAP ? 'bg-orange-500' : 'bg-slate-400'}`} />
+                      VWAP
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Sub-chart Indicator Dropdown */}
@@ -1749,76 +1810,44 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 ariaLabel="選擇副圖指標"
               />
             </div>
-          </div>
 
-          {/* UNIFIED DYNAMIC INSPECTOR HUD: Responsive 2-Row on Mobile, 1-Row on Desktop so text never overflows */}
-          <div className={`${isLight ? 'bg-slate-50/80 border-slate-200 text-slate-700' : 'bg-slate-950 border-slate-800/80 text-slate-300'} border-b px-2 sm:px-3 py-1 flex flex-col lg:flex-row lg:items-center lg:justify-between text-[10px] xs:text-[11px] sm:text-xs font-mono shrink-0 gap-1 min-h-[28px]`}>
-            {currentCandle ? (
-              <>
-                {/* Row 1: Time + OHLC + Volume */}
-                <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2.5 w-full lg:w-auto overflow-x-auto no-scrollbar">
-                  <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded border shrink-0 ${
-                    isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-900 border-slate-800 text-slate-400'
-                  }`}>
-                    <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-400" />
-                    <strong className={isLight ? 'text-slate-800' : 'text-slate-200'}>{currentCandle.timeStr}</strong>
-                  </span>
-                  <div className="flex items-center gap-1.5 xs:gap-2 shrink-0">
-                    <span className={isLight ? 'text-slate-500' : 'text-slate-300'}>
-                      開<strong className={`font-bold ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>${currentCandle.open.toFixed(2)}</strong>
-                    </span>
-                    <span className={isLight ? 'text-slate-500' : 'text-slate-300'}>
-                      高<strong className={`font-bold ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>${currentCandle.high.toFixed(2)}</strong>
-                    </span>
-                    <span className={isLight ? 'text-slate-500' : 'text-slate-300'}>
-                      低<strong className={`font-bold ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>${currentCandle.low.toFixed(2)}</strong>
-                    </span>
-                    <span className={isLight ? 'text-slate-500' : 'text-slate-300'}>
-                      收<strong className={`font-bold ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>${currentCandle.close.toFixed(2)}</strong>
-                    </span>
-                    <span className={isLight ? 'text-slate-500' : 'text-slate-300'}>
-                      量<strong className={`font-bold ${isLight ? 'text-indigo-600' : 'text-indigo-300'}`}>{formatVolumeShort(currentCandle.volume, selectedChartTarget.market)}</strong>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Row 2 (or inline on Desktop): Moving Averages & Overlays */}
-                {(showMA || showBollinger || (showVWAP && (timeframe === '1D' || timeframe === '5D'))) && activeSubValues && (
-                  <div className={`flex items-center gap-1.5 sm:gap-2 text-[10px] xs:text-[11px] overflow-x-auto no-scrollbar lg:border-l lg:pl-2 shrink-0 ${
-                    isLight ? 'border-slate-200' : 'border-slate-800'
-                  }`}>
-                    {showMA && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className={`${isLight ? 'text-amber-700' : 'text-amber-400'} font-bold`}>5M:{activeSubValues.ma5 ? activeSubValues.ma5.toFixed(2) : '--'}</span>
-                        <span className={`${isLight ? 'text-cyan-700' : 'text-cyan-400'} font-bold`}>10M:{activeSubValues.ma10 ? activeSubValues.ma10.toFixed(2) : '--'}</span>
-                        <span className={`${isLight ? 'text-purple-700' : 'text-purple-400'} font-bold`}>20M:{activeSubValues.ma20 ? activeSubValues.ma20.toFixed(2) : '--'}</span>
-                        {activeSubValues.ma60 && (
-                          <span className={`${isLight ? 'text-orange-700' : 'text-orange-400'} font-bold`}>60M:{activeSubValues.ma60.toFixed(2)}</span>
-                        )}
-                      </div>
-                    )}
-                    {showBollinger && (
-                      <div className={`flex items-center gap-1 shrink-0 pl-1 border-l ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
-                        <span className={`${isLight ? 'text-blue-700' : 'text-blue-400'} font-bold`}>上:{activeSubValues.bbUpper ? activeSubValues.bbUpper.toFixed(2) : '--'}</span>
-                        <span className={`${isLight ? 'text-slate-700' : 'text-slate-300'} font-bold`}>中:{activeSubValues.bbMid ? activeSubValues.bbMid.toFixed(2) : '--'}</span>
-                        <span className={`${isLight ? 'text-blue-700' : 'text-blue-400'} font-bold`}>下:{activeSubValues.bbLower ? activeSubValues.bbLower.toFixed(2) : '--'}</span>
-                      </div>
-                    )}
-                    {showVWAP && activeSubValues?.vwap && (timeframe === '1D' || timeframe === '5D') && (
-                      <div className={`flex items-center gap-1 shrink-0 pl-1 border-l ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
-                        <span className={`${isLight ? 'text-orange-700' : 'text-orange-400'} font-bold`}>VWAP:{activeSubValues.vwap.toFixed(2)}</span>
-                      </div>
+            {/* 2D. Indicator Figures Ribbon (MA, BOLL, VWAP 數字資訊) */}
+            {(showMA || showBollinger || (showVWAP && (timeframe === '1D' || timeframe === '5D'))) && activeSubValues && (
+              <div className={`px-3 py-1 border-b flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[11px] font-mono font-bold select-none shrink-0 ${
+                isLight ? 'bg-slate-50/60 border-slate-200 text-slate-700' : 'bg-slate-950/60 border-slate-800 text-slate-300'
+              }`}>
+                {showMA && (
+                  <div className="flex items-center gap-2 pr-4 border-r border-slate-200 dark:border-slate-800">
+                    <span className="text-amber-500 text-[9px] font-black uppercase tracking-wider">MA</span>
+                    <span className="text-amber-500">5MA: {activeSubValues.ma5 ? activeSubValues.ma5.toFixed(2) : '--'}</span>
+                    <span className="text-cyan-500">10MA: {activeSubValues.ma10 ? activeSubValues.ma10.toFixed(2) : '--'}</span>
+                    <span className="text-purple-500">20MA: {activeSubValues.ma20 ? activeSubValues.ma20.toFixed(2) : '--'}</span>
+                    {activeSubValues.ma60 && (
+                      <span className="text-orange-500">60MA: {activeSubValues.ma60.toFixed(2)}</span>
                     )}
                   </div>
                 )}
-              </>
-            ) : (
-              <span className="text-slate-400 text-xs py-0.5">點擊或游標滑動圖表檢視即時數據</span>
+                {showBollinger && (
+                  <div className="flex items-center gap-2 pr-4 border-r border-slate-200 dark:border-slate-800">
+                    <span className="text-blue-500 text-[9px] font-black uppercase tracking-wider">BOLL</span>
+                    <span className="text-blue-400">上軌: {activeSubValues.bbUpper ? activeSubValues.bbUpper.toFixed(2) : '--'}</span>
+                    <span className={isLight ? 'text-slate-600' : 'text-slate-300'}>中軌: {activeSubValues.bbMid ? activeSubValues.bbMid.toFixed(2) : '--'}</span>
+                    <span className="text-blue-400">下軌: {activeSubValues.bbLower ? activeSubValues.bbLower.toFixed(2) : '--'}</span>
+                  </div>
+                )}
+                {showVWAP && activeSubValues?.vwap && (timeframe === '1D' || timeframe === '5D') && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-orange-500 text-[9px] font-black uppercase tracking-wider">VWAP</span>
+                    <span className="text-orange-500">{activeSubValues.vwap.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
             )}
+
           </div>
 
-          {/* INTERACTIVE CHART CANVAS CONTAINER - PROPORTIONALLY MANAGED FLEX */}
-          <div className="flex-1 flex flex-col p-1 sm:p-2 relative overflow-hidden min-h-0">
+          {/* INTERACTIVE CHART CANVAS CONTAINER - FLEX-1 AUTO STRETCH TO FILL FULL VERTICAL SPACE */}
+          <div className="flex-1 min-h-[250px] w-full flex flex-col p-0.5 sm:p-1 relative overflow-hidden">
             {loading && !mainChartData ? (
               <div className="flex-1 flex flex-col items-center justify-center text-indigo-500 font-mono text-xs gap-3">
                 <Activity className="w-6 h-6 animate-spin text-indigo-500" />
@@ -2042,60 +2071,82 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                       </div>
                     </div>
 
-                    {/* 5-Tier Bid / Ask Depth Table */}
+                    {/* 5-Tier Bid / Ask Depth Table (Side-by-Side: Left Buy, Right Sell) */}
                     <div className={`p-2.5 rounded-xl border space-y-2 ${
                       isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-950 border-slate-800'
                     }`}>
                       {/* Explanatory Header Badges */}
                       <div className="flex items-center justify-between text-[11px] pb-1 border-b border-slate-200 dark:border-slate-800 font-sans">
-                        <span className="flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400">
-                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                          委賣（等待賣出）
-                        </span>
-                        <span className="text-slate-400 text-[10px]">即時撮合隊伍</span>
-                        <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                        <span className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                          委買（等待買進）
+                          買盤 (委買進)
+                        </span>
+                        <span className="text-slate-400 text-[10px] font-medium">五檔撮合隊伍</span>
+                        <span className="flex items-center gap-1 font-bold text-rose-600 dark:text-rose-400">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                          賣盤 (委賣出)
                         </span>
                       </div>
 
                       {/* Column Title Row */}
-                      <div className={`grid grid-cols-3 text-center text-xs font-bold py-1 px-1 rounded ${
+                      <div className={`grid grid-cols-4 text-center text-xs font-bold py-1 px-2 rounded ${
                         isLight ? 'bg-slate-100/80 text-slate-600' : 'bg-slate-900 text-slate-400'
                       }`}>
-                        <span className="text-left pl-2">檔位 (類別)</span>
-                        <span>委託價位</span>
-                        <span className="text-right pr-2">委託數量 (張)</span>
+                        <span className="text-left">買量 (張)</span>
+                        <span className="text-right pr-2">買價</span>
+                        <span className="text-left pl-2 border-l border-slate-300 dark:border-slate-700">賣價</span>
+                        <span className="text-right">賣量 (張)</span>
                       </div>
 
-                      {/* Asks (5 tiers - 賣5 down to 賣1) */}
+                      {/* 5-Tier Side-by-Side Rows */}
                       <div className="space-y-1 font-mono text-xs">
-                        {technicalSeries.orderBook.asks.map((tier, idx) => {
-                          const askLabel = `賣 ${technicalSeries.orderBook.asks.length - idx}`;
+                        {Array.from({ length: 5 }).map((_, idx) => {
+                          const bid = technicalSeries.orderBook.bids[idx];
+                          const ask = technicalSeries.orderBook.asks[technicalSeries.orderBook.asks.length - 1 - idx];
+                          if (!bid || !ask) return null;
+
                           return (
-                            <div key={`ask-${idx}`} className={`relative grid grid-cols-3 items-center py-1 px-2 rounded transition ${
-                              isLight ? 'hover:bg-rose-50/50' : 'hover:bg-rose-950/20'
-                            }`}>
-                              <div className="flex items-center gap-1 z-10">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold font-sans ${
-                                  isLight ? 'bg-rose-100 text-rose-700' : 'bg-rose-950/80 text-rose-300'
-                                }`}>
-                                  {askLabel}
+                            <div
+                              key={`order-tier-${idx}`}
+                              className={`relative grid grid-cols-4 items-center py-1.5 px-2 rounded transition ${
+                                isLight ? 'hover:bg-slate-100/70' : 'hover:bg-slate-900/80'
+                              }`}
+                            >
+                              {/* 買量 (Bid Vol) + Depth Bar */}
+                              <div className="relative flex items-center justify-start z-10 font-semibold pr-1">
+                                <span className={isLight ? 'text-slate-800' : 'text-slate-200'}>
+                                  {bid.volume}
                                 </span>
+                                <div
+                                  className={`absolute left-0 top-0 bottom-0 rounded-l transition-all -z-10 ${
+                                    isLight ? 'bg-emerald-100/80' : 'bg-emerald-950/50'
+                                  }`}
+                                  style={{ width: `${bid.pct}%` }}
+                                />
                               </div>
-                              <span className={`font-bold z-10 text-center ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>
-                                ${tier.price.toFixed(2)}
-                              </span>
-                              <span className={`z-10 text-right font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                                {tier.volume} 張
-                              </span>
-                              {/* Volume depth bar */}
-                              <div
-                                className={`absolute right-0 top-0 bottom-0 rounded-r transition-all ${
-                                  isLight ? 'bg-rose-100/60' : 'bg-rose-950/40'
-                                }`}
-                                style={{ width: `${tier.pct}%` }}
-                              />
+
+                              {/* 買價 (Bid Price) */}
+                              <div className="text-right pr-2 z-10 font-bold text-emerald-600 dark:text-emerald-400">
+                                ${bid.price.toFixed(2)}
+                              </div>
+
+                              {/* 賣價 (Ask Price) */}
+                              <div className="text-left pl-2 z-10 font-bold text-rose-600 dark:text-rose-400 border-l border-slate-200 dark:border-slate-800">
+                                ${ask.price.toFixed(2)}
+                              </div>
+
+                              {/* 賣量 (Ask Vol) + Depth Bar */}
+                              <div className="relative flex items-center justify-end z-10 font-semibold pl-1">
+                                <span className={isLight ? 'text-slate-800' : 'text-slate-200'}>
+                                  {ask.volume}
+                                </span>
+                                <div
+                                  className={`absolute right-0 top-0 bottom-0 rounded-r transition-all -z-10 ${
+                                    isLight ? 'bg-rose-100/80' : 'bg-rose-950/50'
+                                  }`}
+                                  style={{ width: `${ask.pct}%` }}
+                                />
+                              </div>
                             </div>
                           );
                         })}
@@ -2119,39 +2170,6 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                         }`}>
                           {isActiveUp ? '+' : ''}{activeDiff.toFixed(2)}
                         </span>
-                      </div>
-
-                      {/* Bids (5 tiers - 買1 down to 買5) */}
-                      <div className="space-y-1 font-mono text-xs">
-                        {technicalSeries.orderBook.bids.map((tier, idx) => {
-                          const bidLabel = `買 ${idx + 1}`;
-                          return (
-                            <div key={`bid-${idx}`} className={`relative grid grid-cols-3 items-center py-1 px-2 rounded transition ${
-                              isLight ? 'hover:bg-emerald-50/50' : 'hover:bg-emerald-950/20'
-                            }`}>
-                              <div className="flex items-center gap-1 z-10">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold font-sans ${
-                                  isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-950/80 text-emerald-300'
-                                }`}>
-                                  {bidLabel}
-                                </span>
-                              </div>
-                              <span className={`font-bold z-10 text-center ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>
-                                ${tier.price.toFixed(2)}
-                              </span>
-                              <span className={`z-10 text-right font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                                {tier.volume} 張
-                              </span>
-                              {/* Volume depth bar */}
-                              <div
-                                className={`absolute right-0 top-0 bottom-0 rounded-r transition-all ${
-                                  isLight ? 'bg-emerald-100/60' : 'bg-emerald-950/40'
-                                }`}
-                                style={{ width: `${tier.pct}%` }}
-                              />
-                            </div>
-                          );
-                        })}
                       </div>
 
                       <div className={`flex justify-between items-center text-[11px] border-t pt-2 font-mono ${
@@ -2325,6 +2343,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                           <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 font-mono text-xs ${isLight ? 'text-slate-400' : 'text-slate-400'}`}>$</span>
                           <input
                             type="number"
+                            inputMode="decimal"
                             step="0.1"
                             value={targetSimPrice}
                             onChange={(e) => setTargetSimPrice(e.target.value)}
@@ -2387,6 +2406,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                   <Search className={`w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400' : 'text-slate-400'}`} />
                   <input
                     type="text"
+                    inputMode="search"
                     value={searchInput}
                     onChange={handleSearchChange}
                     placeholder="搜尋股票代號或名稱..."

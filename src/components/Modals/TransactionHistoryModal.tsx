@@ -195,6 +195,7 @@ export const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = (
               <label className="block text-slate-700 font-bold mb-1 text-[11px]">股數</label>
               <input
                 type="number"
+                inputMode="decimal"
                 step="any"
                 min="0.0001"
                 required
@@ -209,6 +210,7 @@ export const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = (
               <label className="block text-slate-700 font-bold mb-1 text-[11px]">買入單價</label>
               <input
                 type="number"
+                inputMode="decimal"
                 step="any"
                 min="0"
                 required

@@ -813,6 +813,7 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
               <span className="text-xs text-slate-700 font-bold whitespace-nowrap">月目標 (NT$):</span>
               <input
                 type="number"
+                inputMode="decimal"
                 step={5000}
                 value={monthlyGoalTWD}
                 onChange={(e) => setMonthlyGoalTWD(Math.max(1000, Number(e.target.value)))}
@@ -1063,6 +1064,7 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
                     <label className="block text-emerald-800 font-bold mb-1">單次每股現金股利 (配息)</label>
                     <input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       placeholder={`例如: ${sInfo.singleDividendPerShare}`}
                       value={editSingleDps}
@@ -1085,6 +1087,7 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
                     <label className="block text-purple-800 font-bold mb-1">每股股票股利 (配股)</label>
                     <input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       placeholder={`例如: ${sInfo.stockDps || 0}`}
                       value={editStockDps}
@@ -1099,6 +1102,7 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
                   <label className="block text-amber-800 font-bold mb-1">年化每股總現金股息 (DPS)</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.01"
                     placeholder={`例如: ${sInfo.annualDividendPerShare}`}
                     value={editDps}

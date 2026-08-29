@@ -728,6 +728,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                     <span className="text-slate-400 font-sans text-xs">$</span>
                     <input
                       type="number"
+                      inputMode="decimal"
                       step="any"
                       placeholder={targetSimPrice.toString()}
                       value={customSimPrice}

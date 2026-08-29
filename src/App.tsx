@@ -1057,7 +1057,7 @@ export default function App() {
             let sym = stock.symbol.toUpperCase();
             if (stock.market === 'tse' && !sym.endsWith('.TW')) sym = `${sym}.TW`;
             if (stock.market === 'otc' && !sym.endsWith('.TWO')) sym = `${sym}.TWO`;
-            const chartData = await apiFetchChartData(sym, '1d', '5m');
+            const chartData = await apiFetchChartData(sym, '1d', '1m');
             return { stock, chartData };
           })
         );

@@ -295,6 +295,7 @@ export const StockModal: React.FC<StockModalProps> = ({
             <div className="relative">
               <input
                 type="text"
+                inputMode="search"
                 enterKeyHint="done"
                 value={searchInput}
                 onChange={(e) => handleSearchChange(e.target.value)}
@@ -455,6 +456,7 @@ export const StockModal: React.FC<StockModalProps> = ({
               </div>
               <input
                 type="number"
+                inputMode="decimal"
                 step="any"
                 min="0.0001"
                 required
@@ -517,6 +519,7 @@ export const StockModal: React.FC<StockModalProps> = ({
               </div>
               <input
                 type="number"
+                inputMode="decimal"
                 step="any"
                 min="0"
                 required
@@ -555,6 +558,7 @@ export const StockModal: React.FC<StockModalProps> = ({
                 </label>
                 <input
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   enterKeyHint="done"
                   value={buyRate}

@@ -183,7 +183,7 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
             ? `${target.symbol}.TWO`
             : target.symbol;
 
-        const json = await apiFetchChartData(s, '1d', '5m');
+        const json = await apiFetchChartData(s, '1d', '1m');
 
         if (!json || !json.success || !json.meta) {
           throw new Error('暫無即時分時行情數據');

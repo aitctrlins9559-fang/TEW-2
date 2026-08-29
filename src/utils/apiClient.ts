@@ -558,7 +558,6 @@ function generateSyntheticChartData(symbol: string, currentPrice?: number, prevC
   const isTw = /^\d{4,6}[A-Z]?$/i.test(cleanCode) || symbol.endsWith('.TW') || symbol.endsWith('.TWO');
   const isUS = symbol === '^DJI' || symbol === '^GSPC' || symbol === '^IXIC' || (!isTw && !symbol.startsWith('^'));
 
-  const localInfo = lookupStockInfo(cleanCode);
   const price = currentPrice && currentPrice > 0 ? currentPrice : 100;
   const prevClose = prevClosePrice && prevClosePrice > 0 ? prevClosePrice : price;
   const open = Math.round(((price + prevClose) / 2) * 100) / 100;
@@ -566,13 +565,14 @@ function generateSyntheticChartData(symbol: string, currentPrice?: number, prevC
   const low = Math.round((Math.min(price, prevClose, open) * 0.988) * 100) / 100;
 
   const now = new Date();
-  const startHour = isUS ? 9 : 9;
+  const startHour = 9;
   const startMin = isUS ? 30 : 0;
 
   const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, startMin, 0);
   const baseTs = Math.floor(baseDate.getTime() / 1000);
 
-  const totalSteps = isUS ? 78 : 54; // 5-minute intervals
+  // 1-minute high density steps: TW 270 mins (09:00-13:30), US 390 mins (09:30-16:00)
+  const totalSteps = isUS ? 390 : 270;
   const timestamps: number[] = [];
   const quotes: number[] = [];
   const volumes: number[] = [];
@@ -580,29 +580,37 @@ function generateSyntheticChartData(symbol: string, currentPrice?: number, prevC
   const highs: number[] = [];
   const lows: number[] = [];
 
+  let currentP = open;
+  const volatility = Math.max(0.1, price * 0.0012);
+
   for (let i = 0; i <= totalSteps; i++) {
-    const t = baseTs + i * 300;
+    const t = baseTs + i * 60; // 60-second 1-minute steps
     timestamps.push(t);
 
     const progress = i / totalSteps;
-    let p = open;
+    let macroTarget = open;
     if (progress <= 0.3) {
       const subRatio = progress / 0.3;
-      p = open + (low - open) * Math.sin((subRatio * Math.PI) / 2);
+      macroTarget = open + (low - open) * Math.sin((subRatio * Math.PI) / 2);
     } else if (progress <= 0.7) {
       const subRatio = (progress - 0.3) / 0.4;
-      p = low + (high - low) * Math.sin((subRatio * Math.PI) / 2);
+      macroTarget = low + (high - low) * Math.sin((subRatio * Math.PI) / 2);
     } else {
       const subRatio = (progress - 0.7) / 0.3;
-      p = high + (price - high) * Math.sin((subRatio * Math.PI) / 2);
+      macroTarget = high + (price - high) * Math.sin((subRatio * Math.PI) / 2);
     }
 
-    p = Math.round(p * 100) / 100;
-    quotes.push(p);
-    opens.push(p);
-    highs.push(Math.round(p * 1.002 * 100) / 100);
-    lows.push(Math.round(p * 0.998 * 100) / 100);
-    volumes.push(Math.floor(50 + Math.random() * 200));
+    // Add high-density minute-level random walk / micro-swings towards macroTarget
+    const noise = (Math.random() - 0.49) * volatility;
+    currentP = currentP * 0.85 + macroTarget * 0.15 + noise;
+    currentP = Math.max(low * 0.995, Math.min(high * 1.005, currentP));
+
+    const finalP = Number(currentP.toFixed(2));
+    quotes.push(finalP);
+    opens.push(finalP);
+    highs.push(Number((finalP * 1.001).toFixed(2)));
+    lows.push(Number((finalP * 0.999).toFixed(2)));
+    volumes.push(Math.floor(20 + Math.random() * 300));
   }
 
   return {
@@ -630,7 +638,7 @@ function generateSyntheticChartData(symbol: string, currentPrice?: number, prevC
 export async function apiFetchChartData(
   symbol: string,
   range = '1d',
-  interval = '5m',
+  interval = '1m',
   currentPrice?: number,
   prevClose?: number
 ) {
