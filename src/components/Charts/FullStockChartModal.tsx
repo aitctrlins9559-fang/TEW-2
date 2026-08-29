@@ -703,15 +703,15 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
         label: isTick ? `${selectedChartTarget.name} 即時走勢 (Tick)` : `${selectedChartTarget.name} 走勢`,
         data: closes,
         borderColor: lineColor,
-        borderWidth: isTick ? 2.5 : 2.2,
+        borderWidth: isTick ? 1.5 : 1.4,
         fill: chartStyle === 'area' || isTick,
         tension: isTick ? 0.05 : 0.1,
         stepped: false,
-        pointRadius: (ctx: { dataIndex: number }) => (ctx.dataIndex === closes.length - 1 ? (isTick ? 6 : 5) : 0),
+        pointRadius: (ctx: { dataIndex: number }) => (ctx.dataIndex === closes.length - 1 ? (isTick ? 4.5 : 4) : 0),
         pointBackgroundColor: lineColor,
         pointBorderColor: '#ffffff',
-        pointBorderWidth: 2,
-        pointHoverRadius: 6,
+        pointBorderWidth: 1.5,
+        pointHoverRadius: 5,
         yAxisID: 'y',
         order: 2,
         backgroundColor: (context: {
@@ -1410,19 +1410,6 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
 
           {/* Right: Compact Action Buttons */}
           <div className="flex items-center gap-1 shrink-0">
-            {onOpenAICopilot && (
-              <button
-                onClick={() => {
-                  playClickSound();
-                  onOpenAICopilot();
-                }}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white p-1 sm:px-2 sm:py-0.5 rounded text-xs font-bold transition flex items-center gap-1 shadow-xs btn-interact shrink-0"
-                title="開啟 AI 深度量化操盤顧問"
-              >
-                <Sparkles className="w-3 h-3 text-amber-300" />
-                <span className="hidden sm:inline text-[10px]">AI診斷</span>
-              </button>
-            )}
 
             {portfolioList.length > 1 && (
               <div className={`hidden sm:flex items-center rounded p-0.5 shrink-0 border ${

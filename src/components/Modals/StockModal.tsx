@@ -326,7 +326,7 @@ export const StockModal: React.FC<StockModalProps> = ({
                   }
                 }}
                 placeholder="輸入代號/名稱 (如 2330 / NVDA / 蘋果)"
-                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2.5 text-slate-900 font-bold outline-none text-base sm:text-xs focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-100 transition truncate"
+                className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 text-xs text-slate-900 font-bold outline-none placeholder:text-slate-400 placeholder:font-normal placeholder:text-xs focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-100 transition truncate"
               />
               {searchInput && (
                 <button
@@ -390,7 +390,7 @@ export const StockModal: React.FC<StockModalProps> = ({
                     setMarket(m);
                     fetchLivePreview(symbol, m);
                   }}
-                  className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-indigo-700 font-bold outline-none text-xs focus:border-indigo-600 focus:bg-white truncate"
+                  className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg px-2 text-xs text-indigo-700 font-bold outline-none focus:border-indigo-600 focus:bg-white truncate"
                 >
                   <option value="tse">台股上市</option>
                   <option value="otc">台股上櫃</option>
@@ -411,7 +411,7 @@ export const StockModal: React.FC<StockModalProps> = ({
                     fetchLivePreview(s, market);
                   }}
                   placeholder="2330"
-                  className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 font-mono font-bold uppercase outline-none text-base sm:text-xs focus:border-indigo-600 focus:bg-white truncate"
+                  className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg px-2 text-xs text-slate-900 font-mono font-bold uppercase outline-none placeholder:text-slate-400 placeholder:font-normal placeholder:text-xs focus:border-indigo-600 focus:bg-white truncate"
                 />
               </div>
 
@@ -424,7 +424,7 @@ export const StockModal: React.FC<StockModalProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="台積電"
-                  className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 font-bold outline-none text-base sm:text-xs focus:border-indigo-600 focus:bg-white truncate"
+                  className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg px-2 text-xs text-slate-900 font-bold outline-none placeholder:text-slate-400 placeholder:font-normal placeholder:text-xs focus:border-indigo-600 focus:bg-white truncate"
                 />
               </div>
             </div>
@@ -464,7 +464,7 @@ export const StockModal: React.FC<StockModalProps> = ({
                 value={shares}
                 onChange={(e) => setShares(e.target.value)}
                 placeholder="例: 1000"
-                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 outline-none text-base sm:text-xs font-mono font-bold tabular-nums focus:border-indigo-600 focus:bg-white transition"
+                className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg px-2 text-xs text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-normal placeholder:text-xs font-mono font-bold tabular-nums focus:border-indigo-600 focus:bg-white transition"
               />
               {/* 快捷股數按鈕 */}
               <div className="flex items-center gap-1 pt-0.5">
@@ -527,7 +527,7 @@ export const StockModal: React.FC<StockModalProps> = ({
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
                 placeholder="配股填 0"
-                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-900 outline-none text-base sm:text-xs font-mono font-bold tabular-nums focus:border-indigo-600 focus:bg-white transition"
+                className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg px-2 text-xs text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-normal placeholder:text-xs font-mono font-bold tabular-nums focus:border-indigo-600 focus:bg-white transition"
               />
               <div className="flex justify-between items-center text-[10px] text-slate-500 pt-0.5 leading-none">
                 <span>停利:<strong className="text-emerald-600 font-mono ml-0.5 font-bold">{tpPrice}</strong></span>
@@ -547,7 +547,7 @@ export const StockModal: React.FC<StockModalProps> = ({
                 enterKeyHint="done"
                 value={buyDate}
                 onChange={(e) => setBuyDate(e.target.value)}
-                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 py-0 text-slate-900 outline-none text-base sm:text-xs font-mono tabular-nums focus:border-indigo-600 focus:bg-white transition block max-w-full truncate"
+                className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg px-2 py-0 text-xs text-slate-900 outline-none font-bold tabular-nums focus:border-indigo-600 focus:bg-white transition block max-w-full truncate"
               />
             </div>
 
@@ -564,13 +564,13 @@ export const StockModal: React.FC<StockModalProps> = ({
                   value={buyRate}
                   onChange={(e) => setBuyRate(e.target.value)}
                   placeholder="32.15"
-                  className="w-full h-8 bg-white border border-amber-300 rounded-lg px-2 py-0 text-amber-900 font-bold outline-none text-base sm:text-xs font-mono tabular-nums focus:border-amber-500 block max-w-full truncate"
+                  className="w-full h-8.5 bg-white border border-amber-300 rounded-lg px-2 py-0 text-xs text-amber-900 font-bold outline-none placeholder:text-amber-400/80 placeholder:font-normal placeholder:text-xs font-mono tabular-nums focus:border-amber-500 block max-w-full truncate"
                 />
               </div>
             ) : (
               <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs space-y-1.5 overflow-hidden">
                 <span className="block text-slate-600 font-bold text-[11px] leading-none truncate">計價幣別說明</span>
-                <div className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-700 text-xs font-bold flex justify-between items-center truncate">
+                <div className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg px-2 text-slate-700 text-xs font-bold flex justify-between items-center truncate">
                   <span>新台幣 (TWD)</span>
                   <span className="text-[10px] text-slate-400 font-normal">無匯率換算</span>
                 </div>
