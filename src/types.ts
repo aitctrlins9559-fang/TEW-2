@@ -116,6 +116,6 @@ export interface AIAnalysisResult {
 }
 
 export type ChartTimeframe = '1D' | '5D' | '1M' | '3M' | '6M' | '1Y' | '5Y';
-export type ChartRenderStyle = 'candlestick' | 'area' | 'line';
+export type ChartRenderStyle = 'candlestick' | 'tick' | 'area' | 'line';
 export type SubChartIndicator = 'volume' | 'kd' | 'rsi' | 'macd' | 'none';
 

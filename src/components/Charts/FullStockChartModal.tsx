@@ -7,6 +7,7 @@ import {
   TrendingDown,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Search,
   Sliders,
   Sparkles,
@@ -23,6 +24,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -148,6 +151,132 @@ const HOT_STOCKS: Array<{ symbol: string; market: MarketType; name: string }> = 
   { symbol: 'AAPL', market: 'us', name: '蘋果' },
 ];
 
+interface CustomSelectOption<T extends string> {
+  value: T;
+  label: string;
+}
+
+interface CustomSelectProps<T extends string> {
+  value: T;
+  options: CustomSelectOption<T>[];
+  onChange: (val: T) => void;
+  isLight: boolean;
+  ariaLabel: string;
+}
+
+function CustomSelect<T extends string>({
+  value,
+  options,
+  onChange,
+  isLight,
+  ariaLabel,
+}: CustomSelectProps<T>) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+
+  const currentOption = options.find((o) => o.value === value) || options[0];
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    playClickSound();
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + 4,
+        left: Math.max(8, rect.left),
+        width: Math.max(rect.width, 92),
+      });
+    }
+    setOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node) &&
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    function handleScroll() {
+      setOpen(false);
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+      window.addEventListener('scroll', handleScroll, true);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative shrink-0 z-30">
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={handleToggle}
+        aria-label={ariaLabel}
+        className={`px-2 h-[22px] rounded text-[11px] sm:text-xs font-semibold transition border flex items-center justify-between gap-1 cursor-pointer shrink-0 leading-none ${
+          isLight
+            ? 'bg-white text-slate-800 border-slate-300 shadow-2xs hover:bg-slate-50 hover:border-slate-400'
+            : 'bg-slate-950 text-slate-200 border-slate-700 hover:bg-slate-900 hover:border-slate-600'
+        }`}
+      >
+        <span className="truncate">{currentOption?.label}</span>
+        <ChevronDown className={`w-3 h-3 transition-transform duration-150 shrink-0 ${open ? 'rotate-180 text-indigo-500' : 'text-slate-400'}`} />
+      </button>
+
+      {open && (
+        <div
+          ref={menuRef}
+          style={{
+            position: 'fixed',
+            top: `${coords.top}px`,
+            left: `${coords.left}px`,
+            minWidth: `${coords.width}px`,
+          }}
+          className={`z-[99999] py-1 rounded-md shadow-xl border font-sans animate-fadeIn ${
+            isLight
+              ? 'bg-white border-slate-200 text-slate-800 shadow-slate-400/30'
+              : 'bg-slate-900 border-slate-700 text-slate-200 shadow-black/90'
+          }`}
+        >
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                playClickSound();
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              className={`w-full text-left px-3 py-1.5 text-[11px] sm:text-xs flex items-center justify-between transition cursor-pointer ${
+                opt.value === value
+                  ? isLight
+                    ? 'bg-indigo-50 text-indigo-600 font-bold'
+                    : 'bg-indigo-950/70 text-indigo-300 font-bold'
+                  : isLight
+                  ? 'hover:bg-slate-100 text-slate-700'
+                  : 'hover:bg-slate-800 text-slate-300'
+              }`}
+            >
+              <span>{opt.label}</span>
+              {opt.value === value && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 ml-1.5" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   isOpen,
   onClose,
@@ -167,6 +296,21 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   const [showBollinger, setShowBollinger] = useState(false);
   const [showVWAP, setShowVWAP] = useState(true);
   const [showPrevClose, setShowPrevClose] = useState(true);
+
+  // Theme Mode ('light' matching main page vs 'dark' pro terminal)
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('stock_chart_theme') as 'dark' | 'light') || 'light';
+  });
+  const isLight = theme === 'light';
+
+  const toggleTheme = () => {
+    playClickSound();
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('stock_chart_theme', next);
+      return next;
+    });
+  };
 
   // Mobile View Mode & Desktop Sidecar Tab
   const [mobileTab, setMobileTab] = useState<'chart' | 'orderbook' | 'diagnosis' | 'position' | 'switcher'>('chart');
@@ -552,19 +696,22 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
       const closes = candles.map((c) => c.close);
       const isUpTrend = closes[closes.length - 1] >= (metaInfo?.prevClose || closes[0]);
       const lineColor = isUpTrend ? upColor : downColor;
+      const isTick = chartStyle === 'tick';
 
       datasets.push({
         type: 'line' as const,
-        label: `${selectedChartTarget.name} 走勢`,
+        label: isTick ? `${selectedChartTarget.name} 即時走勢 (Tick)` : `${selectedChartTarget.name} 走勢`,
         data: closes,
         borderColor: lineColor,
-        borderWidth: 2.2,
-        fill: chartStyle === 'area',
-        tension: 0.1,
-        pointRadius: (ctx: { dataIndex: number }) => (ctx.dataIndex === closes.length - 1 ? 5 : 0),
+        borderWidth: isTick ? 2.5 : 2.2,
+        fill: chartStyle === 'area' || isTick,
+        tension: isTick ? 0.05 : 0.1,
+        stepped: false,
+        pointRadius: (ctx: { dataIndex: number }) => (ctx.dataIndex === closes.length - 1 ? (isTick ? 6 : 5) : 0),
         pointBackgroundColor: lineColor,
         pointBorderColor: '#ffffff',
         pointBorderWidth: 2,
+        pointHoverRadius: 6,
         yAxisID: 'y',
         order: 2,
         backgroundColor: (context: {
@@ -572,10 +719,11 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
         }) => {
           const chart = context.chart;
           const { ctx, chartArea } = chart;
-          if (!chartArea || chartStyle !== 'area') return 'transparent';
+          if (!chartArea || (chartStyle !== 'area' && !isTick)) return 'transparent';
           const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
           gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
-          gradient.addColorStop(1, isUpTrend ? (isRedUp ? 'rgba(225, 29, 72, 0.18)' : 'rgba(5, 150, 105, 0.18)') : (isRedUp ? 'rgba(5, 150, 105, 0.18)' : 'rgba(225, 29, 72, 0.18)'));
+          const alpha = isTick ? '0.12' : '0.18';
+          gradient.addColorStop(1, isUpTrend ? (isRedUp ? `rgba(225, 29, 72, ${alpha})` : `rgba(5, 150, 105, ${alpha})`) : (isRedUp ? `rgba(5, 150, 105, ${alpha})` : `rgba(225, 29, 72, ${alpha})`));
           return gradient;
         },
       });
@@ -789,15 +937,15 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
           type: 'line' as const,
           yMin: pClose,
           yMax: pClose,
-          borderColor: '#94a3b8',
+          borderColor: isLight ? '#64748b' : '#94a3b8',
           borderWidth: 1.2,
           borderDash: [4, 4],
           label: {
             content: `昨收 $${pClose.toFixed(2)}`,
             display: true,
             position: 'end' as const,
-            backgroundColor: 'rgba(15, 23, 42, 0.85)',
-            color: '#cbd5e1',
+            backgroundColor: isLight ? 'rgba(241, 245, 249, 0.95)' : 'rgba(15, 23, 42, 0.85)',
+            color: isLight ? '#1e293b' : '#cbd5e1',
             font: { size: 9, weight: 'bold' as const, family: 'monospace' },
             padding: { top: 2, bottom: 2, left: 4, right: 4 },
           },
@@ -852,9 +1000,9 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
       },
       scales: {
         x: {
-          grid: { color: 'rgba(255, 255, 255, 0.06)' },
+          grid: { color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)' },
           ticks: {
-            color: '#94a3b8',
+            color: isLight ? '#64748b' : '#94a3b8',
             maxTicksLimit: 7,
             font: { family: 'monospace', size: 10, weight: 'bold' as const },
           },
@@ -866,9 +1014,9 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
           grace: 0,
           min: yBounds.min,
           max: yBounds.max,
-          grid: { color: 'rgba(255, 255, 255, 0.08)', borderDash: [2, 2] },
+          grid: { color: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.08)', borderDash: [2, 2] },
           ticks: {
-            color: '#cbd5e1',
+            color: isLight ? '#334155' : '#cbd5e1',
             font: { family: 'monospace', size: 10, weight: 'bold' as const },
             callback: (val: string | number) => {
               const num = Number(val);
@@ -885,6 +1033,8 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
     upColor,
     downColor,
     yBounds,
+    isLight,
+    showPrevClose,
   ]);
 
   // Sub Indicator Chart Datasets & Options
@@ -1112,9 +1262,9 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
           grace: 0,
           min: subIndicator === 'kd' ? 0 : subIndicator === 'rsi' ? 0 : subIndicator === 'volume' ? 0 : undefined,
           max: subIndicator === 'kd' ? 100 : subIndicator === 'rsi' ? 100 : subIndicator === 'volume' ? volumeMax : undefined,
-          grid: { color: 'rgba(255, 255, 255, 0.06)' },
+          grid: { color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)' },
           ticks: {
-            color: '#94a3b8',
+            color: isLight ? '#64748b' : '#94a3b8',
             font: { family: 'monospace', size: 9, weight: 'bold' as const },
             maxTicksLimit: 3,
             callback: (val: string | number) => {
@@ -1128,7 +1278,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
         },
       },
     };
-  }, [subIndicator, candles, volumeMax]);
+  }, [subIndicator, candles, volumeMax, isLight]);
 
   // Active Index for hovering on charts
   const activeIdx = useMemo(() => {
@@ -1211,9 +1361,11 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   const simROI = userCost > 0 && simPriceNum > 0 ? ((simPriceNum - userCost) / userCost) * 100 : 0;
 
   return (
-    <div className="fixed inset-0 z-[96] w-full h-[100dvh] max-h-screen bg-slate-950 flex flex-col text-slate-100 overflow-hidden overscroll-none select-none modal-backdrop">
+    <div className={`fixed inset-0 z-[96] w-full h-[100dvh] max-h-screen flex flex-col overflow-hidden overscroll-none select-none modal-backdrop ${
+      isLight ? 'bg-slate-100 text-slate-800' : 'bg-slate-950 text-slate-100'
+    }`}>
       {/* TOP COMMAND BAR (PRO TERMINAL HEADER) - Ultra Clean & Responsive */}
-      <div className="bg-slate-900 border-b border-slate-800 px-2 sm:px-3 py-1 flex items-center justify-between gap-1.5 shrink-0 shadow-md h-10 sm:h-11 z-20">
+      <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} border-b px-2 py-0.5 flex items-center justify-between gap-1 shrink-0 shadow-xs h-8 sm:h-9 z-20`}>
         {/* Left: Return + Stock Identity + Live Price */}
         <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
           <button
@@ -1221,38 +1373,50 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
               playClickSound();
               onClose();
             }}
-            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-xs font-bold transition btn-interact shrink-0"
+            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border text-xs font-bold transition btn-interact shrink-0 ${
+              isLight
+                ? 'text-slate-700 bg-slate-100 hover:bg-slate-200 border-slate-200'
+                : 'text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border-slate-700'
+            }`}
             title="返回上一層"
           >
-            <ArrowLeft className="w-3.5 h-3.5 text-indigo-400" />
+            <ArrowLeft className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`} />
           </button>
 
           <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-            <span className="text-[11px] sm:text-xs font-mono font-black text-indigo-300 bg-indigo-950/90 border border-indigo-700/60 px-1.5 py-0.5 rounded shrink-0">
+            <span className={`text-[11px] sm:text-xs font-mono font-black px-1.5 py-0.5 rounded shrink-0 border ${
+              isLight
+                ? 'text-indigo-700 bg-indigo-50 border-indigo-200'
+                : 'text-indigo-300 bg-indigo-950/90 border-indigo-700/60'
+            }`}>
               {selectedChartTarget.symbol}
             </span>
-            <h1 className="text-xs sm:text-sm font-bold tracking-tight text-white truncate max-w-[80px] xs:max-w-[120px] sm:max-w-[180px] shrink-0">
+            <h1 className={`text-xs sm:text-sm font-bold tracking-tight truncate max-w-[80px] xs:max-w-[120px] sm:max-w-[180px] shrink-0 ${
+              isLight ? 'text-slate-900' : 'text-white'
+            }`}>
               {selectedChartTarget.name || selectedChartTarget.symbol}
             </h1>
-            <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase shrink-0 hidden sm:inline">
+            <span className={`text-[9px] font-bold px-1 py-0.2 rounded border uppercase shrink-0 hidden sm:inline ${
+              isLight ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-800 text-slate-400 border-slate-700'
+            }`}>
               {selectedChartTarget.market === 'us' ? '美股' : selectedChartTarget.market === 'otc' ? '上櫃' : '上市'}
             </span>
           </div>
 
           {/* Integrated Real-time Price & Change Badge */}
-          <div className="flex items-baseline gap-1 font-mono shrink-0 pl-1 border-l border-slate-800/80">
-            <span className="text-xs sm:text-sm font-black text-white tabular-nums">
+          <div className={`flex items-baseline gap-1 font-mono shrink-0 pl-1 border-l ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
+            <span className={`text-xs sm:text-sm font-black tabular-nums ${isLight ? 'text-slate-900' : 'text-white'}`}>
               ${activePrice.toFixed(2)}
             </span>
             <span
-              className={`text-[10px] sm:text-xs font-bold font-mono px-1 py-0.2 rounded ${
+              className={`text-[10px] sm:text-xs font-bold font-mono px-1 py-0.2 rounded border ${
                 isActiveUp
                   ? isRedUp
-                    ? 'text-rose-400 bg-rose-950/40 border border-rose-800/40'
-                    : 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40'
+                    ? isLight ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-rose-400 bg-rose-950/40 border-rose-800/40'
+                    : isLight ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-emerald-400 bg-emerald-950/40 border-emerald-800/40'
                   : isRedUp
-                  ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40'
-                  : 'text-rose-400 bg-rose-950/40 border border-rose-800/40'
+                  ? isLight ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-emerald-400 bg-emerald-950/40 border-emerald-800/40'
+                  : isLight ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-rose-400 bg-rose-950/40 border-rose-800/40'
               }`}
             >
               {isActiveUp ? '+' : ''}{activeDiffPct.toFixed(2)}%
@@ -1277,20 +1441,22 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
           )}
 
           {portfolioList.length > 1 && (
-            <div className="hidden sm:flex items-center bg-slate-800 border border-slate-700 rounded p-0.5 shrink-0">
+            <div className={`hidden sm:flex items-center rounded p-0.5 shrink-0 border ${
+              isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'
+            }`}>
               <button
                 onClick={handlePrevStock}
-                className="p-0.5 hover:bg-slate-700 text-slate-300 rounded transition"
+                className={`p-0.5 rounded transition ${isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-slate-700 text-slate-300'}`}
                 title="上一檔持股"
               >
                 <ChevronLeft className="w-3 h-3" />
               </button>
-              <span className="text-[10px] font-mono px-1 text-slate-400 font-bold">
+              <span className={`text-[10px] font-mono px-1 font-bold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                 {currentPortfolioIndex >= 0 ? `${currentPortfolioIndex + 1}/${portfolioList.length}` : '切換'}
               </span>
               <button
                 onClick={handleNextStock}
-                className="p-0.5 hover:bg-slate-700 text-slate-300 rounded transition"
+                className={`p-0.5 rounded transition ${isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-slate-700 text-slate-300'}`}
                 title="下一檔持股"
               >
                 <ChevronRight className="w-3 h-3" />
@@ -1298,15 +1464,32 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             </div>
           )}
 
+          {/* Theme Toggle Button (Light/Dark Switch) */}
+          <button
+            onClick={toggleTheme}
+            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border transition shrink-0 ${
+              isLight
+                ? 'text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border-slate-200'
+                : 'text-amber-300 hover:text-amber-200 bg-slate-800 hover:bg-slate-700 border-slate-700'
+            }`}
+            title={isLight ? '切換為暗黑專業操盤模式' : '切換為主頁亮色模式'}
+          >
+            {isLight ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+          </button>
+
           <button
             onClick={() => {
               playClickSound();
               fetchChartDataForTimeframe(selectedChartTarget, timeframe);
             }}
-            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700 transition shrink-0"
+            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border transition shrink-0 ${
+              isLight
+                ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800 border-slate-700'
+            }`}
             title="手動重新整理"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-500' : ''}`} />
           </button>
 
           <button
@@ -1314,7 +1497,11 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
               playClickSound();
               onClose();
             }}
-            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700 transition shrink-0"
+            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border transition shrink-0 ${
+              isLight
+                ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800 border-slate-700'
+            }`}
             title="關閉操盤終端"
           >
             <X className="w-4 h-4" />
@@ -1323,19 +1510,23 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
       </div>
 
       {/* MOBILE TOP TAB BAR (Switch between Chart, Orderbook, Diagnosis, Position, and Switcher) */}
-      <div className="lg:hidden bg-slate-950 border-b border-slate-800 px-1 py-0.5 flex items-center justify-between gap-1 text-xs shrink-0 h-8 z-10">
+      <div className={`lg:hidden border-b px-1 py-0.5 flex items-center justify-between gap-0.5 text-[10px] shrink-0 h-7 z-10 ${
+        isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-950 border-slate-800'
+      }`}>
         <button
           onClick={() => {
             playClickSound();
             setMobileTab('chart');
           }}
-          className={`flex-1 py-1 rounded font-bold transition text-center text-[11px] flex items-center justify-center gap-1 ${
+          className={`flex-1 py-0.5 rounded font-bold transition text-center text-[10px] flex items-center justify-center gap-0.5 h-[22px] ${
             mobileTab === 'chart'
               ? 'bg-indigo-600 text-white shadow-xs'
+              : isLight
+              ? 'text-slate-600 hover:text-slate-900 bg-white border border-slate-200'
               : 'text-slate-400 hover:text-slate-200 bg-slate-900/60'
           }`}
         >
-          <Activity className="w-3 h-3" />
+          <Activity className="w-2.5 h-2.5" />
           <span>K線</span>
         </button>
         <button
@@ -1344,13 +1535,15 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             setMobileTab('orderbook');
             setSidebarTab('orderbook');
           }}
-          className={`flex-1 py-1 rounded font-bold transition text-center text-[11px] flex items-center justify-center gap-1 ${
+          className={`flex-1 py-0.5 rounded font-bold transition text-center text-[10px] flex items-center justify-center gap-0.5 h-[22px] ${
             mobileTab === 'orderbook'
               ? 'bg-indigo-600 text-white shadow-xs'
+              : isLight
+              ? 'text-slate-600 hover:text-slate-900 bg-white border border-slate-200'
               : 'text-slate-400 hover:text-slate-200 bg-slate-900/60'
           }`}
         >
-          <BarChart2 className="w-3 h-3" />
+          <BarChart2 className="w-2.5 h-2.5" />
           <span>五檔</span>
         </button>
         <button
@@ -1359,13 +1552,15 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             setMobileTab('diagnosis');
             setSidebarTab('diagnosis');
           }}
-          className={`flex-1 py-1 rounded font-bold transition text-center text-[11px] flex items-center justify-center gap-1 ${
+          className={`flex-1 py-0.5 rounded font-bold transition text-center text-[10px] flex items-center justify-center gap-0.5 h-[22px] ${
             mobileTab === 'diagnosis'
               ? 'bg-indigo-600 text-white shadow-xs'
+              : isLight
+              ? 'text-slate-600 hover:text-slate-900 bg-white border border-slate-200'
               : 'text-slate-400 hover:text-slate-200 bg-slate-900/60'
           }`}
         >
-          <Compass className="w-3 h-3" />
+          <Compass className="w-2.5 h-2.5" />
           <span>診斷</span>
         </button>
         <button
@@ -1374,13 +1569,15 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             setMobileTab('position');
             setSidebarTab('position');
           }}
-          className={`flex-1 py-1 rounded font-bold transition text-center text-[11px] flex items-center justify-center gap-1 ${
+          className={`flex-1 py-0.5 rounded font-bold transition text-center text-[10px] flex items-center justify-center gap-0.5 h-[22px] ${
             mobileTab === 'position'
               ? 'bg-indigo-600 text-white shadow-xs'
+              : isLight
+              ? 'text-slate-600 hover:text-slate-900 bg-white border border-slate-200'
               : 'text-slate-400 hover:text-slate-200 bg-slate-900/60'
           }`}
         >
-          <DollarSign className="w-3 h-3" />
+          <DollarSign className="w-2.5 h-2.5" />
           <span>部位</span>
         </button>
         <button
@@ -1389,13 +1586,15 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             setMobileTab('switcher');
             setSidebarTab('switcher');
           }}
-          className={`flex-1 py-1 rounded font-bold transition text-center text-[11px] flex items-center justify-center gap-1 ${
+          className={`flex-1 py-0.5 rounded font-bold transition text-center text-[10px] flex items-center justify-center gap-0.5 h-[22px] ${
             mobileTab === 'switcher'
               ? 'bg-indigo-600 text-white shadow-xs'
+              : isLight
+              ? 'text-slate-600 hover:text-slate-900 bg-white border border-slate-200'
               : 'text-slate-400 hover:text-slate-200 bg-slate-900/60'
           }`}
         >
-          <Search className="w-3 h-3" />
+          <Search className="w-2.5 h-2.5" />
           <span>選股</span>
         </button>
       </div>
@@ -1403,12 +1602,16 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
       {/* MAIN WORKBENCH BODY: Split View Grid for Desktop */}
       <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 overflow-hidden min-h-0">
         {/* LEFT / MAIN STAGE: CHART & TECHNICAL TOOLS (8 or 9 cols on Desktop) */}
-        <div className={`lg:col-span-8 xl:col-span-9 flex-col border-b lg:border-b-0 lg:border-r border-slate-800 bg-slate-950 overflow-hidden flex-1 min-h-0 ${mobileTab === 'chart' ? 'flex' : 'hidden lg:flex'}`}>
+        <div className={`lg:col-span-8 xl:col-span-9 flex-col border-b lg:border-b-0 lg:border-r overflow-hidden flex-1 min-h-0 ${
+          isLight ? 'border-slate-200 bg-white' : 'border-slate-800 bg-slate-950'
+        } ${mobileTab === 'chart' ? 'flex' : 'hidden lg:flex'}`}>
           {/* TOOLBAR: Responsive 2-Row Layout on Mobile / Single-Row on Desktop */}
-          <div className="bg-slate-900 border-b border-slate-800 px-1.5 sm:px-3 py-1 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1 sm:gap-1.5 text-xs shrink-0 z-10">
+          <div className={`${isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-900 border-slate-800 text-slate-100'} border-b px-1 sm:px-2 py-0.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-0.5 text-xs shrink-0 z-10`}>
             {/* Timeframe Segmented Switcher (Full Width Grid on Mobile, Compact on Desktop) */}
             <div className="w-full lg:w-auto">
-              <div className="grid grid-cols-7 lg:flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 font-mono w-full">
+              <div className={`grid grid-cols-7 lg:flex items-center p-0.5 rounded border font-mono w-full ${
+                isLight ? 'bg-slate-200/70 border-slate-200' : 'bg-slate-950 border-slate-800'
+              }`}>
                 {(['1D', '5D', '1M', '3M', '6M', '1Y', '5Y'] as ChartTimeframe[]).map((tf) => (
                   <button
                     key={tf}
@@ -1416,9 +1619,11 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                       playClickSound();
                       setTimeframe(tf);
                     }}
-                    className={`py-1 lg:py-0.5 px-0.5 sm:px-2 rounded font-bold transition text-[11px] sm:text-xs text-center flex items-center justify-center ${
+                    className={`py-0.5 px-0.5 sm:px-2 h-[20px] rounded font-bold transition text-[10px] sm:text-xs text-center flex items-center justify-center leading-none ${
                       timeframe === tf
                         ? 'bg-indigo-600 text-white shadow-xs'
+                        : isLight
+                        ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                   >
@@ -1429,37 +1634,40 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             </div>
 
             {/* Controls & Indicators: Guaranteed 100% Fit on Mobile Screen */}
-            <div className="flex items-center justify-between lg:justify-end gap-1 w-full lg:w-auto">
+            <div className="flex items-center justify-between lg:justify-end gap-0.5 w-full lg:w-auto overflow-x-auto no-scrollbar">
               {/* Chart Style Selector */}
-              <select
+              <CustomSelect
                 value={chartStyle}
-                onChange={(e) => {
-                  playClickSound();
-                  setChartStyle(e.target.value as ChartRenderStyle);
-                }}
-                className="bg-slate-950 text-slate-200 border border-slate-800 text-[11px] font-bold rounded px-1.5 py-1 lg:py-0.5 focus:outline-none focus:border-indigo-500 font-mono cursor-pointer shrink-0"
-                aria-label="切換圖表模式"
-              >
-                <option value="candlestick">K線</option>
-                <option value="area">面積圖</option>
-                <option value="line">折線圖</option>
-              </select>
+                options={[
+                  { value: 'candlestick', label: 'K線' },
+                  { value: 'tick', label: '即時 Tick' },
+                  { value: 'area', label: '面積圖' },
+                  { value: 'line', label: '折線圖' },
+                ]}
+                onChange={(val) => setChartStyle(val)}
+                isLight={isLight}
+                ariaLabel="切換圖表模式"
+              />
 
-              {/* Overlays: MA, Bollinger, VWAP */}
-              <div className="flex items-center gap-1 shrink-0">
+              {/* Overlays: MA, Bollinger, VWAP, PrevClose */}
+              <div className="flex items-center gap-0.5 shrink-0">
                 <button
                   onClick={() => {
                     playClickSound();
                     setShowMA(!showMA);
                   }}
-                  className={`px-1.5 py-1 lg:py-0.5 rounded text-[11px] font-mono font-bold transition border flex items-center gap-1 ${
+                  className={`px-1 h-[20px] rounded text-[9px] sm:text-[10px] font-medium transition border flex items-center gap-0.5 ${
                     showMA
-                      ? 'bg-amber-950/70 border-amber-600/70 text-amber-300'
+                      ? isLight
+                        ? 'bg-amber-50 border-amber-300 text-amber-800 font-semibold'
+                        : 'bg-amber-950/70 border-amber-600/70 text-amber-300 font-semibold'
+                      : isLight
+                      ? 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
                       : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                   }`}
                   title="切換均線"
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showMA ? 'bg-amber-400' : 'bg-slate-600'}`} />
+                  <span className={`w-1 h-1 rounded-full ${showMA ? 'bg-amber-500' : 'bg-slate-400'}`} />
                   均線
                 </button>
 
@@ -1468,14 +1676,18 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     playClickSound();
                     setShowBollinger(!showBollinger);
                   }}
-                  className={`px-1.5 py-1 lg:py-0.5 rounded text-[11px] font-mono font-bold transition border flex items-center gap-1 ${
+                  className={`px-1 h-[20px] rounded text-[9px] sm:text-[10px] font-medium transition border flex items-center gap-0.5 ${
                     showBollinger
-                      ? 'bg-blue-950/70 border-blue-600/70 text-blue-300'
+                      ? isLight
+                        ? 'bg-blue-50 border-blue-300 text-blue-800 font-semibold'
+                        : 'bg-blue-950/70 border-blue-600/70 text-blue-300 font-semibold'
+                      : isLight
+                      ? 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
                       : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                   }`}
                   title="切換布林通道"
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showBollinger ? 'bg-blue-400' : 'bg-slate-600'}`} />
+                  <span className={`w-1 h-1 rounded-full ${showBollinger ? 'bg-blue-500' : 'bg-slate-400'}`} />
                   布林
                 </button>
 
@@ -1484,14 +1696,18 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     playClickSound();
                     setShowPrevClose(!showPrevClose);
                   }}
-                  className={`px-1.5 py-1 lg:py-0.5 rounded text-[11px] font-mono font-bold transition border flex items-center gap-1 ${
+                  className={`px-1 h-[20px] rounded text-[9px] sm:text-[10px] font-medium transition border flex items-center gap-0.5 ${
                     showPrevClose
-                      ? 'bg-slate-800 border-slate-600 text-slate-200'
+                      ? isLight
+                        ? 'bg-slate-200 border-slate-300 text-slate-800 font-semibold'
+                        : 'bg-slate-800 border-slate-600 text-slate-200 font-semibold'
+                      : isLight
+                      ? 'bg-white border-slate-200 text-slate-500 hover:text-slate-800'
                       : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
                   }`}
                   title="切換昨收參考線"
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showPrevClose ? 'bg-slate-300' : 'bg-slate-700'}`} />
+                  <span className={`w-1 h-1 rounded-full ${showPrevClose ? 'bg-slate-600' : 'bg-slate-400'}`} />
                   昨收
                 </button>
 
@@ -1501,117 +1717,124 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                       playClickSound();
                       setShowVWAP(!showVWAP);
                     }}
-                    className={`px-1.5 py-1 lg:py-0.5 rounded text-[11px] font-mono font-bold transition border flex items-center gap-1 ${
+                    className={`px-1 h-[20px] rounded text-[9px] sm:text-[10px] font-medium transition border flex items-center gap-0.5 ${
                       showVWAP
-                        ? 'bg-orange-950/70 border-orange-600/70 text-orange-300'
+                        ? isLight
+                          ? 'bg-orange-50 border-orange-300 text-orange-800 font-semibold'
+                          : 'bg-orange-950/70 border-orange-600/70 text-orange-300 font-semibold'
+                        : isLight
+                        ? 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                     }`}
                     title="VWAP"
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${showVWAP ? 'bg-orange-400' : 'bg-slate-600'}`} />
+                    <span className={`w-1 h-1 rounded-full ${showVWAP ? 'bg-orange-500' : 'bg-slate-400'}`} />
                     VWAP
                   </button>
                 )}
               </div>
 
               {/* Sub-chart Indicator Dropdown */}
-              <div className="flex items-center bg-slate-950 px-1 py-0.5 rounded border border-slate-800 font-mono shrink-0">
-                <span className="text-[10px] text-slate-500 pr-0.5 font-bold hidden xs:inline">副圖:</span>
-                <select
-                  value={subIndicator}
-                  onChange={(e) => {
-                    playClickSound();
-                    setSubIndicator(e.target.value as SubChartIndicator);
-                  }}
-                  className="bg-transparent text-slate-200 text-[11px] font-bold focus:outline-none cursor-pointer py-0.5 pr-0.5 font-mono"
-                  aria-label="選擇副圖指標"
-                >
-                  <option value="volume" className="bg-slate-900 text-slate-200">量能</option>
-                  <option value="kd" className="bg-slate-900 text-slate-200">KD</option>
-                  <option value="rsi" className="bg-slate-900 text-slate-200">RSI</option>
-                  <option value="macd" className="bg-slate-900 text-slate-200">MACD</option>
-                  <option value="none" className="bg-slate-900 text-slate-400">關閉</option>
-                </select>
-              </div>
+              <CustomSelect
+                value={subIndicator}
+                options={[
+                  { value: 'volume', label: '量能' },
+                  { value: 'kd', label: 'KD' },
+                  { value: 'rsi', label: 'RSI' },
+                  { value: 'macd', label: 'MACD' },
+                  { value: 'none', label: '關閉副圖' },
+                ]}
+                onChange={(val) => setSubIndicator(val)}
+                isLight={isLight}
+                ariaLabel="選擇副圖指標"
+              />
             </div>
           </div>
 
           {/* UNIFIED DYNAMIC INSPECTOR HUD: Responsive 2-Row on Mobile, 1-Row on Desktop so text never overflows */}
-          <div className="bg-slate-950 border-b border-slate-800/80 px-2 sm:px-3 py-1 flex flex-col lg:flex-row lg:items-center lg:justify-between text-[10px] xs:text-[11px] sm:text-xs font-mono text-slate-300 shrink-0 gap-1 min-h-[28px]">
+          <div className={`${isLight ? 'bg-slate-50/80 border-slate-200 text-slate-700' : 'bg-slate-950 border-slate-800/80 text-slate-300'} border-b px-2 sm:px-3 py-1 flex flex-col lg:flex-row lg:items-center lg:justify-between text-[10px] xs:text-[11px] sm:text-xs font-mono shrink-0 gap-1 min-h-[28px]`}>
             {currentCandle ? (
               <>
                 {/* Row 1: Time + OHLC + Volume */}
                 <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2.5 w-full lg:w-auto overflow-x-auto no-scrollbar">
-                  <span className="text-slate-400 flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">
+                  <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded border shrink-0 ${
+                    isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-900 border-slate-800 text-slate-400'
+                  }`}>
                     <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-400" />
-                    <strong className="text-slate-200">{currentCandle.timeStr}</strong>
+                    <strong className={isLight ? 'text-slate-800' : 'text-slate-200'}>{currentCandle.timeStr}</strong>
                   </span>
                   <div className="flex items-center gap-1.5 xs:gap-2 shrink-0">
-                    <span className="text-slate-300">
-                      開<strong className="text-slate-100 font-bold">${currentCandle.open.toFixed(2)}</strong>
+                    <span className={isLight ? 'text-slate-500' : 'text-slate-300'}>
+                      開<strong className={`font-bold ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>${currentCandle.open.toFixed(2)}</strong>
                     </span>
-                    <span className="text-slate-300">
-                      高<strong className="text-rose-400 font-bold">${currentCandle.high.toFixed(2)}</strong>
+                    <span className={isLight ? 'text-slate-500' : 'text-slate-300'}>
+                      高<strong className={`font-bold ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>${currentCandle.high.toFixed(2)}</strong>
                     </span>
-                    <span className="text-slate-300">
-                      低<strong className="text-emerald-400 font-bold">${currentCandle.low.toFixed(2)}</strong>
+                    <span className={isLight ? 'text-slate-500' : 'text-slate-300'}>
+                      低<strong className={`font-bold ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>${currentCandle.low.toFixed(2)}</strong>
                     </span>
-                    <span className="text-slate-300">
-                      收<strong className="text-slate-100 font-bold">${currentCandle.close.toFixed(2)}</strong>
+                    <span className={isLight ? 'text-slate-500' : 'text-slate-300'}>
+                      收<strong className={`font-bold ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>${currentCandle.close.toFixed(2)}</strong>
                     </span>
-                    <span className="text-slate-300">
-                      量<strong className="text-indigo-300 font-bold">{formatVolumeShort(currentCandle.volume, selectedChartTarget.market)}</strong>
+                    <span className={isLight ? 'text-slate-500' : 'text-slate-300'}>
+                      量<strong className={`font-bold ${isLight ? 'text-indigo-600' : 'text-indigo-300'}`}>{formatVolumeShort(currentCandle.volume, selectedChartTarget.market)}</strong>
                     </span>
                   </div>
                 </div>
 
                 {/* Row 2 (or inline on Desktop): Moving Averages & Overlays */}
                 {(showMA || showBollinger || (showVWAP && (timeframe === '1D' || timeframe === '5D'))) && activeSubValues && (
-                  <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] xs:text-[11px] overflow-x-auto no-scrollbar lg:border-l lg:border-slate-800 lg:pl-2 shrink-0">
+                  <div className={`flex items-center gap-1.5 sm:gap-2 text-[10px] xs:text-[11px] overflow-x-auto no-scrollbar lg:border-l lg:pl-2 shrink-0 ${
+                    isLight ? 'border-slate-200' : 'border-slate-800'
+                  }`}>
                     {showMA && (
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-amber-400 font-bold">5M:{activeSubValues.ma5 ? activeSubValues.ma5.toFixed(2) : '--'}</span>
-                        <span className="text-cyan-400 font-bold">10M:{activeSubValues.ma10 ? activeSubValues.ma10.toFixed(2) : '--'}</span>
-                        <span className="text-purple-400 font-bold">20M:{activeSubValues.ma20 ? activeSubValues.ma20.toFixed(2) : '--'}</span>
+                        <span className={`${isLight ? 'text-amber-700' : 'text-amber-400'} font-bold`}>5M:{activeSubValues.ma5 ? activeSubValues.ma5.toFixed(2) : '--'}</span>
+                        <span className={`${isLight ? 'text-cyan-700' : 'text-cyan-400'} font-bold`}>10M:{activeSubValues.ma10 ? activeSubValues.ma10.toFixed(2) : '--'}</span>
+                        <span className={`${isLight ? 'text-purple-700' : 'text-purple-400'} font-bold`}>20M:{activeSubValues.ma20 ? activeSubValues.ma20.toFixed(2) : '--'}</span>
                         {activeSubValues.ma60 && (
-                          <span className="text-orange-400 font-bold">60M:{activeSubValues.ma60.toFixed(2)}</span>
+                          <span className={`${isLight ? 'text-orange-700' : 'text-orange-400'} font-bold`}>60M:{activeSubValues.ma60.toFixed(2)}</span>
                         )}
                       </div>
                     )}
                     {showBollinger && (
-                      <div className="flex items-center gap-1 shrink-0 pl-1 border-l border-slate-800">
-                        <span className="text-blue-400 font-bold">上:{activeSubValues.bbUpper ? activeSubValues.bbUpper.toFixed(2) : '--'}</span>
-                        <span className="text-slate-300 font-bold">中:{activeSubValues.bbMid ? activeSubValues.bbMid.toFixed(2) : '--'}</span>
-                        <span className="text-blue-400 font-bold">下:{activeSubValues.bbLower ? activeSubValues.bbLower.toFixed(2) : '--'}</span>
+                      <div className={`flex items-center gap-1 shrink-0 pl-1 border-l ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
+                        <span className={`${isLight ? 'text-blue-700' : 'text-blue-400'} font-bold`}>上:{activeSubValues.bbUpper ? activeSubValues.bbUpper.toFixed(2) : '--'}</span>
+                        <span className={`${isLight ? 'text-slate-700' : 'text-slate-300'} font-bold`}>中:{activeSubValues.bbMid ? activeSubValues.bbMid.toFixed(2) : '--'}</span>
+                        <span className={`${isLight ? 'text-blue-700' : 'text-blue-400'} font-bold`}>下:{activeSubValues.bbLower ? activeSubValues.bbLower.toFixed(2) : '--'}</span>
                       </div>
                     )}
                     {showVWAP && activeSubValues?.vwap && (timeframe === '1D' || timeframe === '5D') && (
-                      <div className="flex items-center gap-1 shrink-0 pl-1 border-l border-slate-800">
-                        <span className="text-orange-400 font-bold">VWAP:{activeSubValues.vwap.toFixed(2)}</span>
+                      <div className={`flex items-center gap-1 shrink-0 pl-1 border-l ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
+                        <span className={`${isLight ? 'text-orange-700' : 'text-orange-400'} font-bold`}>VWAP:{activeSubValues.vwap.toFixed(2)}</span>
                       </div>
                     )}
                   </div>
                 )}
               </>
             ) : (
-              <span className="text-slate-500 text-xs py-0.5">點擊或游標滑動圖表檢視即時數據</span>
+              <span className="text-slate-400 text-xs py-0.5">點擊或游標滑動圖表檢視即時數據</span>
             )}
           </div>
 
           {/* INTERACTIVE CHART CANVAS CONTAINER - PROPORTIONALLY MANAGED FLEX */}
           <div className="flex-1 flex flex-col p-1 sm:p-2 relative overflow-hidden min-h-0">
             {loading && !mainChartData ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-indigo-400 font-mono text-xs gap-3">
-                <Activity className="w-6 h-6 animate-spin text-indigo-400" />
+              <div className="flex-1 flex flex-col items-center justify-center text-indigo-500 font-mono text-xs gap-3">
+                <Activity className="w-6 h-6 animate-spin text-indigo-500" />
                 <span>載入行情與深度技術指標中...</span>
               </div>
             ) : errorMsg && !mainChartData ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-rose-400 font-mono text-xs gap-2">
-                <ShieldAlert className="w-6 h-6 text-rose-400" />
+              <div className="flex-1 flex flex-col items-center justify-center text-rose-500 font-mono text-xs gap-2">
+                <ShieldAlert className="w-6 h-6 text-rose-500" />
                 <span>{errorMsg}</span>
                 <button
                   onClick={() => fetchChartDataForTimeframe(selectedChartTarget, timeframe)}
-                  className="mt-2 px-3 py-1 bg-slate-800 text-slate-200 border border-slate-700 rounded-lg hover:bg-slate-700"
+                  className={`mt-2 px-3 py-1 border rounded-lg ${
+                    isLight
+                      ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                      : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
+                  }`}
                 >
                   重試
                 </button>
@@ -1619,8 +1842,12 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             ) : mainChartData ? (
               <div className="flex-1 flex flex-col w-full h-full min-h-0 relative">
                 {loading && (
-                  <div className="absolute top-2 right-2 z-20 bg-slate-900/85 text-indigo-400 border border-indigo-500/30 text-[10px] px-2 py-0.5 rounded-full font-mono flex items-center gap-1.5 backdrop-blur-xs shadow-md">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
+                  <div className={`absolute top-2 right-2 z-20 text-[10px] px-2 py-0.5 rounded-full font-mono flex items-center gap-1.5 backdrop-blur-xs shadow-md border ${
+                    isLight
+                      ? 'bg-white/90 text-indigo-700 border-indigo-200'
+                      : 'bg-slate-900/85 text-indigo-400 border-indigo-500/30'
+                  }`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping" />
                     行情更新中...
                   </div>
                 )}
@@ -1636,43 +1863,49 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
 
                 {/* Sub Indicator Chart with Slim Header Bar outside Canvas */}
                 {subIndicator !== 'none' && subChartData && (
-                  <div className="w-full flex-[35] sm:flex-[30] min-h-[90px] sm:min-h-[110px] border-t border-slate-800 flex flex-col min-h-0 relative mt-0.5">
+                  <div className={`w-full flex-[35] sm:flex-[30] min-h-[90px] sm:min-h-[110px] border-t flex flex-col min-h-0 relative mt-0.5 ${
+                    isLight ? 'border-slate-200' : 'border-slate-800'
+                  }`}>
                     {/* Non-overlapping Slim Subchart Header Strip */}
-                    <div className="w-full bg-slate-950/90 px-2 py-0.5 text-[10px] font-mono font-bold text-slate-300 flex items-center justify-between border-b border-slate-800/60 shrink-0 no-scrollbar overflow-x-auto">
+                    <div className={`w-full px-2 py-0.5 text-[10px] font-mono font-bold flex items-center justify-between border-b shrink-0 no-scrollbar overflow-x-auto ${
+                      isLight
+                        ? 'bg-slate-50 text-slate-700 border-slate-200'
+                        : 'bg-slate-950/90 text-slate-300 border-slate-800/60'
+                    }`}>
                       <div className="flex items-center gap-2 shrink-0">
                         {subIndicator === 'volume' && (
                           <>
-                            <span className="text-slate-400">成交量:</span>
-                            <span className="text-slate-100 font-bold">{activeSubValues?.vol?.toLocaleString() || 0} 股</span>
+                            <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>成交量:</span>
+                            <span className={`font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{activeSubValues?.vol?.toLocaleString() || 0} 股</span>
                             {activeSubValues?.volMa5 !== null && activeSubValues?.volMa5 !== undefined && (
-                              <span className="text-amber-400 ml-1">5MA: {Math.round(activeSubValues.volMa5).toLocaleString()}</span>
+                              <span className={`${isLight ? 'text-amber-700' : 'text-amber-400'} ml-1`}>5MA: {Math.round(activeSubValues.volMa5).toLocaleString()}</span>
                             )}
                             {activeSubValues?.volMa20 !== null && activeSubValues?.volMa20 !== undefined && (
-                              <span className="text-purple-400 ml-1">20MA: {Math.round(activeSubValues.volMa20).toLocaleString()}</span>
+                              <span className={`${isLight ? 'text-purple-700' : 'text-purple-400'} ml-1`}>20MA: {Math.round(activeSubValues.volMa20).toLocaleString()}</span>
                             )}
                           </>
                         )}
                         {subIndicator === 'kd' && (
                           <>
-                            <span className="text-slate-400">KD(9,3,3)</span>
-                            <span className="text-amber-400">K: {activeSubValues?.k !== undefined && activeSubValues?.k !== null ? activeSubValues.k.toFixed(1) : '--'}</span>
-                            <span className="text-indigo-400">D: {activeSubValues?.d !== undefined && activeSubValues?.d !== null ? activeSubValues.d.toFixed(1) : '--'}</span>
+                            <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>KD(9,3,3)</span>
+                            <span className={isLight ? 'text-amber-700' : 'text-amber-400'}>K: {activeSubValues?.k !== undefined && activeSubValues?.k !== null ? activeSubValues.k.toFixed(1) : '--'}</span>
+                            <span className={isLight ? 'text-indigo-700' : 'text-indigo-400'}>D: {activeSubValues?.d !== undefined && activeSubValues?.d !== null ? activeSubValues.d.toFixed(1) : '--'}</span>
                           </>
                         )}
                         {subIndicator === 'rsi' && (
                           <>
-                            <span className="text-slate-400">RSI(14):</span>
-                            <span className={activeSubValues?.rsi && activeSubValues.rsi >= 70 ? 'text-rose-400 font-bold' : activeSubValues?.rsi && activeSubValues.rsi <= 30 ? 'text-emerald-400 font-bold' : 'text-pink-400 font-bold'}>
+                            <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>RSI(14):</span>
+                            <span className={activeSubValues?.rsi && activeSubValues.rsi >= 70 ? (isLight ? 'text-rose-600 font-bold' : 'text-rose-400 font-bold') : activeSubValues?.rsi && activeSubValues.rsi <= 30 ? (isLight ? 'text-emerald-600 font-bold' : 'text-emerald-400 font-bold') : (isLight ? 'text-pink-700 font-bold' : 'text-pink-400 font-bold')}>
                               {activeSubValues?.rsi !== undefined && activeSubValues?.rsi !== null ? activeSubValues.rsi.toFixed(1) : '--'}
                             </span>
                           </>
                         )}
                         {subIndicator === 'macd' && (
                           <>
-                            <span className="text-slate-400">MACD(12,26,9)</span>
-                            <span className="text-amber-400">DIF: {activeSubValues?.dif !== undefined && activeSubValues?.dif !== null ? (activeSubValues.dif >= 0 ? `+${activeSubValues.dif.toFixed(2)}` : activeSubValues.dif.toFixed(2)) : '--'}</span>
-                            <span className="text-blue-400">DEM: {activeSubValues?.dem !== undefined && activeSubValues?.dem !== null ? (activeSubValues.dem >= 0 ? `+${activeSubValues.dem.toFixed(2)}` : activeSubValues.dem.toFixed(2)) : '--'}</span>
-                            <span className={activeSubValues?.osc !== undefined && activeSubValues?.osc !== null && activeSubValues.osc >= 0 ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
+                            <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>MACD(12,26,9)</span>
+                            <span className={isLight ? 'text-amber-700' : 'text-amber-400'}>DIF: {activeSubValues?.dif !== undefined && activeSubValues?.dif !== null ? (activeSubValues.dif >= 0 ? `+${activeSubValues.dif.toFixed(2)}` : activeSubValues.dif.toFixed(2)) : '--'}</span>
+                            <span className={isLight ? 'text-blue-700' : 'text-blue-400'}>DEM: {activeSubValues?.dem !== undefined && activeSubValues?.dem !== null ? (activeSubValues.dem >= 0 ? `+${activeSubValues.dem.toFixed(2)}` : activeSubValues.dem.toFixed(2)) : '--'}</span>
+                            <span className={activeSubValues?.osc !== undefined && activeSubValues?.osc !== null && activeSubValues.osc >= 0 ? (isLight ? 'text-rose-600 font-bold' : 'text-rose-400 font-bold') : (isLight ? 'text-emerald-600 font-bold' : 'text-emerald-400 font-bold')}>
                               OSC: {activeSubValues?.osc !== undefined && activeSubValues?.osc !== null ? (activeSubValues.osc >= 0 ? `+${activeSubValues.osc.toFixed(2)}` : activeSubValues.osc.toFixed(2)) : '--'}
                             </span>
                           </>
@@ -1690,9 +1923,13 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
         </div>
 
         {/* RIGHT / WORKSTATION SIDECAR: 4 DEDICATED PRO PANELS (4 or 3 cols on Desktop) */}
-        <div className={`lg:col-span-4 xl:col-span-3 flex-col bg-slate-900 border-t lg:border-t-0 border-slate-800 overflow-hidden flex-1 ${mobileTab !== 'chart' ? 'flex' : 'hidden lg:flex'}`}>
+        <div className={`lg:col-span-4 xl:col-span-3 flex-col border-t lg:border-t-0 overflow-hidden flex-1 ${
+          isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-900 border-slate-800 text-slate-100'
+        } ${mobileTab !== 'chart' ? 'flex' : 'hidden lg:flex'}`}>
           {/* Sidecar Tab Switcher (Desktop only to prevent duplicate tabs on mobile) */}
-          <div className="hidden lg:flex bg-slate-950 px-2 py-1.5 border-b border-slate-800 items-center justify-between gap-1 text-xs">
+          <div className={`hidden lg:flex px-2 py-1.5 border-b items-center justify-between gap-1 text-xs ${
+            isLight ? 'bg-white border-slate-200' : 'bg-slate-950 border-slate-800'
+          }`}>
             <button
               onClick={() => {
                 playClickSound();
@@ -1701,7 +1938,11 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
               }}
               className={`flex-1 py-1.5 rounded-lg font-bold transition text-center text-[11px] sm:text-xs flex items-center justify-center gap-1 ${
                 sidebarTab === 'orderbook'
-                  ? 'bg-slate-800 text-indigo-300 border border-slate-700 shadow-xs'
+                  ? isLight
+                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
+                    : 'bg-slate-800 text-indigo-300 border border-slate-700 shadow-xs'
+                  : isLight
+                  ? 'text-slate-500 hover:text-slate-800'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -1717,7 +1958,11 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
               }}
               className={`flex-1 py-1.5 rounded-lg font-bold transition text-center text-[11px] sm:text-xs flex items-center justify-center gap-1 ${
                 sidebarTab === 'diagnosis'
-                  ? 'bg-slate-800 text-amber-300 border border-slate-700 shadow-xs'
+                  ? isLight
+                    ? 'bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs'
+                    : 'bg-slate-800 text-amber-300 border border-slate-700 shadow-xs'
+                  : isLight
+                  ? 'text-slate-500 hover:text-slate-800'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -1733,7 +1978,11 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
               }}
               className={`flex-1 py-1.5 rounded-lg font-bold transition text-center text-[11px] sm:text-xs flex items-center justify-center gap-1 ${
                 sidebarTab === 'position'
-                  ? 'bg-slate-800 text-emerald-300 border border-slate-700 shadow-xs'
+                  ? isLight
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs'
+                    : 'bg-slate-800 text-emerald-300 border border-slate-700 shadow-xs'
+                  : isLight
+                  ? 'text-slate-500 hover:text-slate-800'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -1749,7 +1998,11 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
               }}
               className={`flex-1 py-1.5 rounded-lg font-bold transition text-center text-[11px] sm:text-xs flex items-center justify-center gap-1 ${
                 sidebarTab === 'switcher'
-                  ? 'bg-slate-800 text-purple-300 border border-slate-700 shadow-xs'
+                  ? isLight
+                    ? 'bg-purple-50 text-purple-800 border border-purple-200 shadow-2xs'
+                    : 'bg-slate-800 text-purple-300 border border-slate-700 shadow-xs'
+                  : isLight
+                  ? 'text-slate-500 hover:text-slate-800'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -1766,16 +2019,18 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 {technicalSeries && (
                   <>
                     {/* In/Out Flow Meter */}
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+                    <div className={`p-2.5 rounded-xl border space-y-1.5 ${
+                      isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-950 border-slate-800'
+                    }`}>
                       <div className="flex justify-between items-center text-xs font-mono">
-                        <span className="text-emerald-400 font-bold flex items-center gap-1">
+                        <span className={`font-bold flex items-center gap-1 ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
                           <ArrowUpRight className="w-3.5 h-3.5" /> 外盤買進 {technicalSeries.orderBook.outerDrivePct}%
                         </span>
-                        <span className="text-rose-400 font-bold flex items-center gap-1">
+                        <span className={`font-bold flex items-center gap-1 ${isLight ? 'text-rose-700' : 'text-rose-400'}`}>
                           內盤賣出 {technicalSeries.orderBook.innerDrivePct}% <ArrowDownRight className="w-3.5 h-3.5" />
                         </span>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
+                      <div className={`w-full h-2 rounded-full overflow-hidden flex ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`}>
                         <div
                           className="h-full bg-emerald-500 transition-all duration-500"
                           style={{ width: `${technicalSeries.orderBook.outerDrivePct}%` }}
@@ -1788,54 +2043,122 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     </div>
 
                     {/* 5-Tier Bid / Ask Depth Table */}
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
-                      <div className="flex justify-between items-center text-xs font-bold text-slate-400 border-b border-slate-800 pb-1.5">
-                        <span>委買量 (Bid)</span>
-                        <span className="font-mono text-slate-200">五檔價位</span>
-                        <span>委賣量 (Ask)</span>
+                    <div className={`p-2.5 rounded-xl border space-y-2 ${
+                      isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-950 border-slate-800'
+                    }`}>
+                      {/* Explanatory Header Badges */}
+                      <div className="flex items-center justify-between text-[11px] pb-1 border-b border-slate-200 dark:border-slate-800 font-sans">
+                        <span className="flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                          委賣（等待賣出）
+                        </span>
+                        <span className="text-slate-400 text-[10px]">即時撮合隊伍</span>
+                        <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          委買（等待買進）
+                        </span>
                       </div>
 
-                      {/* Asks (5 tiers - highest to lowest) */}
+                      {/* Column Title Row */}
+                      <div className={`grid grid-cols-3 text-center text-xs font-bold py-1 px-1 rounded ${
+                        isLight ? 'bg-slate-100/80 text-slate-600' : 'bg-slate-900 text-slate-400'
+                      }`}>
+                        <span className="text-left pl-2">檔位 (類別)</span>
+                        <span>委託價位</span>
+                        <span className="text-right pr-2">委託數量 (張)</span>
+                      </div>
+
+                      {/* Asks (5 tiers - 賣5 down to 賣1) */}
                       <div className="space-y-1 font-mono text-xs">
-                        {technicalSeries.orderBook.asks.map((tier, idx) => (
-                          <div key={`ask-${idx}`} className="relative flex justify-between items-center py-0.5 px-1 rounded hover:bg-slate-900">
-                            <span className="text-slate-600 text-[10px]">--</span>
-                            <span className="font-bold text-rose-400 z-10">${tier.price.toFixed(2)}</span>
-                            <span className="text-slate-300 z-10 text-right w-16">{tier.volume}</span>
-                            <div
-                              className="absolute right-0 top-0 bottom-0 bg-rose-950/40 rounded-r transition-all"
-                              style={{ width: `${tier.pct}%` }}
-                            />
-                          </div>
-                        ))}
+                        {technicalSeries.orderBook.asks.map((tier, idx) => {
+                          const askLabel = `賣 ${technicalSeries.orderBook.asks.length - idx}`;
+                          return (
+                            <div key={`ask-${idx}`} className={`relative grid grid-cols-3 items-center py-1 px-2 rounded transition ${
+                              isLight ? 'hover:bg-rose-50/50' : 'hover:bg-rose-950/20'
+                            }`}>
+                              <div className="flex items-center gap-1 z-10">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold font-sans ${
+                                  isLight ? 'bg-rose-100 text-rose-700' : 'bg-rose-950/80 text-rose-300'
+                                }`}>
+                                  {askLabel}
+                                </span>
+                              </div>
+                              <span className={`font-bold z-10 text-center ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>
+                                ${tier.price.toFixed(2)}
+                              </span>
+                              <span className={`z-10 text-right font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                                {tier.volume} 張
+                              </span>
+                              {/* Volume depth bar */}
+                              <div
+                                className={`absolute right-0 top-0 bottom-0 rounded-r transition-all ${
+                                  isLight ? 'bg-rose-100/60' : 'bg-rose-950/40'
+                                }`}
+                                style={{ width: `${tier.pct}%` }}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
 
-                      <div className="py-1 px-2 bg-slate-900/90 rounded border border-slate-800 flex justify-between items-center text-xs font-mono">
-                        <span className="text-slate-400 font-bold">現價</span>
-                        <strong className="text-white text-sm">${activePrice.toFixed(2)}</strong>
-                        <span className={`font-bold ${isActiveUp ? (isRedUp ? 'text-rose-400' : 'text-emerald-400') : (isRedUp ? 'text-emerald-400' : 'text-rose-400')}`}>
+                      {/* Current Price Banner */}
+                      <div className={`py-1.5 px-3 rounded-lg border flex justify-between items-center text-xs font-mono shadow-2xs ${
+                        isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+                      }`}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                          <span className={`font-bold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>最新成交價</span>
+                        </div>
+                        <strong className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                          ${activePrice.toFixed(2)}
+                        </strong>
+                        <span className={`font-bold text-xs ${
+                          isActiveUp
+                            ? (isRedUp ? (isLight ? 'text-rose-600' : 'text-rose-400') : (isLight ? 'text-emerald-600' : 'text-emerald-400'))
+                            : (isRedUp ? (isLight ? 'text-emerald-600' : 'text-emerald-400') : (isLight ? 'text-rose-600' : 'text-rose-400'))
+                        }`}>
                           {isActiveUp ? '+' : ''}{activeDiff.toFixed(2)}
                         </span>
                       </div>
 
-                      {/* Bids (5 tiers - highest to lowest) */}
+                      {/* Bids (5 tiers - 買1 down to 買5) */}
                       <div className="space-y-1 font-mono text-xs">
-                        {technicalSeries.orderBook.bids.map((tier, idx) => (
-                          <div key={`bid-${idx}`} className="relative flex justify-between items-center py-0.5 px-1 rounded hover:bg-slate-900">
-                            <span className="text-slate-300 z-10 w-16 text-left">{tier.volume}</span>
-                            <span className="font-bold text-emerald-400 z-10">${tier.price.toFixed(2)}</span>
-                            <span className="text-slate-600 text-[10px]">--</span>
-                            <div
-                              className="absolute left-0 top-0 bottom-0 bg-emerald-950/40 rounded-l transition-all"
-                              style={{ width: `${tier.pct}%` }}
-                            />
-                          </div>
-                        ))}
+                        {technicalSeries.orderBook.bids.map((tier, idx) => {
+                          const bidLabel = `買 ${idx + 1}`;
+                          return (
+                            <div key={`bid-${idx}`} className={`relative grid grid-cols-3 items-center py-1 px-2 rounded transition ${
+                              isLight ? 'hover:bg-emerald-50/50' : 'hover:bg-emerald-950/20'
+                            }`}>
+                              <div className="flex items-center gap-1 z-10">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold font-sans ${
+                                  isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-950/80 text-emerald-300'
+                                }`}>
+                                  {bidLabel}
+                                </span>
+                              </div>
+                              <span className={`font-bold z-10 text-center ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>
+                                ${tier.price.toFixed(2)}
+                              </span>
+                              <span className={`z-10 text-right font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                                {tier.volume} 張
+                              </span>
+                              {/* Volume depth bar */}
+                              <div
+                                className={`absolute right-0 top-0 bottom-0 rounded-r transition-all ${
+                                  isLight ? 'bg-emerald-100/60' : 'bg-emerald-950/40'
+                                }`}
+                                style={{ width: `${tier.pct}%` }}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
 
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-800 pt-1.5 font-mono">
-                        <span>買盤總量: <strong className="text-emerald-400">{technicalSeries.orderBook.totalBidVol}</strong></span>
-                        <span>賣盤總量: <strong className="text-rose-400">{technicalSeries.orderBook.totalAskVol}</strong></span>
+                      <div className={`flex justify-between items-center text-[11px] border-t pt-2 font-mono ${
+                        isLight ? 'text-slate-500 border-slate-200' : 'text-slate-400 border-slate-800'
+                      }`}>
+                        <span>買盤掛單總量: <strong className={isLight ? 'text-emerald-700' : 'text-emerald-400'}>{technicalSeries.orderBook.totalBidVol} 張</strong></span>
+                        <span>賣盤掛單總量: <strong className={isLight ? 'text-rose-700' : 'text-rose-400'}>{technicalSeries.orderBook.totalAskVol} 張</strong></span>
                       </div>
                     </div>
                   </>
@@ -1849,9 +2172,11 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 {technicalSeries && (
                   <>
                     {/* Bullish / Bearish Score Gauge */}
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                      isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-950 border-slate-800'
+                    }`}>
                       <div>
-                        <div className="text-xs text-slate-400 font-medium">技術多空綜合評分</div>
+                        <div className={`text-xs font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>技術多空綜合評分</div>
                         <div className="text-xl font-black font-mono tracking-tight mt-0.5" style={{ color: technicalSeries.diagnosis.signalColor }}>
                           {technicalSeries.diagnosis.overallSignal} ({technicalSeries.diagnosis.score}分)
                         </div>
@@ -1862,62 +2187,76 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     </div>
 
                     {/* Indicator Diagnostic Checklist */}
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2 text-xs">
-                      <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
-                        <span className="text-slate-400 font-medium">均線趨勢</span>
-                        <span className="font-bold text-slate-200">{technicalSeries.diagnosis.maTrend}</span>
+                    <div className={`p-3 rounded-xl border space-y-2 text-xs ${
+                      isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-950 border-slate-800'
+                    }`}>
+                      <div className={`flex justify-between items-center border-b pb-1.5 ${isLight ? 'border-slate-100' : 'border-slate-800/80'}`}>
+                        <span className={`font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>均線趨勢</span>
+                        <span className={`font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{technicalSeries.diagnosis.maTrend}</span>
                       </div>
-                      <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
-                        <span className="text-slate-400 font-medium">KD 狀態</span>
-                        <span className="font-bold text-slate-200">{technicalSeries.diagnosis.kdSignal}</span>
+                      <div className={`flex justify-between items-center border-b pb-1.5 ${isLight ? 'border-slate-100' : 'border-slate-800/80'}`}>
+                        <span className={`font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>KD 狀態</span>
+                        <span className={`font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{technicalSeries.diagnosis.kdSignal}</span>
                       </div>
-                      <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
-                        <span className="text-slate-400 font-medium">RSI 強弱</span>
-                        <span className="font-bold text-slate-200">{technicalSeries.diagnosis.rsiSignal}</span>
+                      <div className={`flex justify-between items-center border-b pb-1.5 ${isLight ? 'border-slate-100' : 'border-slate-800/80'}`}>
+                        <span className={`font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>RSI 強弱</span>
+                        <span className={`font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{technicalSeries.diagnosis.rsiSignal}</span>
                       </div>
-                      <div className="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
-                        <span className="text-slate-400 font-medium">MACD 動能</span>
-                        <span className="font-bold text-slate-200">{technicalSeries.diagnosis.macdSignal}</span>
+                      <div className={`flex justify-between items-center border-b pb-1.5 ${isLight ? 'border-slate-100' : 'border-slate-800/80'}`}>
+                        <span className={`font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>MACD 動能</span>
+                        <span className={`font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{technicalSeries.diagnosis.macdSignal}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-medium">量能變化</span>
-                        <span className="font-bold text-slate-200">{technicalSeries.diagnosis.volumeSignal}</span>
+                        <span className={`font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>量能變化</span>
+                        <span className={`font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{technicalSeries.diagnosis.volumeSignal}</span>
                       </div>
                     </div>
 
                     {/* Support & Resistance Levels */}
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-                      <div className="text-xs font-bold text-slate-300 flex items-center gap-1">
-                        <Target className="w-3.5 h-3.5 text-indigo-400" />
+                    <div className={`p-3 rounded-xl border space-y-2 ${
+                      isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-950 border-slate-800'
+                    }`}>
+                      <div className={`text-xs font-bold flex items-center gap-1 ${isLight ? 'text-slate-800' : 'text-slate-300'}`}>
+                        <Target className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`} />
                         <span>關鍵支撐與壓力關卡</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                        <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
-                          <div className="text-[10px] text-rose-400 font-bold">第 2 壓力位 (R2)</div>
-                          <div className="text-sm font-black text-white mt-0.5">${technicalSeries.levels.resistance2.toFixed(2)}</div>
+                        <div className={`p-2 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+                        }`}>
+                          <div className={`text-[10px] font-bold ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>第 2 壓力位 (R2)</div>
+                          <div className={`text-sm font-black mt-0.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>${technicalSeries.levels.resistance2.toFixed(2)}</div>
                         </div>
-                        <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
-                          <div className="text-[10px] text-rose-300 font-bold">第 1 壓力位 (R1)</div>
-                          <div className="text-sm font-black text-white mt-0.5">${technicalSeries.levels.resistance.toFixed(2)}</div>
+                        <div className={`p-2 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+                        }`}>
+                          <div className={`text-[10px] font-bold ${isLight ? 'text-rose-500' : 'text-rose-300'}`}>第 1 壓力位 (R1)</div>
+                          <div className={`text-sm font-black mt-0.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>${technicalSeries.levels.resistance.toFixed(2)}</div>
                         </div>
-                        <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
-                          <div className="text-[10px] text-emerald-300 font-bold">第 1 支撐位 (S1)</div>
-                          <div className="text-sm font-black text-white mt-0.5">${technicalSeries.levels.support.toFixed(2)}</div>
+                        <div className={`p-2 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+                        }`}>
+                          <div className={`text-[10px] font-bold ${isLight ? 'text-emerald-500' : 'text-emerald-300'}`}>第 1 支撐位 (S1)</div>
+                          <div className={`text-sm font-black mt-0.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>${technicalSeries.levels.support.toFixed(2)}</div>
                         </div>
-                        <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
-                          <div className="text-[10px] text-emerald-400 font-bold">第 2 支撐位 (S2)</div>
-                          <div className="text-sm font-black text-white mt-0.5">${technicalSeries.levels.support2.toFixed(2)}</div>
+                        <div className={`p-2 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+                        }`}>
+                          <div className={`text-[10px] font-bold ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>第 2 支撐位 (S2)</div>
+                          <div className={`text-sm font-black mt-0.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>${technicalSeries.levels.support2.toFixed(2)}</div>
                         </div>
                       </div>
                     </div>
 
                     {/* Action Advice Card */}
-                    <div className="bg-indigo-950/40 p-3 rounded-xl border border-indigo-800/60 text-xs space-y-1">
-                      <div className="font-bold text-indigo-300 flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                    <div className={`p-3 rounded-xl border text-xs space-y-1 ${
+                      isLight ? 'bg-indigo-50 border-indigo-200' : 'bg-indigo-950/40 border-indigo-800/60'
+                    }`}>
+                      <div className={`font-bold flex items-center gap-1 ${isLight ? 'text-indigo-800' : 'text-indigo-300'}`}>
+                        <Sparkles className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`} />
                         <span>操盤策略建議</span>
                       </div>
-                      <p className="text-slate-300 leading-relaxed">{technicalSeries.diagnosis.keyAdvice}</p>
+                      <p className={`leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{technicalSeries.diagnosis.keyAdvice}</p>
                     </div>
                   </>
                 )}
@@ -1929,38 +2268,40 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
               <div className="space-y-3 animate-fadeIn">
                 {matchedPortfolioItem ? (
                   <>
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-                      <div className="text-xs font-bold text-slate-300">我的持股部位</div>
+                    <div className={`p-3 rounded-xl border space-y-2 ${
+                      isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-950 border-slate-800'
+                    }`}>
+                      <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-300'}`}>我的持股部位</div>
                       <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                        <div className="bg-slate-900 p-2 rounded-lg">
-                          <span className="text-[10px] text-slate-400">持有股數</span>
-                          <div className="text-sm font-bold text-white mt-0.5">
+                        <div className={`p-2 rounded-lg ${isLight ? 'bg-slate-50' : 'bg-slate-900'}`}>
+                          <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>持有股數</span>
+                          <div className={`text-sm font-bold mt-0.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                             {matchedPortfolioItem.shares.toLocaleString()} 股
                           </div>
                         </div>
-                        <div className="bg-slate-900 p-2 rounded-lg">
-                          <span className="text-[10px] text-slate-400">買入均價</span>
-                          <div className="text-sm font-bold text-white mt-0.5">
+                        <div className={`p-2 rounded-lg ${isLight ? 'bg-slate-50' : 'bg-slate-900'}`}>
+                          <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>買入均價</span>
+                          <div className={`text-sm font-bold mt-0.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                             ${matchedPortfolioItem.cost.toFixed(2)}
                           </div>
                         </div>
-                        <div className="bg-slate-900 p-2 rounded-lg">
-                          <span className="text-[10px] text-slate-400">目前市值</span>
-                          <div className="text-sm font-bold text-white mt-0.5">
+                        <div className={`p-2 rounded-lg ${isLight ? 'bg-slate-50' : 'bg-slate-900'}`}>
+                          <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>目前市值</span>
+                          <div className={`text-sm font-bold mt-0.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                             ${(matchedPortfolioItem.shares * activePrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                           </div>
                         </div>
-                        <div className="bg-slate-900 p-2 rounded-lg">
-                          <span className="text-[10px] text-slate-400">未實現損益</span>
+                        <div className={`p-2 rounded-lg ${isLight ? 'bg-slate-50' : 'bg-slate-900'}`}>
+                          <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>未實現損益</span>
                           <div
                             className={`text-sm font-bold mt-0.5 ${
                               activePrice >= matchedPortfolioItem.cost
                                 ? isRedUp
-                                  ? 'text-rose-400'
-                                  : 'text-emerald-400'
+                                  ? isLight ? 'text-rose-600' : 'text-rose-400'
+                                  : isLight ? 'text-emerald-600' : 'text-emerald-400'
                                 : isRedUp
-                                ? 'text-emerald-400'
-                                : 'text-rose-400'
+                                ? isLight ? 'text-emerald-600' : 'text-emerald-400'
+                                : isLight ? 'text-rose-600' : 'text-rose-400'
                             }`}
                           >
                             {activePrice >= matchedPortfolioItem.cost ? '+' : ''}
@@ -1971,36 +2312,52 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     </div>
 
                     {/* Target Price Profit Calculator */}
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-                      <div className="text-xs font-bold text-slate-300 flex items-center gap-1">
-                        <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                    <div className={`p-3 rounded-xl border space-y-2 ${
+                      isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-950 border-slate-800'
+                    }`}>
+                      <div className={`text-xs font-bold flex items-center gap-1 ${isLight ? 'text-slate-800' : 'text-slate-300'}`}>
+                        <DollarSign className={`w-3.5 h-3.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`} />
                         <span>目標價出場獲利試算</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 shrink-0 font-mono">若漲至:</span>
+                        <span className={`text-xs shrink-0 font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>若漲至:</span>
                         <div className="relative flex-1">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs">$</span>
+                          <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 font-mono text-xs ${isLight ? 'text-slate-400' : 'text-slate-400'}`}>$</span>
                           <input
                             type="number"
                             step="0.1"
                             value={targetSimPrice}
                             onChange={(e) => setTargetSimPrice(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-6 pr-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+                            className={`w-full border rounded-lg pl-6 pr-3 py-1.5 text-xs font-mono focus:outline-none focus:border-indigo-500 ${
+                              isLight
+                                ? 'bg-slate-50 border-slate-300 text-slate-900'
+                                : 'bg-slate-900 border-slate-700 text-white'
+                            }`}
                           />
                         </div>
                       </div>
 
                       {simPriceNum > 0 && (
-                        <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800 space-y-1 text-xs font-mono">
-                          <div className="flex justify-between items-center text-slate-400">
+                        <div className={`p-2.5 rounded-lg border space-y-1 text-xs font-mono ${
+                          isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+                        }`}>
+                          <div className={`flex justify-between items-center ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                             <span>預估淨獲利</span>
-                            <strong className={`text-sm font-bold ${simProfit >= 0 ? (isRedUp ? 'text-rose-400' : 'text-emerald-400') : (isRedUp ? 'text-emerald-400' : 'text-rose-400')}`}>
+                            <strong className={`text-sm font-bold ${
+                              simProfit >= 0
+                                ? isRedUp ? (isLight ? 'text-rose-600' : 'text-rose-400') : (isLight ? 'text-emerald-600' : 'text-emerald-400')
+                                : isRedUp ? (isLight ? 'text-emerald-600' : 'text-emerald-400') : (isLight ? 'text-rose-600' : 'text-rose-400')
+                            }`}>
                               {simProfit >= 0 ? '+' : ''}${simProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </strong>
                           </div>
-                          <div className="flex justify-between items-center text-slate-400">
+                          <div className={`flex justify-between items-center ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                             <span>預估報酬率 (ROI)</span>
-                            <strong className={`font-bold ${simROI >= 0 ? (isRedUp ? 'text-rose-400' : 'text-emerald-400') : (isRedUp ? 'text-emerald-400' : 'text-rose-400')}`}>
+                            <strong className={`font-bold ${
+                              simROI >= 0
+                                ? isRedUp ? (isLight ? 'text-rose-600' : 'text-rose-400') : (isLight ? 'text-emerald-600' : 'text-emerald-400')
+                                : isRedUp ? (isLight ? 'text-emerald-600' : 'text-emerald-400') : (isLight ? 'text-rose-600' : 'text-rose-400')
+                            }`}>
                               {simROI >= 0 ? '+' : ''}{simROI.toFixed(2)}%
                             </strong>
                           </div>
@@ -2009,10 +2366,12 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     </div>
                   </>
                 ) : (
-                  <div className="bg-slate-950 p-6 rounded-xl border border-slate-800 text-center space-y-2">
-                    <DollarSign className="w-8 h-8 text-slate-600 mx-auto" />
-                    <div className="text-sm font-bold text-slate-300">尚未持有此標的</div>
-                    <p className="text-xs text-slate-500">
+                  <div className={`p-6 rounded-xl border text-center space-y-2 ${
+                    isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-950 border-slate-800'
+                  }`}>
+                    <DollarSign className="w-8 h-8 text-slate-400 mx-auto" />
+                    <div className={`text-sm font-bold ${isLight ? 'text-slate-800' : 'text-slate-300'}`}>尚未持有此標的</div>
+                    <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
                       若要將此股票納入投資組合計算損益，請至首頁點選「新增持股」。
                     </p>
                   </div>
@@ -2025,13 +2384,17 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
               <div className="space-y-3 animate-fadeIn">
                 {/* In-Panel Search */}
                 <div ref={searchContainerRef} className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <Search className={`w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400' : 'text-slate-400'}`} />
                   <input
                     type="text"
                     value={searchInput}
                     onChange={handleSearchChange}
                     placeholder="搜尋股票代號或名稱..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+                    className={`w-full border rounded-lg pl-8 pr-7 py-1.5 text-xs focus:outline-none focus:border-indigo-500 font-mono ${
+                      isLight
+                        ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 shadow-2xs'
+                        : 'bg-slate-950 border-slate-800 text-white placeholder-slate-500'
+                    }`}
                   />
                   {searchInput && (
                     <button
@@ -2039,14 +2402,16 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                         setSearchInput('');
                         setSearchResults([]);
                       }}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      className={`absolute right-2.5 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400 hover:text-slate-600' : 'text-slate-400 hover:text-white'}`}
                     >
                       <X className="w-3 h-3" />
                     </button>
                   )}
 
                   {searchResults.length > 0 && (
-                    <div className="absolute top-full mt-1 left-0 right-0 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-48 overflow-y-auto">
+                    <div className={`absolute top-full mt-1 left-0 right-0 border rounded-xl shadow-xl overflow-hidden z-50 max-h-48 overflow-y-auto ${
+                      isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-700'
+                    }`}>
                       {searchResults.map((item, idx) => (
                         <button
                           key={idx}
@@ -2056,13 +2421,19 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                             setSearchInput('');
                             setSearchResults([]);
                           }}
-                          className="w-full text-left px-3 py-2 hover:bg-indigo-900/40 flex justify-between items-center text-xs transition border-b border-slate-800 last:border-b-0"
+                          className={`w-full text-left px-3 py-2 flex justify-between items-center text-xs transition border-b last:border-b-0 ${
+                            isLight
+                              ? 'hover:bg-indigo-50 border-slate-100 text-slate-900'
+                              : 'hover:bg-indigo-900/40 border-slate-800 text-white'
+                          }`}
                         >
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-white">{item.name}</span>
-                            <span className="text-indigo-400 font-mono font-bold">{item.symbol}</span>
+                            <span className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{item.name}</span>
+                            <span className={`font-mono font-bold ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>{item.symbol}</span>
                           </div>
-                          <span className="text-[9px] px-1.5 py-0.2 rounded uppercase bg-indigo-950 text-indigo-300 font-bold">
+                          <span className={`text-[9px] px-1.5 py-0.2 rounded uppercase font-bold ${
+                            isLight ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-950 text-indigo-300'
+                          }`}>
                             {item.market}
                           </span>
                         </button>
@@ -2072,7 +2443,9 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 </div>
 
                 {/* Category Filter Pills */}
-                <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 font-mono text-xs">
+                <div className={`flex items-center p-0.5 rounded-lg border font-mono text-xs ${
+                  isLight ? 'bg-slate-200/70 border-slate-200' : 'bg-slate-950 border-slate-800'
+                }`}>
                   <button
                     onClick={() => {
                       playClickSound();
@@ -2080,7 +2453,9 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     }}
                     className={`flex-1 py-1 rounded font-bold transition text-center ${
                       switcherCategory === 'portfolio'
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : isLight
+                        ? 'text-slate-600 hover:text-slate-900'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -2093,7 +2468,9 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     }}
                     className={`flex-1 py-1 rounded font-bold transition text-center ${
                       switcherCategory === 'indices'
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : isLight
+                        ? 'text-slate-600 hover:text-slate-900'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -2106,7 +2483,9 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     }}
                     className={`flex-1 py-1 rounded font-bold transition text-center ${
                       switcherCategory === 'hot'
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : isLight
+                        ? 'text-slate-600 hover:text-slate-900'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -2131,18 +2510,26 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                             }}
                             className={`w-full p-2 rounded-lg text-left transition flex items-center justify-between border ${
                               isSelected
-                                ? 'bg-indigo-950/70 border-indigo-600 text-white shadow-xs'
+                                ? isLight
+                                  ? 'bg-indigo-50 border-indigo-400 text-indigo-950 shadow-xs'
+                                  : 'bg-indigo-950/70 border-indigo-600 text-white shadow-xs'
+                                : isLight
+                                ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-800'
                                 : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-300'
                             }`}
                           >
                             <div className="overflow-hidden">
                               <div className="font-bold text-xs truncate">{item.name}</div>
-                              <div className="text-[10px] font-mono text-indigo-400">{item.symbol}</div>
+                              <div className={`text-[10px] font-mono font-bold ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>{item.symbol}</div>
                             </div>
                             {item.price && (
                               <div className="text-right font-mono">
-                                <div className="text-xs font-bold text-white">${item.price.toFixed(2)}</div>
-                                <div className={`text-[10px] ${item.price >= (item.prevClose || item.price) ? (isRedUp ? 'text-rose-400' : 'text-emerald-400') : (isRedUp ? 'text-emerald-400' : 'text-rose-400')}`}>
+                                <div className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>${item.price.toFixed(2)}</div>
+                                <div className={`text-[10px] font-bold ${
+                                  item.price >= (item.prevClose || item.price)
+                                    ? isRedUp ? (isLight ? 'text-rose-600' : 'text-rose-400') : (isLight ? 'text-emerald-600' : 'text-emerald-400')
+                                    : isRedUp ? (isLight ? 'text-emerald-600' : 'text-emerald-400') : (isLight ? 'text-rose-600' : 'text-rose-400')
+                                }`}>
                                   {item.price >= (item.prevClose || item.price) ? '+' : ''}
                                   {(((item.price - (item.prevClose || item.price)) / (item.prevClose || item.price)) * 100).toFixed(2)}%
                                 </div>
@@ -2164,15 +2551,21 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                           }}
                           className={`w-full p-2 rounded-lg text-left transition flex items-center justify-between border ${
                             isSelected
-                              ? 'bg-indigo-950/70 border-indigo-600 text-white shadow-xs'
+                              ? isLight
+                                ? 'bg-indigo-50 border-indigo-400 text-indigo-950 shadow-xs'
+                                : 'bg-indigo-950/70 border-indigo-600 text-white shadow-xs'
+                              : isLight
+                              ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-800'
                               : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-300'
                           }`}
                         >
                           <div>
                             <div className="font-bold text-xs">{item.name}</div>
-                            <div className="text-[10px] font-mono text-indigo-400">{item.symbol}</div>
+                            <div className={`text-[10px] font-mono font-bold ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>{item.symbol}</div>
                           </div>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            isLight ? 'bg-slate-200 text-slate-700' : 'bg-slate-800 text-slate-300'
+                          }`}>
                             指數
                           </span>
                         </button>
@@ -2190,15 +2583,21 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                           }}
                           className={`w-full p-2 rounded-lg text-left transition flex items-center justify-between border ${
                             isSelected
-                              ? 'bg-indigo-950/70 border-indigo-600 text-white shadow-xs'
+                              ? isLight
+                                ? 'bg-indigo-50 border-indigo-400 text-indigo-950 shadow-xs'
+                                : 'bg-indigo-950/70 border-indigo-600 text-white shadow-xs'
+                              : isLight
+                              ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-800'
                               : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-300'
                           }`}
                         >
                           <div>
                             <div className="font-bold text-xs">{item.name}</div>
-                            <div className="text-[10px] font-mono text-indigo-400">{item.symbol}</div>
+                            <div className={`text-[10px] font-mono font-bold ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>{item.symbol}</div>
                           </div>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                            isLight ? 'bg-slate-200 text-slate-700' : 'bg-slate-800 text-slate-300'
+                          }`}>
                             {item.market}
                           </span>
                         </button>
