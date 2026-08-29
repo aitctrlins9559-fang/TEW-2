@@ -6,6 +6,15 @@ export interface TransactionRecord {
   shares: number;
   cost: number; // cost in local currency of stock (TWD or USD)
   buyRate: number; // USD/TWD rate at time of buy
+  note?: string;
+}
+
+export interface DividendDeductionRecord {
+  id: string;
+  date: string;
+  dps: number;
+  totalAmount: number;
+  note?: string;
 }
 
 export interface StockPosition {
@@ -30,6 +39,7 @@ export interface StockPosition {
   customStockDps?: number; // e.g. 0.3 (股票股利 元/股)
   pendingStockShares?: number; // 待撥股票股利股數 (Ex-rights pending shares)
   receivedDividends?: number; // 已領現金股利總額 (TWD or USD)
+  dividendDeductions?: DividendDeductionRecord[]; // 現金股利折抵成本歷程
 }
 
 export interface MarketIndex {

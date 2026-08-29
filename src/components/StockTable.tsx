@@ -56,6 +56,7 @@ interface StockTableProps {
   onToggleExAdjustedMode?: () => void;
   onApplyPendingStockShares?: (stockId: string) => void;
   onDeductCashDividendCost?: (stockId: string, dps?: number) => void;
+  onOpenDetailModal?: (stockId: string) => void;
 }
 
 type ViewMode = 'table' | 'cards' | 'heatmap';
@@ -84,6 +85,7 @@ export const StockTable: React.FC<StockTableProps> = ({
   onToggleExAdjustedMode,
   onApplyPendingStockShares,
   onDeductCashDividendCost,
+  onOpenDetailModal,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTab, setFilterTab] = useState<'all' | 'tw' | 'us'>('all');
@@ -302,7 +304,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                       <Receipt className="w-3.5 h-3.5 text-indigo-600" />
                       券商手續費折讓
                     </span>
-                    <span className="font-mono text-indigo-600 font-bold text-[10px]">
+                    <span className="font-mono text-indigo-600 font-bold text-xs">
                       {DISCOUNT_OPTIONS.find((o) => Math.abs(o.value - localDiscount) < 0.001)?.label.split(' ')[0] || ''}
                     </span>
                   </div>
@@ -314,15 +316,15 @@ export const StockTable: React.FC<StockTableProps> = ({
                       setLocalDiscount(d);
                       if (onUpdateBrokerDiscount) onUpdateBrokerDiscount(d);
                     }}
-                    className="w-full bg-white border border-slate-200 text-indigo-700 font-bold rounded-lg px-2 py-1.5 outline-none cursor-pointer text-xs font-sans shadow-2xs"
+                    className="w-full bg-white border border-slate-300 text-indigo-700 font-bold rounded-lg px-2.5 py-2 outline-none cursor-pointer text-sm font-sans shadow-2xs"
                   >
                     {DISCOUNT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value} className="text-xs font-sans text-slate-800">
+                      <option key={opt.value} value={opt.value} className="text-sm font-sans text-slate-800">
                         {opt.label}
                       </option>
                     ))}
                   </select>
-                  <p className="text-[9px] text-slate-400">用於損益試算扣除手續費 (0.1425%) 與證交稅</p>
+                  <p className="text-xs text-slate-500">用於損益試算扣除手續費 (0.1425%) 與證交稅</p>
                 </div>
 
                 <div className="border-t border-slate-100 pt-1.5 space-y-1">
@@ -332,7 +334,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                       setIsDataMenuOpen(false);
                       onExportData();
                     }}
-                    className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-slate-50 text-slate-700 font-medium transition"
+                    className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-slate-50 text-slate-700 font-medium text-xs sm:text-sm transition"
                   >
                     <Download className="w-4 h-4 text-indigo-600" />
                     <span>匯出備份檔 (JSON)</span>
@@ -344,7 +346,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                       setIsDataMenuOpen(false);
                       onImportData();
                     }}
-                    className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-slate-50 text-slate-700 font-medium transition"
+                    className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-slate-50 text-slate-700 font-medium text-xs sm:text-sm transition"
                   >
                     <Upload className="w-4 h-4 text-emerald-600" />
                     <span>還原 JSON 備份檔</span>
@@ -357,7 +359,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                         setIsDataMenuOpen(false);
                         onPublishToGlobal();
                       }}
-                      className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-emerald-50 text-emerald-700 font-bold transition"
+                      className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-emerald-50 text-emerald-700 font-bold text-xs sm:text-sm transition"
                     >
                       <Globe className="w-4 h-4 text-emerald-600" />
                       <span>同步至全域雲端</span>
@@ -371,14 +373,14 @@ export const StockTable: React.FC<StockTableProps> = ({
       </div>
 
       {/* Interactive Toolbar: Filter Tabs, Search & Sort */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-        <div className="grid grid-cols-3 sm:flex items-center gap-1 p-0.5 sm:p-1 bg-slate-100/80 rounded-lg sm:rounded-xl border border-slate-200/80 shrink-0 w-full sm:w-auto">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        <div className="grid grid-cols-3 sm:flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl border border-slate-200/80 shrink-0 w-full sm:w-auto">
           <button
             onClick={() => {
               playClickSound();
               setFilterTab('all');
             }}
-            className={`px-2 py-1 sm:px-3 sm:py-1 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-bold transition text-center ${
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition text-center ${
               filterTab === 'all'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -391,7 +393,7 @@ export const StockTable: React.FC<StockTableProps> = ({
               playClickSound();
               setFilterTab('tw');
             }}
-            className={`px-2 py-1 sm:px-3 sm:py-1 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-bold transition text-center ${
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition text-center ${
               filterTab === 'tw'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -404,7 +406,7 @@ export const StockTable: React.FC<StockTableProps> = ({
               playClickSound();
               setFilterTab('us');
             }}
-            className={`px-2 py-1 sm:px-3 sm:py-1 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-bold transition text-center ${
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition text-center ${
               filterTab === 'us'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -417,18 +419,18 @@ export const StockTable: React.FC<StockTableProps> = ({
         {/* Search & Sort controls */}
         <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-1.5 sm:gap-2 flex-1 w-full sm:max-w-md">
           <div className="relative flex-1 min-w-0">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜尋代號或名稱..."
-              className="w-full glass-input rounded-lg sm:rounded-xl pl-8 pr-7 py-1 sm:py-1.5 text-xs placeholder-slate-400 border-slate-300 focus:border-indigo-500"
+              className="w-full glass-input rounded-xl pl-9 pr-8 py-2 text-xs sm:text-sm placeholder-slate-400 border-slate-300 focus:border-indigo-500"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-bold"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-bold"
               >
                 ✕
               </button>
@@ -438,34 +440,34 @@ export const StockTable: React.FC<StockTableProps> = ({
           <div className="grid grid-cols-3 gap-1 shrink-0 xs:flex xs:items-center">
             <button
               onClick={() => toggleSort('value')}
-              className={`px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-bold flex items-center justify-center gap-0.5 transition ${
-                sortField === 'value' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
+              className={`px-2.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-1 transition btn-interact ${
+                sortField === 'value' ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-2xs' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
               }`}
               title="依市值排序"
             >
-              <ArrowUpDown className="w-3 h-3" />
+              <ArrowUpDown className="w-3.5 h-3.5" />
               <span>市值</span>
             </button>
 
             <button
               onClick={() => toggleSort('roi')}
-              className={`px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-bold flex items-center justify-center gap-0.5 transition ${
-                sortField === 'roi' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
+              className={`px-2.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-1 transition btn-interact ${
+                sortField === 'roi' ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-2xs' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
               }`}
               title="依報酬率排序"
             >
-              <ArrowUpDown className="w-3 h-3" />
+              <ArrowUpDown className="w-3.5 h-3.5" />
               <span>報酬</span>
             </button>
 
             <button
               onClick={() => toggleSort('yield')}
-              className={`px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-bold flex items-center justify-center gap-0.5 transition ${
-                sortField === 'yield' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'
+              className={`px-2.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-1 transition btn-interact ${
+                sortField === 'yield' ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-2xs' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
               }`}
               title="依殖利率排序"
             >
-              <ArrowUpDown className="w-3 h-3" />
+              <ArrowUpDown className="w-3.5 h-3.5" />
               <span>殖利率</span>
             </button>
           </div>
@@ -491,15 +493,15 @@ export const StockTable: React.FC<StockTableProps> = ({
             <>
               {/* Desktop / Tablet Table View (Stacked for Maximum Width & Zero Horizontal Drag) */}
               <div className="hidden sm:block rounded-xl sm:rounded-2xl border border-slate-200 bg-white relative w-full overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left text-xs sm:text-sm border-collapse">
                   <thead>
-                    <tr className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200/90 uppercase tracking-wider font-mono text-[11px]">
-                      <th className="p-3 whitespace-nowrap">標的 / 代號</th>
-                      <th className="p-3 text-right whitespace-nowrap">現價 / 均價股數</th>
-                      <th className="p-3 text-right whitespace-nowrap">總市值 / 淨損益 (ROI)</th>
-                      <th className="p-3 text-right whitespace-nowrap">預估成本 (手續費+稅)</th>
-                      <th className="p-3 text-right whitespace-nowrap">殖利率 (預估年息)</th>
-                      <th className="p-3 w-8"></th>
+                    <tr className="bg-slate-50/90 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider font-sans text-xs sm:text-sm">
+                      <th className="p-3.5 whitespace-nowrap">標的 / 代號</th>
+                      <th className="p-3.5 text-right whitespace-nowrap">現價 / 均價股數</th>
+                      <th className="p-3.5 text-right whitespace-nowrap">總市值 / 淨損益 (ROI)</th>
+                      <th className="p-3.5 text-right whitespace-nowrap">預估成本 (手續費+稅)</th>
+                      <th className="p-3.5 text-right whitespace-nowrap">殖利率 (預估年息)</th>
+                      <th className="p-3.5 w-8"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
@@ -527,25 +529,29 @@ export const StockTable: React.FC<StockTableProps> = ({
                           key={item.id}
                           onClick={() => {
                             playClickSound();
-                            setDetailModalStock(item);
+                            if (onOpenDetailModal) {
+                              onOpenDetailModal(item.id);
+                            } else {
+                              setDetailModalStock(item);
+                            }
                           }}
                           className="hover:bg-indigo-50/40 cursor-pointer transition text-slate-800 group"
                         >
                           {/* Stacked Name & Symbol & Market */}
-                          <td className="p-3 whitespace-nowrap">
-                            <div className="flex flex-col gap-0.5">
-                              <div className="font-extrabold text-slate-900 text-sm group-hover:text-indigo-600 transition flex items-center gap-1.5">
+                          <td className="p-3.5 whitespace-nowrap">
+                            <div className="flex flex-col gap-1">
+                              <div className="font-black text-slate-900 text-sm sm:text-base group-hover:text-indigo-600 transition flex items-center gap-1.5">
                                 <span>{item.name}</span>
                               </div>
-                              <div className="flex items-center gap-1 flex-wrap">
-                                <span className="font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.2 rounded text-[10px] shrink-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded text-xs shrink-0">
                                   {item.symbol}
                                 </span>
-                                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 uppercase">
+                                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase">
                                   {item.market}
                                 </span>
                                 {isExAdjustedMode && pendingShares > 0 && (
-                                  <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200" title="除權待撥股數：已算入估值與損益平準">
+                                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200" title="除權待撥股數：已算入估值與損益平準">
                                     +{pendingShares.toLocaleString()} 待撥
                                   </span>
                                 )}
@@ -554,42 +560,42 @@ export const StockTable: React.FC<StockTableProps> = ({
                           </td>
 
                           {/* Stacked Current Price & Shares / Cost */}
-                          <td className="p-3 text-right font-mono whitespace-nowrap">
-                            <div className="font-black text-slate-900 text-sm">
+                          <td className="p-3.5 text-right font-mono whitespace-nowrap">
+                            <div className="font-black text-slate-900 text-sm sm:text-base">
                               {safePrice === null ? '--' : `$${safePrice}`}
                             </div>
-                            <div className="text-[11px] text-slate-500">
+                            <div className="text-xs text-slate-500 font-sans mt-0.5">
                               {item.shares.toLocaleString()} 股 · 均價 ${item.cost}
                             </div>
                           </td>
 
                           {/* Stacked Market Value & Net Profit / ROI */}
-                          <td className="p-3 text-right font-mono whitespace-nowrap">
-                            <div className="font-black text-slate-900 text-sm">
+                          <td className="p-3.5 text-right font-mono whitespace-nowrap">
+                            <div className="font-black text-slate-900 text-sm sm:text-base">
                               {itemMarketValTWD === null ? '--' : formatMoney(itemMarketValTWD, isPrivacy)}
                             </div>
-                            <div className={`text-[11px] font-bold ${netProfitColorClass} flex items-center justify-end gap-1`}>
+                            <div className={`text-xs sm:text-sm font-bold ${netProfitColorClass} flex items-center justify-end gap-1 mt-0.5`}>
                               <span>
                                 {safePrice === null
                                   ? '--'
                                   : `${costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)}`}
                               </span>
-                              <span className="text-[10px]">
+                              <span className="text-xs">
                                 ({safePrice === null ? '--' : `${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(2)}%`})
                               </span>
                             </div>
                           </td>
 
                           {/* Stacked Transaction Cost */}
-                          <td className="p-3 text-right font-mono whitespace-nowrap">
+                          <td className="p-3.5 text-right font-mono whitespace-nowrap">
                             {isUS ? (
-                              <div className="text-slate-400 text-[11px] font-sans">免手續費 (美股)</div>
+                              <div className="text-slate-400 text-xs font-sans">免手續費 (美股)</div>
                             ) : (
                               <div>
-                                <div className="font-bold text-amber-900 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 inline-block text-[11px]">
+                                <div className="font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block text-xs">
                                   ${costDetails.totalCostTWD.toLocaleString()} NT$
                                 </div>
-                                <div className="text-[10px] text-slate-400 font-sans mt-0.5">
+                                <div className="text-[11px] text-slate-500 font-sans mt-0.5">
                                   費 ${costDetails.buyCommissionTWD + costDetails.sellCommissionTWD} | 稅 ${costDetails.sellTaxTWD}
                                 </div>
                               </div>
@@ -597,17 +603,17 @@ export const StockTable: React.FC<StockTableProps> = ({
                           </td>
 
                           {/* Stacked Dividend Yield & Annual Income */}
-                          <td className="p-3 text-right font-mono whitespace-nowrap">
-                            <span className="font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 text-xs">
+                          <td className="p-3.5 text-right font-mono whitespace-nowrap">
+                            <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs sm:text-sm">
                               {divInfo.dividendYieldPct.toFixed(2)}%
                             </span>
-                            <div className="text-[10px] text-emerald-800 font-bold mt-0.5">
+                            <div className="text-xs text-emerald-800 font-bold mt-0.5 font-sans">
                               年領 {formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
                             </div>
                           </td>
 
                           {/* Subtle chevron indicator */}
-                          <td className="p-3 text-right text-slate-300 group-hover:text-indigo-600 transition-colors w-8">
+                          <td className="p-3.5 text-right text-slate-300 group-hover:text-indigo-600 transition-colors w-8">
                             <ChevronRight className="w-4 h-4 ml-auto" />
                           </td>
                         </tr>
@@ -619,18 +625,18 @@ export const StockTable: React.FC<StockTableProps> = ({
 
               {/* Mobile Table View (Optimized Clean 4-Column Layout, Click Row for Actions) */}
               <div className="block sm:hidden rounded-xl border border-slate-200 bg-white shadow-2xs w-full overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left text-xs border-collapse table-fixed">
                   <thead>
-                    <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 text-[10px] uppercase tracking-wider font-mono">
-                      <th className="p-2.5 whitespace-nowrap">
-                        標的 / 代號
+                    <tr className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider font-sans">
+                      <th className="py-2 pl-2.5 pr-1 w-[28%] whitespace-nowrap">
+                        標的/代號
                       </th>
-                      <th className="p-2.5 text-right whitespace-nowrap">現價 / 均價</th>
-                      <th className="p-2.5 text-right whitespace-nowrap">總市值 / 損益</th>
-                      <th className="p-2.5 text-right whitespace-nowrap">殖利率</th>
+                      <th className="py-2 px-1 text-right w-[24%] whitespace-nowrap">現價/均價</th>
+                      <th className="py-2 px-1 text-right w-[28%] whitespace-nowrap">總市值/損益</th>
+                      <th className="py-2 pl-1 pr-2.5 text-right w-[20%] whitespace-nowrap">殖利率</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-[11px]">
+                  <tbody className="divide-y divide-slate-100 font-medium text-xs">
                     {filteredPortfolio.map((item) => {
                       const isUS = item.market === 'us';
                       const buyFx = isUS ? item.buyRate || usdTwdRate : 1;
@@ -653,21 +659,25 @@ export const StockTable: React.FC<StockTableProps> = ({
                           key={item.id}
                           onClick={() => {
                             playClickSound();
-                            setDetailModalStock(item);
+                            if (onOpenDetailModal) {
+                              onOpenDetailModal(item.id);
+                            } else {
+                              setDetailModalStock(item);
+                            }
                           }}
                           className="hover:bg-indigo-50/40 active:bg-indigo-50/60 cursor-pointer transition text-slate-800"
                         >
                           {/* Stacked Symbol & Name */}
-                          <td className="p-2.5 whitespace-nowrap">
-                            <div className="flex flex-col">
-                              <div className="font-extrabold text-slate-900 truncate max-w-[105px] text-xs leading-tight">
+                          <td className="py-2.5 pl-2.5 pr-1 align-middle">
+                            <div className="flex flex-col min-w-0">
+                              <div className="font-black text-slate-900 truncate text-xs leading-tight" title={item.name}>
                                 {item.name}
                               </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className="font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-1 py-0.2 rounded text-[9px]">
+                              <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                                <span className="font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-1 py-0.2 rounded text-[9.5px] leading-tight">
                                   {item.symbol}
                                 </span>
-                                <span className="text-[8px] font-bold text-slate-400 uppercase">
+                                <span className="text-[8.5px] font-bold text-slate-400 uppercase">
                                   {item.market}
                                 </span>
                               </div>
@@ -675,39 +685,44 @@ export const StockTable: React.FC<StockTableProps> = ({
                           </td>
 
                           {/* Stacked Price & Shares/Cost */}
-                          <td className="p-2.5 text-right font-mono whitespace-nowrap">
-                            <div className="font-black text-slate-900 text-xs">
+                          <td className="py-2.5 px-1 text-right font-mono align-middle">
+                            <div className="font-black text-slate-900 text-xs tabular-nums truncate">
                               {safePrice === null ? '--' : `$${safePrice}`}
                             </div>
-                            <div className="text-[9px] text-slate-500">
+                            <div className="text-[9.5px] text-slate-500 font-sans truncate">
                               {item.shares}股 · ${item.cost}
                             </div>
                             {isExAdjustedMode && pendingShares > 0 && (
-                              <div className="text-[8px] font-bold text-emerald-800 bg-emerald-50 px-1 rounded border border-emerald-200 inline-block">
+                              <div className="text-[8.5px] font-bold text-emerald-800 bg-emerald-50 px-1 rounded border border-emerald-200 inline-block font-sans">
                                 +{pendingShares}
                               </div>
                             )}
                           </td>
 
                           {/* Stacked Market Value & Net Profit */}
-                          <td className="p-2.5 text-right font-mono whitespace-nowrap">
-                            <div className="font-bold text-slate-900 text-xs">
+                          <td className="py-2.5 px-1 text-right font-mono align-middle">
+                            <div className="font-black text-slate-900 text-xs tabular-nums truncate">
                               {itemMarketValTWD === null ? '--' : formatMoney(itemMarketValTWD, isPrivacy)}
                             </div>
-                            <div className={`text-[9px] font-bold ${netProfitColorClass}`}>
-                              {safePrice === null
-                                ? '--'
-                                : `${costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)} (${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(1)}%)`}
+                            <div className={`text-[9.5px] font-bold ${netProfitColorClass} tabular-nums flex flex-col items-end leading-tight`}>
+                              <span className="truncate max-w-full">
+                                {safePrice === null
+                                  ? '--'
+                                  : `${costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)}`}
+                              </span>
+                              <span className="text-[9px] opacity-90">
+                                ({costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(1)}%)
+                              </span>
                             </div>
                           </td>
 
                           {/* Stacked Dividend Yield & Income */}
-                          <td className="p-2.5 text-right font-mono whitespace-nowrap">
-                            <div className="text-emerald-700 font-bold text-xs">
+                          <td className="py-2.5 pl-1 pr-2.5 text-right font-mono align-middle">
+                            <div className="text-emerald-700 font-black text-xs tabular-nums truncate">
                               {divInfo.dividendYieldPct.toFixed(1)}%
                             </div>
-                            <div className="text-[9px] text-slate-500">
-                              年領 {formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
+                            <div className="text-[9.5px] text-slate-500 font-sans tabular-nums truncate" title={`年領 ${formatMoney(divInfo.annualIncomeTWD, isPrivacy)}`}>
+                              年{formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
                             </div>
                           </td>
                         </tr>
@@ -749,30 +764,34 @@ export const StockTable: React.FC<StockTableProps> = ({
                     key={item.id}
                     onClick={() => {
                       playClickSound();
-                      setDetailModalStock(item);
+                      if (onOpenDetailModal) {
+                        onOpenDetailModal(item.id);
+                      } else {
+                        setDetailModalStock(item);
+                      }
                     }}
-                    className="glass-card p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 bg-white shadow-xs hover:shadow-md hover:border-indigo-300 transition space-y-3 relative group cursor-pointer active:scale-[0.99]"
+                    className="glass-card p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white shadow-xs hover:shadow-md hover:border-indigo-300 transition space-y-3.5 relative group cursor-pointer active:scale-[0.99]"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="text-sm sm:text-base font-black text-slate-900 group-hover:text-indigo-600 transition truncate max-w-[140px] xs:max-w-[200px] flex items-center gap-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base sm:text-lg font-black text-slate-900 group-hover:text-indigo-600 transition truncate max-w-[160px] xs:max-w-[220px] flex items-center gap-1">
                             <span>{item.name}</span>
-                            <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-600 transition shrink-0" />
+                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition shrink-0" />
                           </h3>
-                          <span className="text-[10px] sm:text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
+                          <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
                             {item.symbol}
                           </span>
-                          <span className="text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0 uppercase">
+                          <span className="text-[10px] sm:text-xs font-extrabold px-2 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0 uppercase">
                             {item.market}
                           </span>
                         </div>
-                        <div className="text-[11px] sm:text-xs text-slate-500 font-mono font-semibold mt-1 flex items-center gap-1.5 flex-wrap">
+                        <div className="text-xs sm:text-sm text-slate-500 font-mono font-semibold mt-1 flex items-center gap-2 flex-wrap">
                           <span>{item.shares.toLocaleString()} 股</span>
                           <span>｜</span>
                           <span>均價 ${item.cost}</span>
                           {isExAdjustedMode && pendingShares > 0 && (
-                            <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200 shrink-0">
+                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0 font-sans">
                               +{pendingShares.toLocaleString()} 待撥
                             </span>
                           )}
@@ -780,11 +799,11 @@ export const StockTable: React.FC<StockTableProps> = ({
                       </div>
 
                       <div className="text-right shrink-0 font-mono">
-                        <div className="text-sm sm:text-base font-black text-slate-900">
+                        <div className="text-base sm:text-lg font-black text-slate-900">
                           {safePrice === null ? '--' : `$${safePrice}`}
                         </div>
                         <div
-                          className={`text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-lg border inline-flex items-center gap-0.5 mt-0.5 ${
+                          className={`text-xs sm:text-sm font-bold px-2 py-0.5 rounded-lg border inline-flex items-center gap-0.5 mt-0.5 ${
                             costDetails.netRoiPct === null
                               ? 'bg-slate-100 text-slate-500 border-slate-200'
                               : costDetails.netRoiPct >= 0
@@ -797,32 +816,32 @@ export const StockTable: React.FC<StockTableProps> = ({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 bg-slate-50/80 p-2.5 sm:p-3 rounded-xl border border-slate-100 text-xs">
+                    <div className="grid grid-cols-2 gap-2 bg-slate-50/80 p-3 rounded-xl border border-slate-100 text-xs sm:text-sm">
                       <div className="min-w-0">
-                        <span className="text-[10px] text-slate-400 font-bold block truncate">估計市值 (TWD)</span>
-                        <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm truncate block">
+                        <span className="text-xs text-slate-500 font-bold block truncate">估計市值 (TWD)</span>
+                        <span className="font-mono font-black text-slate-900 text-sm sm:text-base truncate block mt-0.5">
                           {itemMarketValTWD === null ? '--' : formatMoney(itemMarketValTWD, isPrivacy)}
                         </span>
                       </div>
                       <div className="text-right min-w-0">
-                        <span className="text-[10px] text-slate-400 font-bold block truncate">未實現獲利 (淨損益)</span>
-                        <span className={`font-mono font-bold text-xs sm:text-sm truncate block ${netProfitColorClass}`}>
+                        <span className="text-xs text-slate-500 font-bold block truncate">未實現獲利 (淨損益)</span>
+                        <span className={`font-mono font-black text-sm sm:text-base truncate block mt-0.5 ${netProfitColorClass}`}>
                           {safePrice === null ? '--' : `${costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)}`}
                         </span>
                       </div>
                     </div>
 
-                    <div className="bg-emerald-50/80 border border-emerald-100 p-2.5 sm:p-3 rounded-xl text-xs space-y-1">
+                    <div className="bg-emerald-50/80 border border-emerald-100 p-3 rounded-xl space-y-1.5">
                       <div className="flex items-center justify-between text-emerald-950 font-bold flex-wrap gap-1">
-                        <span className="flex items-center gap-1.5 text-[11px] sm:text-xs">
-                          <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span className="flex items-center gap-1.5 text-xs sm:text-sm">
+                          <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
                           殖利率 {divInfo.dividendYieldPct.toFixed(2)}% ({divInfo.frequency})
                         </span>
-                        <span className="font-mono text-emerald-800 font-bold text-[11px] sm:text-xs shrink-0">
+                        <span className="font-mono text-emerald-800 font-bold text-xs sm:text-sm shrink-0">
                           年領 {formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
                         </span>
                       </div>
-                      <div className="text-[10px] sm:text-[11px] text-emerald-800 font-medium flex items-center justify-between flex-wrap gap-1">
+                      <div className="text-xs text-emerald-800 font-medium flex items-center justify-between flex-wrap gap-1">
                         <span className="truncate">
                           單次配息：{hasCashDiv ? `$${divInfo.singleDividendPerShare}元` : '依公告'}
                           {hasStockDiv ? ` + 配股 ${divInfo.stockDps}元` : ''}
@@ -873,7 +892,11 @@ export const StockTable: React.FC<StockTableProps> = ({
                       key={item.id}
                       onClick={() => {
                         playClickSound();
-                        setDetailModalStock(item);
+                        if (onOpenDetailModal) {
+                          onOpenDetailModal(item.id);
+                        } else {
+                          setDetailModalStock(item);
+                        }
                       }}
                       className={`p-4 rounded-2xl border bg-gradient-to-br ${bgGradient} hover:shadow-md transition cursor-pointer flex flex-col justify-between space-y-3`}
                     >
@@ -919,11 +942,12 @@ export const StockTable: React.FC<StockTableProps> = ({
         </>
       )}
 
-      {/* Detail Modal */}
-      {detailModalStock && (
+      {/* Fallback Detail Modal if not managed by parent */}
+      {!onOpenDetailModal && detailModalStock && (
         <StockDetailModal
           isOpen={!!detailModalStock}
-          stock={detailModalStock}
+          stock={portfolio.find((s) => s.id === detailModalStock.id) || detailModalStock}
+          portfolio={portfolio}
           usdTwdRate={usdTwdRate}
           isPrivacy={isPrivacy}
           isRedUp={isRedUp}

@@ -258,17 +258,25 @@ export const AssetRiverChart: React.FC<AssetRiverChartProps> = ({
           },
         },
       },
+      layout: {
+        padding: {
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+        },
+      },
       scales: {
         x: {
           stacked: true,
           grid: { color: 'rgba(0,0,0,0.04)' },
           ticks: {
             color: '#64748b',
-            font: { size: 10, family: 'sans-serif', weight: 'bold' as const },
+            font: { size: 9, weight: 'bold' as const },
             maxTicksLimit: 6,
             autoSkip: true,
             maxRotation: 0,
-            padding: 6,
+            padding: 2,
             callback: function (val: any) {
               const label = this.getLabelForValue(val as number) || '';
               if (typeof label === 'string' && label.includes('/')) {
@@ -287,17 +295,17 @@ export const AssetRiverChart: React.FC<AssetRiverChartProps> = ({
           grid: { color: 'rgba(0,0,0,0.06)', borderDash: [4, 4] },
           ticks: {
             color: '#334155',
-            font: { size: 11, family: 'monospace', weight: 'bold' as const },
-            maxTicksLimit: 5,
-            padding: 8,
+            font: { size: 9, family: 'monospace', weight: 'bold' as const },
+            maxTicksLimit: 4,
+            padding: 1,
             callback: (value: string | number) => {
               if (isPrivacy) return '****';
               const val = Number(value);
               if (Math.abs(val) >= 10000) {
                 const w = val / 10000;
-                return w % 1 === 0 ? `${w.toFixed(0)} 萬` : `${w.toFixed(1)} 萬`;
+                return `${w.toFixed(0)}萬`;
               }
-              return `$${Math.round(val).toLocaleString()}`;
+              return `$${Math.round(val)}`;
             },
           },
         },
@@ -306,31 +314,25 @@ export const AssetRiverChart: React.FC<AssetRiverChartProps> = ({
   }, [isPrivacy]);
 
   return (
-    <div className="p-2.5 sm:p-4 space-y-3 relative w-full">
+    <div className="p-1.5 sm:p-2.5 space-y-1.5 relative w-full">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 border-b border-slate-100 pb-2.5">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold shrink-0">
-            <Waves className="w-4 h-4" />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 border-b border-slate-100 pb-1.5 px-0.5">
+        <div className="flex items-center gap-1.5">
+          <div className="p-1 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold shrink-0">
+            <Waves className="w-3.5 h-3.5" />
           </div>
           <div>
-            <div className="text-[9px] text-indigo-600 font-extrabold tracking-widest uppercase">
-              LONG-TERM ASSET RIVER FLOW
-            </div>
-            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight flex flex-wrap items-center gap-1.5">
+            <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 tracking-tight flex items-center gap-1.5">
               長期資產堆疊河流圖
-              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-bold">
-                X軸：1 週
-              </span>
               {isLoading ? (
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1 font-bold">
+                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-0.5 font-bold">
                   <RefreshCw className="w-2.5 h-2.5 animate-spin" />
                   載入中...
                 </span>
               ) : (
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 font-bold">
+                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-0.5 font-bold">
                   <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
-                  官方真實行情
+                  即時行情
                 </span>
               )}
             </h3>
@@ -351,9 +353,9 @@ export const AssetRiverChart: React.FC<AssetRiverChartProps> = ({
                 playClickSound();
                 setWeeksRange(item.weeks);
               }}
-              className={`px-2 py-0.5 rounded-md font-bold transition text-[11px] ${
+              className={`px-1.5 py-0.5 rounded font-bold transition text-[10px] ${
                 weeksRange === item.weeks
-                  ? 'bg-indigo-600 text-white shadow-xs'
+                  ? 'bg-indigo-600 text-white shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -364,31 +366,24 @@ export const AssetRiverChart: React.FC<AssetRiverChartProps> = ({
       </div>
 
       {/* Info Notice Bar */}
-      <div className="bg-slate-50 p-2 rounded-lg border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 text-[11px] font-mono">
-        <div className="flex items-center gap-1.5 text-slate-700">
-          <Layers className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+      <div className="bg-slate-50 px-2 py-1 rounded-lg border border-slate-200/80 flex items-center justify-between gap-1 text-[10px] font-mono">
+        <div className="flex items-center gap-1 text-slate-700">
+          <Layers className="w-3 h-3 text-indigo-600 shrink-0" />
           <span>
-            週次：<strong className="text-indigo-700">{weeksRange} 週</strong> | 持股：<strong className="text-emerald-700">{portfolio.length} 檔</strong>
+            <strong className="text-indigo-700">{weeksRange}週</strong> | 持股 <strong className="text-emerald-700">{portfolio.length}檔</strong>
           </span>
         </div>
         <div className="text-right">
-          <span className="text-slate-500 text-[10px]">區間增減：</span>
+          <span className="text-slate-500">區間:</span>
           <span className={`font-bold ml-1 ${diffVal >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-            {isPrivacy ? '****' : `${diffVal >= 0 ? '+' : ''}$${Math.abs(Math.round(diffVal)).toLocaleString()} (${diffVal >= 0 ? '+' : ''}${diffPct.toFixed(2)}%)`}
+            {isPrivacy ? '****' : `${diffVal >= 0 ? '+' : ''}${diffPct.toFixed(2)}%`}
           </span>
         </div>
       </div>
 
-      {/* Chart Canvas - Wide Panoramic Ratio */}
-      <div className="h-[220px] sm:h-[280px] lg:h-[320px] relative w-full pt-1">
+      {/* Chart Canvas - Wide Edge-to-Edge Ratio */}
+      <div className="h-[200px] xs:h-[220px] sm:h-[260px] lg:h-[290px] relative w-full">
         <Line data={chartData} options={options} />
-      </div>
-
-      {/* Footer Info */}
-      <div className="flex justify-between items-center text-[9px] text-slate-500 uppercase tracking-wider font-mono border-t border-slate-100 pt-1.5 font-bold">
-        <span>起始: {labels[0] || '--'}</span>
-        <span className="text-indigo-600">★ 河流圖堆疊展示各持股市值演變</span>
-        <span>最新: {labels[labels.length - 1] || '--'}</span>
       </div>
     </div>
   );

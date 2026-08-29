@@ -20,6 +20,7 @@ import {
   Flame,
   Volume2,
   ArrowLeft,
+  Clock,
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -623,10 +624,23 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
           },
         },
       },
+      layout: {
+        padding: {
+          left: 0,
+          right: 0,
+          top: 2,
+          bottom: 0,
+        },
+      },
       scales: {
         x: {
           grid: { color: 'rgba(0,0,0,0.04)' },
-          ticks: { color: '#64748b', maxTicksLimit: 12, font: { family: 'sans-serif', size: 10, weight: 'bold' as const } },
+          ticks: {
+            color: '#64748b',
+            maxTicksLimit: 6,
+            padding: 1,
+            font: { family: 'sans-serif', size: 9, weight: 'bold' as const },
+          },
         },
         y: {
           type: 'linear' as const,
@@ -636,29 +650,21 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
           grid: { color: 'rgba(0,0,0,0.06)', borderDash: [4, 4] },
           ticks: {
             color: '#334155',
-            font: { family: 'monospace', size: 11, weight: 'bold' as const },
-            callback: (val: string | number) => `$${Number(val).toFixed(1)}`,
+            padding: 1,
+            maxTicksLimit: 4,
+            font: { family: 'monospace', size: 9, weight: 'bold' as const },
+            callback: (val: string | number) => {
+              const num = Number(val);
+              return num >= 1000 ? `$${Math.round(num)}` : `$${num.toFixed(1)}`;
+            },
           },
         },
         y1: {
           type: 'linear' as const,
           position: 'right' as const,
-          display: showVolumeBars,
+          display: false, // Hide right volume axis labels to remove right gutter and maximize width
           grid: { display: false },
           max: maxVolume * 3.8, // keeps volume bars confined to bottom 25% of chart height
-          ticks: {
-            color: '#64748b',
-            font: { family: 'monospace', size: 9, weight: 'bold' as const },
-            callback: (val: string | number) => {
-              const num = Number(val);
-              if (num <= 0) return '';
-              if (intradayData.market === 'us') {
-                return num >= 1000000 ? `${(num / 1000000).toFixed(1)}M` : `${(num / 1000).toFixed(0)}K`;
-              }
-              const lots = num / 1000;
-              return lots >= 1000 ? `${(lots / 1000).toFixed(1)}k張` : `${Math.round(lots)}張`;
-            },
-          },
         },
       },
     };
@@ -675,61 +681,58 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   const strengthPct = intradayData ? Math.min(100, Math.max(0, intradayData.rangePct)) : 50;
   const strengthText =
     strengthPct >= 80
-      ? '多方強勢拉抬'
+      ? '多強'
       : strengthPct >= 60
-      ? '多方偏強'
+      ? '偏強'
       : strengthPct >= 40
-      ? '高低區間震盪'
+      ? '震盪'
       : strengthPct >= 20
-      ? '空方偏弱'
-      : '極度低檔支撐';
+      ? '偏弱'
+      : '低檔';
 
-  // Format Volume string nicely (張數 for TW, M/K shares for US)
-  const formatVolumeStr = (shares: number, market: MarketType) => {
+  // Format Volume string nicely in compact format
+  const formatVolumeShort = (shares: number, market: MarketType) => {
     if (!shares || shares <= 0) return '--';
     if (market === 'us') {
       return shares >= 1000000
-        ? `${(shares / 1000000).toFixed(2)} M 股`
-        : `${(shares / 1000).toFixed(1)} K 股`;
+        ? `${(shares / 1000000).toFixed(2)}M`
+        : `${(shares / 1000).toFixed(1)}K`;
     }
     const lots = Math.round(shares / 1000);
-    return `${lots.toLocaleString()} 張 (${(shares / 10000).toFixed(1)}萬股)`;
+    return lots >= 10000 ? `${(lots / 10000).toFixed(1)}萬張` : `${lots.toLocaleString()}張`;
   };
 
   return (
-    <div className="fixed inset-0 z-[90] w-full h-[100dvh] bg-slate-100 flex flex-col text-slate-900 overflow-hidden overscroll-none animate-fadeIn select-none modal-backdrop">
+    <div className="fixed inset-0 z-[96] w-full h-[100dvh] bg-slate-100 flex flex-col text-slate-900 overflow-hidden overscroll-none animate-fadeIn select-none modal-backdrop">
       <div className="w-full flex-1 flex flex-col overflow-hidden">
         {/* Top Professional Control Header Bar */}
-        <div className="bg-white border-b border-slate-200/90 px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 shrink-0 shadow-2xs">
-          <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
+        <div className="bg-white border-b border-slate-200/90 px-2 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-1.5 shrink-0 shadow-2xs">
+          <div className="flex items-center gap-1 sm:gap-1.5 overflow-hidden">
             <button
               onClick={() => {
                 playClickSound();
                 onClose();
               }}
-              className="flex items-center gap-1 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl border border-slate-200 text-xs font-bold transition btn-interact shrink-0"
+              className="flex items-center gap-1 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 px-1.5 py-1 sm:px-2 sm:py-1 rounded-lg border border-slate-200 text-xs font-bold transition btn-interact shrink-0"
             >
-              <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
+              <ArrowLeft className="w-3.5 h-3.5 text-indigo-600" />
               <span className="text-xs">返回</span>
             </button>
 
-            <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0 font-bold hidden xs:block">
-              <BarChart2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
             <div className="overflow-hidden">
               <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                <h2 className="text-sm sm:text-lg font-extrabold text-slate-900 tracking-tight truncate">
+                <h2 className="text-xs sm:text-base font-extrabold text-slate-900 tracking-tight truncate">
                   {selectedChartTarget.name || selectedChartTarget.symbol}
                 </h2>
-                <span className="text-[10px] sm:text-xs font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 sm:px-2 py-0.2 rounded shrink-0">
+                <span className="text-[9px] sm:text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1 sm:px-1.5 py-0.2 rounded shrink-0">
                   {selectedChartTarget.symbol}
                 </span>
-                <span className="text-[9px] sm:text-[10px] font-semibold px-1 sm:px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 shrink-0 uppercase">
+                <span className="text-[8px] sm:text-[9px] font-semibold px-1 py-0.2 rounded bg-slate-100 text-slate-600 shrink-0 uppercase">
                   {selectedChartTarget.market === 'us' ? '美股' : selectedChartTarget.market === 'otc' ? '上櫃' : '上市'}
                 </span>
                 {intradayData && (
                   <span
-                    className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded border font-mono flex items-center gap-1 shrink-0 ${
+                    className={`text-[8px] sm:text-[9px] font-bold px-1 py-0.2 rounded border font-mono flex items-center gap-0.5 shrink-0 ${
                       intradayData.isMarketOpen
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -738,7 +741,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     {intradayData.isMarketOpen ? (
                       <>
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="hidden xs:inline">盤中交易中</span>
+                        <span className="hidden xs:inline">交易中</span>
                       </>
                     ) : (
                       <>
@@ -753,39 +756,39 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
           </div>
 
           {/* Action Controls & Stock Stepper (< / >) */}
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             {onOpenAICopilot && (
               <button
                 onClick={() => {
                   playClickSound();
                   onOpenAICopilot();
                 }}
-                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1 shrink-0 btn-interact"
+                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-1.5 py-1 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center gap-1 shrink-0 btn-interact"
                 title="開啟 AI 戰情操盤顧問"
               >
-                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-600 animate-spin" style={{ animationDuration: '6s' }} />
+                <Sparkles className="w-3 h-3 text-indigo-600 animate-spin" style={{ animationDuration: '6s' }} />
                 <span className="hidden sm:inline">AI 戰情</span>
               </button>
             )}
 
             {portfolioList.length > 1 && (
-              <div className="flex items-center bg-white border border-slate-200 rounded-lg sm:rounded-xl p-0.5">
+              <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5">
                 <button
                   onClick={handlePrevStock}
-                  className="p-0.5 sm:p-1 hover:bg-slate-100 text-slate-600 rounded-md transition"
+                  className="p-0.5 hover:bg-slate-100 text-slate-600 rounded transition"
                   title="上一檔持股"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
-                <span className="text-[9px] sm:text-[10px] font-mono px-0.5 sm:px-1 text-slate-500 font-bold">
+                <span className="text-[9px] font-mono px-0.5 text-slate-500 font-bold">
                   {currentPortfolioIndex >= 0 ? `${currentPortfolioIndex + 1}/${portfolioList.length}` : '切換'}
                 </span>
                 <button
                   onClick={handleNextStock}
-                  className="p-0.5 sm:p-1 hover:bg-slate-100 text-slate-600 rounded-md transition"
+                  className="p-0.5 hover:bg-slate-100 text-slate-600 rounded transition"
                   title="下一檔持股"
                 >
-                  <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
@@ -795,176 +798,145 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 playClickSound();
                 onClose();
               }}
-              className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
               title="關閉看盤視窗"
             >
-              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="p-2.5 sm:p-4 space-y-2 sm:space-y-3 overflow-y-auto flex-1 overscroll-contain modal-content-scroll">
-          {/* ESSENTIAL CORE BANNER: Price + Volume + Key Action Status */}
+        <div className="p-1 sm:p-2 space-y-1 sm:space-y-1.5 overflow-y-auto flex-1 overscroll-contain modal-content-scroll">
+          {/* COMPACT AUXILIARY HUD: Essential price + micro stats */}
           {intradayData && (
-            <div className="bg-slate-50 border border-slate-200/90 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3">
-              {/* Left: Latest Price & Change */}
-              <div className="flex flex-col gap-0.5">
-                <div className="text-[10px] sm:text-[11px] font-bold font-mono text-slate-500">
-                  {intradayData.isMarketOpen ? (
-                    <span className="text-emerald-700 flex items-center gap-1 font-bold">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                      </span>
-                      {intradayData.tradingDateStr} 盤中現價
-                    </span>
-                  ) : (
-                    <span className="text-amber-800 font-bold inline-flex items-center gap-1">
-                      <span>🌙</span>
-                      <span>{intradayData.tradingDateStr || '近期'} 收盤價</span>
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-2 flex-wrap">
-                  <span className="text-2xl sm:text-4xl font-black font-mono tracking-tight tabular-nums text-slate-900">
-                    ${intradayData.latestPrice.toFixed(2)}
-                  </span>
-                  <span
-                    className={`text-xs sm:text-base font-mono font-bold flex items-center gap-0.5 ${
-                      isUp
-                        ? isRedUp
-                          ? 'text-rose-600'
-                          : 'text-emerald-600'
-                        : isRedUp
-                        ? 'text-emerald-600'
-                        : 'text-rose-600'
-                    }`}
-                  >
-                    {isUp ? <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-                    {isUp ? '+' : ''}
-                    {diff.toFixed(2)} ({isUp ? '+' : ''}
-                    {diffPct.toFixed(2)}%)
-                  </span>
-                </div>
+            <div className="bg-slate-50 border border-slate-200/90 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg flex flex-wrap items-center justify-between gap-x-2.5 gap-y-1 shrink-0 text-xs font-mono">
+              {/* Primary Price & Live Indicator */}
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-lg sm:text-2xl font-black font-mono tracking-tight tabular-nums text-slate-900">
+                  ${intradayData.latestPrice.toFixed(2)}
+                </span>
+                <span
+                  className={`text-[11px] sm:text-xs font-bold flex items-center gap-0.5 ${
+                    isUp
+                      ? isRedUp
+                        ? 'text-rose-600'
+                        : 'text-emerald-600'
+                      : isRedUp
+                      ? 'text-emerald-600'
+                      : 'text-rose-600'
+                  }`}
+                >
+                  {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                  {isUp ? '+' : ''}
+                  {diff.toFixed(2)} ({isUp ? '+' : ''}
+                  {diffPct.toFixed(2)}%)
+                </span>
               </div>
 
-              {/* Right: Essential Volume & Intraday VWAP Highlight Cards */}
-              <div className="flex items-center gap-1.5 sm:gap-2 font-mono text-[11px] sm:text-xs flex-wrap">
-                <div className="bg-white border border-slate-200 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 shadow-xs">
-                  <Volume2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <div>
-                    <span className="text-[9px] sm:text-[10px] text-slate-500 block font-sans font-medium">成交量</span>
-                    <strong className="text-slate-900 font-bold">
-                      {formatVolumeStr(intradayData.totalVolume, intradayData.market)}
-                    </strong>
-                  </div>
-                </div>
+              {/* Auxiliary Quick Data Pills */}
+              <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap text-[10px] text-slate-600 font-sans">
+                <span className="flex items-center gap-0.5 bg-white border border-slate-200 px-1 py-0.5 rounded">
+                  <span className="text-slate-400 font-medium">量</span>
+                  <strong className="text-slate-900 font-mono font-bold">{formatVolumeShort(intradayData.totalVolume, intradayData.market)}</strong>
+                  {intradayData.estimatedVolume > 0 && (
+                    <span className="text-purple-700 font-mono font-bold">(估 {formatVolumeShort(intradayData.estimatedVolume, intradayData.market)})</span>
+                  )}
+                </span>
+                <span className="flex items-center gap-0.5 bg-white border border-slate-200 px-1 py-0.5 rounded">
+                  <span className="text-slate-400 font-medium">昨收</span>
+                  <strong className="text-slate-800 font-mono font-bold">${intradayData.prevClose.toFixed(2)}</strong>
+                </span>
+                <span className="flex items-center gap-0.5 bg-white border border-slate-200 px-1 py-0.5 rounded">
+                  <span className="text-slate-400 font-medium">高/低</span>
+                  <strong className="text-rose-600 font-mono font-bold">${intradayData.highPrice.toFixed(2)}</strong>
+                  <span className="text-slate-300">/</span>
+                  <strong className="text-emerald-600 font-mono font-bold">${intradayData.lowPrice.toFixed(2)}</strong>
+                </span>
+                <span className="hidden xs:flex items-center gap-0.5 bg-white border border-slate-200 px-1 py-0.5 rounded">
+                  <span className="text-slate-400 font-medium">振幅</span>
+                  <strong className="text-amber-600 font-mono font-bold">{intradayData.amplitudePct.toFixed(2)}%</strong>
+                </span>
+                <span className="hidden sm:flex items-center gap-0.5 bg-white border border-slate-200 px-1 py-0.5 rounded">
+                  <span className="text-slate-400 font-medium">位階</span>
+                  <strong className="text-indigo-600 font-mono font-bold">{strengthText}</strong>
+                </span>
+              </div>
+            </div>
+          )}
 
-                {intradayData.estimatedVolume > 0 && (
-                  <div className="bg-white border border-slate-200 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 shadow-xs">
-                    <Flame className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                    <div>
-                      <span className="text-[9px] sm:text-[10px] text-slate-500 block font-sans font-medium">預估量</span>
-                      <strong className="text-purple-700 font-bold">
-                        {formatVolumeStr(intradayData.estimatedVolume, intradayData.market)}
-                      </strong>
-                    </div>
-                  </div>
+          {/* Maximized Edge-to-Edge Chart Canvas Section */}
+          <div className="bg-white p-1 sm:p-1.5 rounded-xl border border-slate-200 shadow-2xs relative flex flex-col justify-center w-full">
+            {/* Intraday Technical Overlay Toggles */}
+            <div className="flex items-center justify-between gap-1 flex-wrap mb-1 px-0.5">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    setShowVWAP(!showVWAP);
+                  }}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition flex items-center gap-1 border ${
+                    showVWAP
+                      ? 'bg-amber-100 border-amber-300 text-amber-900'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${showVWAP ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                  VWAP 均價
+                </button>
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    setShowMA5(!showMA5);
+                  }}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition flex items-center gap-1 border ${
+                    showMA5
+                      ? 'bg-purple-100 border-purple-300 text-purple-900'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${showMA5 ? 'bg-purple-500' : 'bg-slate-300'}`} />
+                  MA5 均線
+                </button>
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    setShowVolumeBars(!showVolumeBars);
+                  }}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition flex items-center gap-1 border ${
+                    showVolumeBars
+                      ? 'bg-indigo-100 border-indigo-300 text-indigo-900'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${showVolumeBars ? 'bg-indigo-500' : 'bg-slate-300'}`} />
+                  成交量
+                </button>
+              </div>
+
+              {/* Status or Time Frame Indicator */}
+              <div className="text-[10px] font-mono text-slate-600 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-slate-400" />
+                <span>1分K即時連線</span>
+                {intradayData && (
+                  <span className="text-slate-400 hidden xs:inline ml-1">
+                    ({intradayData.tradingDateStr})
+                  </span>
                 )}
               </div>
             </div>
-          )}
-
-          {/* SECONDARY TRADING METRICS & PIVOT CARDS (6-Cols High Density) */}
-          {intradayData && (
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 sm:gap-1.5 text-[11px] font-mono">
-              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
-                <span className="text-[9px] text-slate-500 font-sans block">開盤價</span>
-                <strong className="text-slate-900 font-bold text-xs">${intradayData.openPrice.toFixed(2)}</strong>
-              </div>
-              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
-                <span className="text-[9px] text-slate-500 font-sans block">昨日收盤</span>
-                <strong className="text-slate-900 font-bold text-xs">${intradayData.prevClose.toFixed(2)}</strong>
-              </div>
-              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
-                <span className="text-[9px] text-slate-500 font-sans block">最高價</span>
-                <strong className="text-rose-600 font-bold text-xs">${intradayData.highPrice.toFixed(2)}</strong>
-              </div>
-              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
-                <span className="text-[9px] text-slate-500 font-sans block">最低價</span>
-                <strong className="text-emerald-600 font-bold text-xs">${intradayData.lowPrice.toFixed(2)}</strong>
-              </div>
-              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
-                <span className="text-[9px] text-slate-500 font-sans block">當日振幅</span>
-                <strong className="text-amber-600 font-bold text-xs">{intradayData.amplitudePct.toFixed(2)}%</strong>
-              </div>
-              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200">
-                <span className="text-[9px] text-slate-500 font-sans block">高低位階</span>
-                <strong className="text-indigo-600 font-bold text-xs">{strengthText} ({Math.round(strengthPct)}%)</strong>
-              </div>
-            </div>
-          )}
-
-          {/* Chart Canvas Section */}
-          <div className="bg-slate-50 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-200 relative flex flex-col justify-center min-h-[220px] sm:min-h-[280px]">
-            {/* Intraday Technical Overlay Toggles */}
-            <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap mb-1.5 sm:mb-2">
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setShowVWAP(!showVWAP);
-                }}
-                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-mono font-bold transition flex items-center gap-1 border ${
-                  showVWAP
-                    ? 'bg-amber-100 border-amber-300 text-amber-900'
-                    : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${showVWAP ? 'bg-amber-500' : 'bg-slate-300'}`} />
-                VWAP 均價線
-              </button>
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setShowMA5(!showMA5);
-                }}
-                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-mono font-bold transition flex items-center gap-1 border ${
-                  showMA5
-                    ? 'bg-purple-100 border-purple-300 text-purple-900'
-                    : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${showMA5 ? 'bg-purple-500' : 'bg-slate-300'}`} />
-                MA5 均線
-              </button>
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setShowVolumeBars(!showVolumeBars);
-                }}
-                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-mono font-bold transition flex items-center gap-1 border ${
-                  showVolumeBars
-                    ? 'bg-indigo-100 border-indigo-300 text-indigo-900'
-                    : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <BarChart className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-600" />
-                成交量柱
-              </button>
-            </div>
 
             {loading ? (
-              <div className="flex flex-col items-center justify-center text-indigo-600 font-mono text-xs py-12 gap-2">
+              <div className="flex flex-col items-center justify-center text-indigo-600 font-mono text-xs py-14 gap-2">
                 <Activity className="w-5 h-5 animate-spin text-indigo-600" />
                 <span>即時行情加載中...</span>
               </div>
             ) : errorMsg ? (
-              <div className="text-center text-slate-500 font-mono text-xs py-12">
+              <div className="text-center text-slate-500 font-mono text-xs py-14">
                 {errorMsg}
               </div>
             ) : chartData ? (
-              <div className="w-full h-[220px] sm:h-[320px] lg:h-[360px] relative">
+              <div className="w-full h-[220px] xs:h-[240px] sm:h-[280px] md:h-[320px] lg:h-[350px] relative">
                 <Chart type="line" data={chartData} options={options} />
               </div>
             ) : null}

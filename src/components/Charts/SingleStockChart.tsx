@@ -450,10 +450,23 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
           },
         },
       },
+      layout: {
+        padding: {
+          left: 0,
+          right: 0,
+          top: 2,
+          bottom: 0,
+        },
+      },
       scales: {
         x: {
           grid: { color: 'rgba(0,0,0,0.04)' },
-          ticks: { color: '#64748b', maxTicksLimit: 8, font: { family: 'sans-serif', size: 11, weight: 'bold' as const } },
+          ticks: {
+            color: '#64748b',
+            maxTicksLimit: 6,
+            padding: 1,
+            font: { family: 'sans-serif', size: 9, weight: 'bold' as const },
+          },
         },
         y: {
           min: intradayData.market === 'us' ? undefined : intradayData.limitDownPrice,
@@ -461,8 +474,13 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
           grid: { color: 'rgba(0,0,0,0.06)', borderDash: [4, 4] },
           ticks: {
             color: '#334155',
-            font: { family: 'monospace', size: 11, weight: 'bold' as const },
-            callback: (val: string | number) => `$${Number(val).toFixed(1)}`,
+            padding: 1,
+            maxTicksLimit: 4,
+            font: { family: 'monospace', size: 9, weight: 'bold' as const },
+            callback: (val: string | number) => {
+              const num = Number(val);
+              return num >= 1000 ? `$${Math.round(num)}` : `$${num.toFixed(1)}`;
+            },
           },
         },
       },

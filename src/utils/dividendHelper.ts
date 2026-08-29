@@ -8,7 +8,11 @@ export interface DividendInfo {
   frequency: '月配息' | '季配息' | '半年配' | '年配息';
   exMonths: number[]; // e.g. [1, 4, 7, 10] for quarterly
   nextExMonthStr: string; // e.g. "2026/09/18" or "2026/09月"
-  exactExDate?: string; // YYYY/MM/DD
+  exactExDate?: string; // YYYY/MM/DD (future upcoming date)
+  rawExDate?: string; // Original exact ex-date (whether past or future)
+  hasExDatePassed: boolean; // 是否已過除息日
+  isUpcomingExDate: boolean; // 是否為尚未除息之未來日期
+  passedExDateStr?: string; // 已過除息日字串
   lastBuyDate?: string; // YYYY/MM/DD
   isOfficial?: boolean;
   announcementStatus: 'official' | 'unannounced';
@@ -160,27 +164,45 @@ export function getStockDividendInfo(
   const pendingStockValueTWD = pendingStockShares * currentPrice * marketFx;
 
   // Calculate next ex-dividend date / month string
-  let exactExDate: string | undefined = stock.customExDate || liveEvent?.exDate || KNOWN_DIVIDENDS[symbol]?.exactExDate;
+  const rawExDate: string | undefined = stock.customExDate || liveEvent?.exDate || KNOWN_DIVIDENDS[symbol]?.exactExDate;
+  let exactExDate: string | undefined = rawExDate;
   let lastBuyDate: string | undefined;
-  let isOfficial = Boolean(stock.customExDate || liveEvent?.exDate || KNOWN_DIVIDENDS[symbol]?.exactExDate);
+  let isOfficial = Boolean(rawExDate);
+  let hasExDatePassed = false;
+  let isUpcomingExDate = false;
+  let passedExDateStr: string | undefined;
 
   const today = new Date();
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-  if (exactExDate) {
-    const exDt = new Date(exactExDate.replace(/\//g, '-'));
-    if (!isNaN(exDt.getTime()) && exDt >= todayMidnight) {
-      isOfficial = true;
-      const buyDt = new Date(exDt);
-      buyDt.setDate(buyDt.getDate() - 1);
-      const yyyy = buyDt.getFullYear();
-      const mm = String(buyDt.getMonth() + 1).padStart(2, '0');
-      const dd = String(buyDt.getDate()).padStart(2, '0');
-      lastBuyDate = `${yyyy}/${mm}/${dd}`;
-    } else {
-      // Ex-date passed, next period is unannounced
-      exactExDate = undefined;
-      isOfficial = false;
+  if (rawExDate) {
+    const exDt = new Date(rawExDate.replace(/\//g, '-'));
+    if (!isNaN(exDt.getTime())) {
+      if (exDt >= todayMidnight) {
+        isOfficial = true;
+        isUpcomingExDate = true;
+        hasExDatePassed = false;
+        const buyDt = new Date(exDt);
+        buyDt.setDate(buyDt.getDate() - 1);
+        const yyyy = buyDt.getFullYear();
+        const mm = String(buyDt.getMonth() + 1).padStart(2, '0');
+        const dd = String(buyDt.getDate()).padStart(2, '0');
+        lastBuyDate = `${yyyy}/${mm}/${dd}`;
+      } else {
+        // Ex-date has passed for this event
+        exactExDate = undefined;
+        isOfficial = false;
+        hasExDatePassed = true;
+        isUpcomingExDate = false;
+        passedExDateStr = rawExDate;
+      }
+    }
+  } else {
+    // If no exact date announced, check if past ex-months exist in the current year
+    const currentMonth = today.getMonth() + 1; // 1 ~ 12
+    const hasPastMonth = exMonths.some((m) => m < currentMonth);
+    if (hasPastMonth && singleDps > 0) {
+      hasExDatePassed = true;
     }
   }
 
@@ -192,6 +214,8 @@ export function getStockDividendInfo(
   const announcementStatus: 'official' | 'unannounced' = isOfficial ? 'official' : 'unannounced';
   const announcementNote = isOfficial
     ? `官方最新公告 (${exactExDate} 除息)`
+    : passedExDateStr
+    ? `今年度前次已除息 (${passedExDateStr})`
     : `未公布 (依前次每股 $${singleDps.toFixed(2)} 估算)`;
 
   return {
@@ -203,6 +227,10 @@ export function getStockDividendInfo(
     exMonths,
     nextExMonthStr,
     exactExDate,
+    rawExDate,
+    hasExDatePassed,
+    isUpcomingExDate,
+    passedExDateStr,
     lastBuyDate,
     isOfficial,
     announcementStatus,

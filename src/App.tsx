@@ -8,6 +8,7 @@ import {
   ApiHealthStatus,
   AIAnalysisResult,
   TransactionRecord,
+  DividendDeductionRecord,
 } from './types';
 import { Header } from './components/Header';
 import { SidebarNav } from './components/SidebarNav';
@@ -27,6 +28,7 @@ import { SingleStockChart } from './components/Charts/SingleStockChart';
 import { FullStockChartModal } from './components/Charts/FullStockChartModal';
 import { StockModal } from './components/Modals/StockModal';
 import { TransactionHistoryModal } from './components/Modals/TransactionHistoryModal';
+import { StockDetailModal } from './components/Modals/StockDetailModal';
 import { TodayPLModal } from './components/Modals/TodayPLModal';
 import { SyncModal } from './components/Modals/SyncModal';
 import { ActionModal } from './components/Modals/ActionModal';
@@ -147,6 +149,22 @@ export default function App() {
   });
 
   // Modal control states
+  const [selectedDetailStockId, setSelectedDetailStockId] = useState<string | null>(null);
+  const selectedDetailStock = useMemo(() => {
+    if (!selectedDetailStockId) return null;
+    return portfolio.find((s) => s.id === selectedDetailStockId) || null;
+  }, [portfolio, selectedDetailStockId]);
+
+  const handleOpenStockDetail = useCallback((stockId: string) => {
+    setSelectedDetailStockId(stockId);
+    setActiveMobileTab('portfolio');
+  }, []);
+
+  const handleCloseStockDetail = useCallback(() => {
+    setSelectedDetailStockId(null);
+    setActiveMobileTab('portfolio');
+  }, []);
+
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [editStock, setEditStock] = useState<StockPosition | null>(null);
 
@@ -313,6 +331,8 @@ export default function App() {
           customSingleDps: typeof item.customSingleDps === 'number' ? item.customSingleDps : undefined,
           customDps: typeof item.customDps === 'number' ? item.customDps : undefined,
           customStockDps: typeof item.customStockDps === 'number' ? item.customStockDps : undefined,
+          receivedDividends: typeof item.receivedDividends === 'number' ? item.receivedDividends : 0,
+          dividendDeductions: Array.isArray(item.dividendDeductions) ? (item.dividendDeductions as DividendDeductionRecord[]) : [],
         };
       })
       .filter(
@@ -925,15 +945,50 @@ export default function App() {
       return;
     }
 
-    const newCost = Math.max(0, target.cost - deductAmountPerShare);
-    const updatedStock: StockPosition = {
-      ...target,
-      cost: Math.round(newCost * 1000) / 1000,
-      receivedDividends: (target.receivedDividends || 0) + (deductAmountPerShare * target.shares),
+    if (target.cost <= 0) {
+      showToast('持股均價已為 $0 元（零成本），無法再扣抵', false);
+      return;
+    }
+
+    const actualDeductPerShare = Math.min(target.cost, deductAmountPerShare);
+    const totalDeductTWD = Math.round(actualDeductPerShare * target.shares * (target.market === 'us' ? target.buyRate || usdTwdRate : 1));
+
+    // Update cost for each transaction lot so weighted average cost is persistently reduced
+    const updatedTxs: TransactionRecord[] = (target.transactions || []).map((t) => ({
+      ...t,
+      cost: Math.max(0, Math.round((t.cost - actualDeductPerShare) * 10000) / 10000),
+    }));
+
+    const deductionRecord: DividendDeductionRecord = {
+      id: `div_deduct_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      date: getTaiwanDateString(),
+      dps: actualDeductPerShare,
+      totalAmount: totalDeductTWD,
+      note: `除息每股扣抵 $${actualDeductPerShare.toFixed(2)} 元`,
     };
 
-    handleUpdateSingleStock(updatedStock);
-    showToast(`✅ 成功為 ${target.name} 每股扣抵 $${deductAmountPerShare.toFixed(2)} 元持股成本！`);
+    const newCost = Math.max(0, Math.round((target.cost - actualDeductPerShare) * 10000) / 10000);
+
+    const updatedStock: StockPosition = {
+      ...target,
+      cost: newCost,
+      transactions: updatedTxs,
+      receivedDividends: (target.receivedDividends || 0) + totalDeductTWD,
+      dividendDeductions: [...(target.dividendDeductions || []), deductionRecord],
+    };
+
+    const updated = portfolio.map((item) => (item.id === updatedStock.id ? updatedStock : item));
+    const normalized = normalizePortfolio(updated);
+    setPortfolio(normalized);
+    savePortfolioLocal(normalized);
+
+    // If tx history modal is open, refresh its stock
+    if (txHistoryStock && txHistoryStock.id === stockId) {
+      const refreshed = normalized.find((p) => p.id === stockId);
+      if (refreshed) setTxHistoryStock(refreshed);
+    }
+
+    showToast(`✅ 成功為 ${target.name} 扣抵每股 $${actualDeductPerShare.toFixed(2)} 元！持股均價已由 $${target.cost} 調降為 $${newCost.toFixed(2)} 元`);
     playSuccessSound();
   };
 
@@ -1328,8 +1383,15 @@ export default function App() {
                   isPrivacy={isPrivacy}
                   isRedUp={isRedUp}
                   onSelectStock={(symbol, market, name) => {
-                    setSelectedChartTarget({ symbol, market, name });
-                    setIsFullChartModalOpen(true);
+                    const matched = portfolio.find(
+                      (p) => p.symbol.toUpperCase() === symbol.toUpperCase()
+                    );
+                    if (matched) {
+                      handleOpenStockDetail(matched.id);
+                    } else {
+                      setSelectedChartTarget({ symbol, market, name });
+                      setIsFullChartModalOpen(true);
+                    }
                   }}
                 />
               </div>
@@ -1348,6 +1410,7 @@ export default function App() {
                 isPrivacy={isPrivacy}
                 isRedUp={isRedUp}
                 officialEvents={officialEvents}
+                onOpenDetailModal={handleOpenStockDetail}
                 onSelectChartTarget={(symbol, market, name) => {
                   setSelectedChartTarget({ symbol, market, name });
                   setIsFullChartModalOpen(true);
@@ -1489,11 +1552,58 @@ export default function App() {
         isRedUp={isRedUp}
         onClose={() => setIsTodayPLModalOpen(false)}
         onSelectStock={(symbol, market, name) => {
-          setSelectedChartTarget({ symbol, market, name });
-          const chartCard = document.getElementById('singleStockChartCard');
-          if (chartCard) chartCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const matched = portfolio.find(
+            (p) => p.symbol.toUpperCase() === symbol.toUpperCase()
+          );
+          if (matched) {
+            setIsTodayPLModalOpen(false);
+            handleOpenStockDetail(matched.id);
+          } else {
+            setSelectedChartTarget({ symbol, market, name });
+            const chartCard = document.getElementById('singleStockChartCard');
+            if (chartCard) chartCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
         }}
       />
+
+      {/* Global Stock Detail Modal - Keeps active stock state and returns to portfolio page */}
+      {selectedDetailStock && (
+        <StockDetailModal
+          isOpen={!!selectedDetailStock}
+          stock={selectedDetailStock}
+          portfolio={portfolio}
+          usdTwdRate={usdTwdRate}
+          isPrivacy={isPrivacy}
+          isRedUp={isRedUp}
+          officialEvents={officialEvents}
+          onClose={handleCloseStockDetail}
+          onOpenChart={(symbol, market, name) => {
+            setSelectedChartTarget({ symbol, market, name });
+            setIsFullChartModalOpen(true);
+          }}
+          onOpenTxHistory={(stockId) => {
+            const stk = portfolio.find((p) => p.id === stockId);
+            if (stk) {
+              setTxHistoryStock(stk);
+              setIsTxHistoryModalOpen(true);
+            }
+          }}
+          onOpenEditModal={(stockId) => {
+            const stk = portfolio.find((p) => p.id === stockId);
+            if (stk) {
+              setEditStock(stk);
+              setIsStockModalOpen(true);
+            }
+          }}
+          onDeleteStock={(stockId) => {
+            handleDeleteStock(stockId);
+            setSelectedDetailStockId(null);
+            setActiveMobileTab('portfolio');
+          }}
+          onApplyPendingStockShares={handleApplyPendingStockShares}
+          onDeductCashDividendCost={handleDeductCashDividendCost}
+        />
+      )}
 
       <SyncModal
         isOpen={isSyncModalOpen}
