@@ -24,7 +24,13 @@ export const DividendCalendarModal: React.FC<DividendCalendarModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+    <div
+      onClick={() => {
+        playClickSound();
+        onClose();
+      }}
+      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn overscroll-none modal-backdrop"
+    >
       <div
         className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[85dvh] sm:max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
@@ -49,7 +55,7 @@ export const DividendCalendarModal: React.FC<DividendCalendarModalProps> = ({
         </div>
 
         {/* Modal Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 overscroll-contain modal-content-scroll">
           <DividendCalendar
             portfolio={portfolio}
             usdTwdRate={usdTwdRate}

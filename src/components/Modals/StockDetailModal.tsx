@@ -22,6 +22,7 @@ import { formatMoney } from '../../utils/format';
 import { playClickSound } from '../../utils/audio';
 import { getStockDividendInfo } from '../../utils/dividendHelper';
 import { calculateTransactionCost, DISCOUNT_OPTIONS } from '../../utils/costHelper';
+import { useScrollLock } from '../../utils/scrollLock';
 
 interface StockDetailModalProps {
   isOpen: boolean;
@@ -57,6 +58,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
   onDeductCashDividendCost,
 }) => {
   const [currentDiscount, setCurrentDiscount] = useState<number>(brokerDiscount);
+  useScrollLock(isOpen);
 
   if (!isOpen || !stock) return null;
 
@@ -86,8 +88,11 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
   const txCount = Array.isArray(stock.transactions) ? stock.transactions.length : 1;
 
   return (
-    <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-fadeIn h-[100dvh]">
-      <div className="w-full max-w-xl bg-white border-0 sm:border sm:border-slate-100 rounded-none sm:rounded-3xl shadow-[0_12px_40px_rgb(0,0,0,0.15)] overflow-hidden flex flex-col h-[100dvh] sm:h-auto sm:max-h-[88vh]">
+    <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-fadeIn h-[100dvh] overscroll-none modal-backdrop">
+      <div className="w-full max-w-xl bg-white border-0 sm:border sm:border-slate-100 rounded-t-3xl sm:rounded-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:shadow-[0_12px_40px_rgb(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[94dvh] sm:max-h-[88vh]">
+        {/* Mobile Pull Bar */}
+        <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto my-2 sm:hidden shrink-0" />
+
         {/* Top Sticky Navigation Bar */}
         <div className="bg-white border-b border-slate-100 px-3.5 py-2.5 sm:px-4 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3 shrink-0">
           <button
@@ -123,7 +128,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1">
+        <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1 overscroll-contain modal-content-scroll">
           {/* Price & Real-time Hero Banner */}
           <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3 shadow-xs text-slate-900">
             <div className="flex justify-between items-baseline">

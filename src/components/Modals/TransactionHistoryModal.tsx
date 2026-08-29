@@ -50,7 +50,7 @@ export const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = (
         playClickSound();
         onClose();
       }}
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300 overscroll-none modal-backdrop"
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -79,7 +79,7 @@ export const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = (
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-4 py-3 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-4 py-3 pr-1 overscroll-contain modal-content-scroll">
           {/* Transactions Table */}
           <div className="overflow-x-auto border border-slate-200 rounded-2xl max-w-full">
             <table className="w-full text-xs text-left text-slate-700 min-w-[480px]">
@@ -135,19 +135,19 @@ export const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = (
             <div className="text-xs font-bold text-indigo-700 flex items-center gap-1.5">
               <PlusCircle className="w-4 h-4" /> 快速新增定期定額 / 買入記錄
             </div>
-            <form onSubmit={handleAddSubmit} className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <form onSubmit={handleAddSubmit} className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
               <div>
-                <label className="block text-slate-700 font-bold mb-1">日期</label>
+                <label className="block text-slate-700 font-bold mb-1 text-[11px]">買入日期</label>
                 <input
                   type="date"
                   required
                   value={addDate}
                   onChange={(e) => setAddDate(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 outline-none"
+                  className="w-full h-8 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-900 outline-none text-xs font-mono tabular-nums focus:border-indigo-600 truncate"
                 />
               </div>
               <div>
-                <label className="block text-slate-700 font-bold mb-1">股數</label>
+                <label className="block text-slate-700 font-bold mb-1 text-[11px]">股數</label>
                 <input
                   type="number"
                   step="any"
@@ -156,11 +156,11 @@ export const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = (
                   placeholder="股數"
                   value={addShares}
                   onChange={(e) => setAddShares(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 outline-none font-mono"
+                  className="w-full h-8 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-900 outline-none font-mono text-xs focus:border-indigo-600"
                 />
               </div>
               <div>
-                <label className="block text-slate-700 font-bold mb-1">買入單價</label>
+                <label className="block text-slate-700 font-bold mb-1 text-[11px]">買入單價</label>
                 <input
                   type="number"
                   step="any"
@@ -169,15 +169,15 @@ export const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = (
                   placeholder="單價"
                   value={addCost}
                   onChange={(e) => setAddCost(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 outline-none font-mono"
+                  className="w-full h-8 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-900 outline-none font-mono text-xs focus:border-indigo-600"
                 />
               </div>
               <div className="flex items-end">
                 <button
                   type="submit"
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition btn-interact shadow-sm"
+                  className="w-full h-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition btn-interact shadow-sm text-xs flex items-center justify-center gap-1"
                 >
-                  新增此筆
+                  <PlusCircle className="w-3.5 h-3.5" /> 新增此筆
                 </button>
               </div>
             </form>

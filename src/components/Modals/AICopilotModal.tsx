@@ -193,11 +193,11 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({
         playClickSound();
         onClose();
       }}
-      className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300"
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300 overscroll-none modal-backdrop"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-[2rem] sm:rounded-3xl p-5 md:p-8 w-full max-w-2xl shadow-[0_12px_40px_rgb(0,0,0,0.08)] space-y-4 max-h-[88vh] sm:max-h-[88vh] overflow-y-auto border border-slate-100 animate-in slide-in-from-bottom duration-300 flex flex-col text-slate-900"
+        className="bg-white rounded-t-[2rem] sm:rounded-3xl p-5 md:p-8 w-full max-w-2xl shadow-[0_12px_40px_rgb(0,0,0,0.08)] space-y-4 max-h-[88vh] sm:max-h-[88vh] overflow-y-auto border border-slate-100 animate-in slide-in-from-bottom duration-300 flex flex-col text-slate-900 overscroll-contain modal-content-scroll"
       >
         {/* Mobile Pull/Dismiss Indicator */}
         <div className="flex flex-col items-center gap-1 sm:hidden pb-1 shrink-0">

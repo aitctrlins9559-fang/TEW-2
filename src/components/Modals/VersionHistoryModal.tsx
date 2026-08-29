@@ -76,8 +76,17 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white w-full max-w-2xl rounded-t-3xl sm:rounded-3xl border border-slate-200 shadow-2xl p-5 md:p-8 flex flex-col max-h-[85dvh] sm:max-h-[88vh] overflow-hidden text-slate-900">
+    <div
+      onClick={() => {
+        playClickSound();
+        onClose();
+      }}
+      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn overscroll-none modal-backdrop"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-2xl rounded-t-3xl sm:rounded-3xl border border-slate-200 shadow-2xl p-5 md:p-8 flex flex-col max-h-[85dvh] sm:max-h-[88vh] overflow-hidden text-slate-900"
+      >
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-100 pb-4 shrink-0">
           <div className="flex items-center gap-3">
@@ -103,7 +112,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
         </div>
 
         {/* Content - Scrollable */}
-        <div className="overflow-y-auto pr-1 space-y-6 flex-1 divide-y divide-slate-100">
+        <div className="overflow-y-auto pr-1 space-y-6 flex-1 divide-y divide-slate-100 overscroll-contain modal-content-scroll">
           {VERSION_LOGS.map((item, idx) => (
             <div key={idx} className={`${idx !== 0 ? 'pt-6' : ''} space-y-3`}>
               <div className="flex flex-wrap items-center justify-between gap-2">

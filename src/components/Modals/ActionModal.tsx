@@ -78,11 +78,11 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         playClickSound();
         onClose();
       }}
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[90] flex items-center justify-center p-4 transition-all duration-300"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[90] flex items-center justify-center p-4 transition-all duration-300 overscroll-none modal-backdrop"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center border border-slate-200 text-slate-900"
+        className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center border border-slate-200 text-slate-900 overscroll-contain"
       >
         <div
           className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 border ${theme.bg} ${

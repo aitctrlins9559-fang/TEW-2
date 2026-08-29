@@ -57,6 +57,7 @@ import {
   playShieldBreakSound,
   playClickSound,
 } from './utils/audio';
+import { useScrollLock } from './utils/scrollLock';
 
 const INITIAL_PORTFOLIO: StockPosition[] = [
   {
@@ -193,6 +194,24 @@ export default function App() {
   const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<AIAnalysisResult | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // Global modal scroll lock to completely isolate background scrolling
+  const isAnyModalOpen = Boolean(
+    isStockModalOpen ||
+    isTxHistoryModalOpen ||
+    isTodayPLModalOpen ||
+    isSyncModalOpen ||
+    isFullChartModalOpen ||
+    isAdminPasswordModalOpen ||
+    isDividendModalOpen ||
+    isAssetAnalysisModalOpen ||
+    isGuideModalOpen ||
+    deleteConfirmState.isOpen ||
+    actionModal.isOpen ||
+    isAICopilotOpen ||
+    isVersionModalOpen
+  );
+  useScrollLock(isAnyModalOpen);
 
   // Api health status
   const [apiHealth, setApiHealth] = useState<ApiHealthStatus>({

@@ -36,9 +36,15 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fadeIn">
+    <div
+      onClick={() => {
+        playClickSound();
+        onClose();
+      }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fadeIn overscroll-none modal-backdrop"
+    >
       <div
-        className="w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden transform transition-all animate-scaleUp text-slate-900"
+        className="w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden transform transition-all animate-scaleUp text-slate-900 overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

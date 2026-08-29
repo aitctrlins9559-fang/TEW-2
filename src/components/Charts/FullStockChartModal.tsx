@@ -697,7 +697,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-fadeIn h-[100dvh]">
+    <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-fadeIn h-[100dvh] overscroll-none modal-backdrop">
       <div className="w-full sm:max-w-6xl xl:max-w-7xl bg-white sm:border sm:border-slate-200 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto sm:max-h-[94vh]">
         {/* Top Professional Control Header Bar */}
         <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 sm:px-4 sm:py-3 flex items-center justify-between gap-2 shrink-0">
@@ -804,7 +804,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="p-2.5 sm:p-4 space-y-2 sm:space-y-3 overflow-y-auto flex-1">
+        <div className="p-2.5 sm:p-4 space-y-2 sm:space-y-3 overflow-y-auto flex-1 overscroll-contain modal-content-scroll">
           {/* ESSENTIAL CORE BANNER: Price + Volume + Key Action Status */}
           {intradayData && (
             <div className="bg-slate-50 border border-slate-200/90 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3">

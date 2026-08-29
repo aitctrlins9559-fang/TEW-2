@@ -154,7 +154,7 @@ export const TodayPLModal: React.FC<TodayPLModalProps> = ({
         playClickSound();
         onClose();
       }}
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300 overscroll-none modal-backdrop"
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -213,7 +213,7 @@ export const TodayPLModal: React.FC<TodayPLModalProps> = ({
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-slate-200/80">
+        <div className="overflow-x-auto rounded-xl border border-slate-200/80 overscroll-contain modal-content-scroll">
           <table className="w-full text-xs text-left text-slate-700">
             <thead className="uppercase bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
               <tr>
