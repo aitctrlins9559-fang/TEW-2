@@ -983,19 +983,27 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
         const c = chart || evt?.chart;
         if (elements && elements.length > 0) {
           const index = elements[0].index;
-          if (typeof index === 'number' && index >= 0 && index < candles.length && index !== hoveredIndexRef.current) {
-            hoveredIndexRef.current = index;
-            setHoveredCandle(candles[index]);
+          if (typeof index === 'number' && index >= 0 && index < candles.length) {
+            if (index !== hoveredIndexRef.current) {
+              hoveredIndexRef.current = index;
+              setHoveredCandle(candles[index]);
+            }
             return;
           }
         }
         if (c && c.scales && c.scales.x && evt?.x !== undefined) {
           const rawIdx = Math.round(c.scales.x.getValueForPixel(evt.x));
-          if (rawIdx >= 0 && rawIdx < candles.length && rawIdx !== hoveredIndexRef.current) {
-            hoveredIndexRef.current = rawIdx;
-            setHoveredCandle(candles[rawIdx]);
+          if (rawIdx >= 0 && rawIdx < candles.length) {
+            if (rawIdx !== hoveredIndexRef.current) {
+              hoveredIndexRef.current = rawIdx;
+              setHoveredCandle(candles[rawIdx]);
+            }
             return;
           }
+        }
+        if (hoveredIndexRef.current !== null) {
+          hoveredIndexRef.current = null;
+          setHoveredCandle(null);
         }
       },
       scales: {
@@ -1239,14 +1247,29 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
         tooltip: { enabled: false },
         annotation: { annotations },
       },
-      onHover: (_evt: any, elements: any[]) => {
+      onHover: (_evt: any, elements: any[], chart: any) => {
+        const c = chart || _evt?.chart;
         if (elements && elements.length > 0) {
           const index = elements[0].index;
-          if (typeof index === 'number' && index !== hoveredIndexRef.current && candles[index]) {
-            hoveredIndexRef.current = index;
-            setHoveredCandle(candles[index]);
+          if (typeof index === 'number' && index >= 0 && index < candles.length) {
+            if (index !== hoveredIndexRef.current) {
+              hoveredIndexRef.current = index;
+              setHoveredCandle(candles[index]);
+            }
+            return;
           }
-        } else if (hoveredIndexRef.current !== null) {
+        }
+        if (c && c.scales && c.scales.x && _evt?.x !== undefined) {
+          const rawIdx = Math.round(c.scales.x.getValueForPixel(_evt.x));
+          if (rawIdx >= 0 && rawIdx < candles.length) {
+            if (rawIdx !== hoveredIndexRef.current) {
+              hoveredIndexRef.current = rawIdx;
+              setHoveredCandle(candles[rawIdx]);
+            }
+            return;
+          }
+        }
+        if (hoveredIndexRef.current !== null) {
           hoveredIndexRef.current = null;
           setHoveredCandle(null);
         }
@@ -1496,14 +1519,10 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 }`}>
                   ${activePrice.toFixed(2)}
                 </span>
-                <span className={`text-[11px] sm:text-xs font-bold font-mono px-1.5 py-0.5 rounded ${
+                <span className={`text-xs sm:text-sm font-mono font-bold ${
                   isActiveUp
-                    ? isRedUp
-                      ? 'text-rose-700 bg-rose-50 border border-rose-200/50 dark:text-rose-400 dark:bg-rose-950/30 dark:border-rose-800/30'
-                      : 'text-emerald-700 bg-emerald-50 border border-emerald-200/50 dark:text-emerald-400 dark:bg-emerald-950/30 dark:border-emerald-800/30'
-                    : isRedUp
-                    ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/50 dark:text-emerald-400 dark:bg-emerald-950/30 dark:border-emerald-800/30'
-                    : 'text-rose-700 bg-rose-50 border border-rose-200/50 dark:text-rose-400 dark:bg-rose-950/30 dark:border-rose-800/30'
+                    ? isRedUp ? 'text-rose-600' : 'text-emerald-600'
+                    : isRedUp ? 'text-emerald-600' : 'text-rose-600'
                 }`}>
                   {isActiveUp ? '▲' : '▼'}{activeDiff >= 0 ? '+' : ''}{activeDiff.toFixed(2)} ({isActiveUp ? '+' : ''}{activeDiffPct.toFixed(2)}%)
                 </span>
@@ -1539,7 +1558,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             </div>
             <div className="flex flex-col">
               <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>成交量</span>
-              <span className="text-xs sm:text-[13px] font-black text-indigo-500 dark:text-indigo-400 tabular-nums">
+              <span className={`text-xs sm:text-[13px] font-black tabular-nums ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>
                 {currentCandle ? formatVolumeShort(currentCandle.volume, selectedChartTarget.market) : '--'}
               </span>
             </div>
@@ -1856,7 +1875,17 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 </button>
               </div>
             ) : mainChartData ? (
-              <div className="flex-1 flex flex-col w-full h-full min-h-0 relative">
+              <div 
+                className="flex-1 flex flex-col w-full h-full min-h-0 relative"
+                onMouseLeave={() => {
+                  hoveredIndexRef.current = null;
+                  setHoveredCandle(null);
+                }}
+                onTouchEnd={() => {
+                  hoveredIndexRef.current = null;
+                  setHoveredCandle(null);
+                }}
+              >
                 {loading && (
                   <div className={`absolute top-2 right-2 z-20 text-[10px] px-2 py-0.5 rounded-full font-mono flex items-center gap-1.5 backdrop-blur-xs shadow-md border ${
                     isLight
