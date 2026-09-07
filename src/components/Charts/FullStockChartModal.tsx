@@ -288,7 +288,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
 }) => {
   // Timeframe and View Settings
   const [timeframe, setTimeframe] = useState<ChartTimeframe>('1D');
-  const [chartStyle, setChartStyle] = useState<ChartRenderStyle>('candlestick');
+  const [chartStyle, setChartStyle] = useState<ChartRenderStyle>('line');
   const [subIndicator, setSubIndicator] = useState<SubChartIndicator>('volume');
 
   // Overlays
@@ -492,70 +492,194 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
         const volumes: number[] = json.volumes || [];
 
         const isUS = target.market === 'us' || target.symbol.startsWith('^');
-        const timeZone = isUS ? 'America/New_York' : 'Asia/Taipei';
+        const isJP = target.symbol === '^N225';
+        const isKR = target.symbol === '^KS11';
+
+        let timeZone = 'Asia/Taipei';
+        let startMins = 9 * 60; // 09:00
+        let endMins = 13 * 60 + 30; // 13:30
+
+        if (isUS) {
+          timeZone = 'America/New_York';
+          startMins = 9 * 60 + 30; // 09:30
+          endMins = 16 * 60; // 16:00
+        } else if (isJP) {
+          timeZone = 'Asia/Tokyo';
+          startMins = 9 * 60;
+          endMins = 15 * 60;
+        } else if (isKR) {
+          timeZone = 'Asia/Seoul';
+          startMins = 9 * 60;
+          endMins = 15 * 60 + 30;
+        }
 
         const parsedCandles: CandleData[] = [];
 
-        for (let i = 0; i < ts.length; i++) {
-          const t = ts[i];
-          const c = quotes[i];
-          if (typeof c !== 'number' || isNaN(c) || c <= 0) continue;
+        if (tf === '1D') {
+          const rawMap = new Map<string, CandleData>();
+          let maxElapsedMins = -1;
+          let baseDateObj = new Date();
+          let baseDateStr = '';
 
-          const o = typeof opens[i] === 'number' && !isNaN(opens[i]) && opens[i] > 0 ? opens[i] : c;
-          const h = typeof highs[i] === 'number' && !isNaN(highs[i]) && highs[i] > 0 ? highs[i] : Math.max(o, c);
-          const l = typeof lows[i] === 'number' && !isNaN(lows[i]) && lows[i] > 0 ? lows[i] : Math.min(o, c);
-          const v = typeof volumes[i] === 'number' && !isNaN(volumes[i]) ? volumes[i] : 0;
+          for (let i = 0; i < ts.length; i++) {
+            const t = ts[i];
+            const c = quotes[i];
+            if (typeof c !== 'number' || isNaN(c) || c <= 0) continue;
 
-          const dateObj = new Date(t * 1000);
-          let dateStr = '';
-          let timeStr = '';
+            const o = typeof opens[i] === 'number' && !isNaN(opens[i]) && opens[i] > 0 ? opens[i] : c;
+            const h = typeof highs[i] === 'number' && !isNaN(highs[i]) && highs[i] > 0 ? highs[i] : Math.max(o, c);
+            const l = typeof lows[i] === 'number' && !isNaN(lows[i]) && lows[i] > 0 ? lows[i] : Math.min(o, c);
+            const v = typeof volumes[i] === 'number' && !isNaN(volumes[i]) ? volumes[i] : 0;
 
-          try {
-            dateStr = dateObj.toLocaleDateString('zh-TW', { timeZone, month: '2-digit', day: '2-digit' });
-            timeStr = dateObj.toLocaleTimeString('zh-TW', {
-              timeZone,
-              hour12: false,
-              hour: '2-digit',
-              minute: '2-digit',
+            const dateObj = new Date(t * 1000);
+            baseDateObj = dateObj;
+            let dateStr = '';
+            let timeStr = '';
+
+            try {
+              dateStr = dateObj.toLocaleDateString('zh-TW', { timeZone, month: '2-digit', day: '2-digit' });
+              timeStr = dateObj.toLocaleTimeString('zh-TW', {
+                timeZone,
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+            } catch {
+              dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+              timeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+            }
+
+            baseDateStr = dateStr;
+            const parts = timeStr.split(':');
+            if (parts.length >= 2) {
+              const hh = Number(parts[0]);
+              const mm = Number(parts[1]);
+              const totalMins = hh * 60 + mm;
+              if (totalMins > maxElapsedMins) {
+                maxElapsedMins = totalMins;
+              }
+            }
+
+            rawMap.set(timeStr, {
+              timestamp: t,
+              dateStr,
+              timeStr,
+              open: Number(o.toFixed(2)),
+              high: Number(h.toFixed(2)),
+              low: Number(l.toFixed(2)),
+              close: Number(c.toFixed(2)),
+              volume: Math.round(v),
             });
-          } catch {
-            dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
-            timeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
           }
 
-          parsedCandles.push({
-            timestamp: t,
-            dateStr,
-            timeStr: tf === '1D' || tf === '5D' ? `${tf === '5D' ? dateStr + ' ' : ''}${timeStr}` : dateStr,
-            open: Number(o.toFixed(2)),
-            high: Number(h.toFixed(2)),
-            low: Number(l.toFixed(2)),
-            close: Number(c.toFixed(2)),
-            volume: Math.round(v),
-          });
+          if (!baseDateStr) {
+            try {
+              baseDateStr = baseDateObj.toLocaleDateString('zh-TW', { timeZone, month: '2-digit', day: '2-digit' });
+            } catch {
+              baseDateStr = `${baseDateObj.getMonth() + 1}/${baseDateObj.getDate()}`;
+            }
+          }
+
+          let lastValidCandle: CandleData | null = null;
+          const baseTs = Math.floor(baseDateObj.getTime() / 1000);
+
+          for (let m = startMins; m <= endMins; m++) {
+            const hh = Math.floor(m / 60);
+            const mm = m % 60;
+            const timeKey = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+
+            if (rawMap.has(timeKey)) {
+              const c = rawMap.get(timeKey)!;
+              lastValidCandle = c;
+              parsedCandles.push(c);
+            } else if (m <= maxElapsedMins && lastValidCandle) {
+              parsedCandles.push({
+                timestamp: lastValidCandle.timestamp + (m - (Math.floor(lastValidCandle.timestamp / 60) % 1440)) * 60,
+                dateStr: baseDateStr,
+                timeStr: timeKey,
+                open: lastValidCandle.close,
+                high: lastValidCandle.close,
+                low: lastValidCandle.close,
+                close: lastValidCandle.close,
+                volume: 0,
+              });
+            } else {
+              parsedCandles.push({
+                timestamp: baseTs + m * 60,
+                dateStr: baseDateStr,
+                timeStr: timeKey,
+                open: null as any,
+                high: null as any,
+                low: null as any,
+                close: null as any,
+                volume: 0,
+              });
+            }
+          }
+        } else {
+          for (let i = 0; i < ts.length; i++) {
+            const t = ts[i];
+            const c = quotes[i];
+            if (typeof c !== 'number' || isNaN(c) || c <= 0) continue;
+
+            const o = typeof opens[i] === 'number' && !isNaN(opens[i]) && opens[i] > 0 ? opens[i] : c;
+            const h = typeof highs[i] === 'number' && !isNaN(highs[i]) && highs[i] > 0 ? highs[i] : Math.max(o, c);
+            const l = typeof lows[i] === 'number' && !isNaN(lows[i]) && lows[i] > 0 ? lows[i] : Math.min(o, c);
+            const v = typeof volumes[i] === 'number' && !isNaN(volumes[i]) ? volumes[i] : 0;
+
+            const dateObj = new Date(t * 1000);
+            let dateStr = '';
+            let timeStr = '';
+
+            try {
+              dateStr = dateObj.toLocaleDateString('zh-TW', { timeZone, month: '2-digit', day: '2-digit' });
+              timeStr = dateObj.toLocaleTimeString('zh-TW', {
+                timeZone,
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+            } catch {
+              dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+              timeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+            }
+
+            parsedCandles.push({
+              timestamp: t,
+              dateStr,
+              timeStr: tf === '5D' ? dateStr : dateStr,
+              open: Number(o.toFixed(2)),
+              high: Number(h.toFixed(2)),
+              low: Number(l.toFixed(2)),
+              close: Number(c.toFixed(2)),
+              volume: Math.round(v),
+            });
+          }
         }
 
-        if (parsedCandles.length === 0) {
+        const validCandles = parsedCandles.filter((c) => c && typeof c.close === 'number' && !isNaN(c.close) && c.close > 0);
+
+        if (validCandles.length === 0 && parsedCandles.length === 0) {
           throw new Error('暫無該週期的 K 線走勢資料');
         }
 
         const prevClose =
-          meta.chartPreviousClose || meta.previousClose || parsedCandles[0].open || parsedCandles[0].close;
-        const lastCandle = parsedCandles[parsedCandles.length - 1];
+          meta.chartPreviousClose || meta.previousClose || (validCandles[0] ? validCandles[0].open || validCandles[0].close : 0);
+        const lastValidCandle = validCandles.length > 0 ? validCandles[validCandles.length - 1] : parsedCandles[0];
         const latestPrice =
           matched?.price && matched.price > 0
             ? matched.price
-            : lastCandle.close;
+            : lastValidCandle ? lastValidCandle.close : 0;
 
-        const openPrice = meta.regularMarketOpen || meta.open || parsedCandles[0].open;
-        const allHighs = parsedCandles.map((c) => c.high);
-        const allLows = parsedCandles.map((c) => c.low);
-        const highPrice = Math.max(...allHighs);
-        const lowPrice = Math.min(...allLows);
+        const openPrice = meta.regularMarketOpen || meta.open || (validCandles[0] ? validCandles[0].open : 0);
+        const allHighs = validCandles.map((c) => c.high);
+        const allLows = validCandles.map((c) => c.low);
+        const highPrice = allHighs.length > 0 ? Math.max(...allHighs) : latestPrice;
+        const lowPrice = allLows.length > 0 ? Math.min(...allLows) : latestPrice;
 
         let totalVolume = meta.regularMarketVolume || meta.volume || 0;
         if (totalVolume === 0) {
-          totalVolume = parsedCandles.reduce((acc, c) => acc + c.volume, 0);
+          totalVolume = validCandles.reduce((acc, c) => acc + (c.volume || 0), 0);
         }
 
         const lastTs = meta.regularMarketTime || (ts.length > 0 ? ts[ts.length - 1] : undefined);
@@ -694,20 +818,30 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
       });
     } else {
       const closes = candles.map((c) => c.close);
-      const isUpTrend = closes[closes.length - 1] >= (metaInfo?.prevClose || closes[0]);
+      const lastValidIdx = (() => {
+        for (let i = candles.length - 1; i >= 0; i--) {
+          if (candles[i] && typeof candles[i].close === 'number' && !isNaN(candles[i].close)) {
+            return i;
+          }
+        }
+        return candles.length - 1;
+      })();
+      const validCloses = candles.map((c) => c.close).filter((v): v is number => typeof v === 'number' && !isNaN(v));
+      const lastCloseVal = validCloses.length > 0 ? validCloses[validCloses.length - 1] : 0;
+      const firstCloseVal = validCloses.length > 0 ? validCloses[0] : 0;
+      const isUpTrend = lastCloseVal >= (metaInfo?.prevClose || firstCloseVal);
       const lineColor = isUpTrend ? upColor : downColor;
-      const isTick = chartStyle === 'tick';
 
       datasets.push({
         type: 'line' as const,
-        label: isTick ? `${selectedChartTarget.name} 即時走勢 (Tick)` : `${selectedChartTarget.name} 走勢`,
+        label: `${selectedChartTarget.name} 走勢`,
         data: closes,
         borderColor: lineColor,
-        borderWidth: isTick ? 1.5 : 1.4,
-        fill: chartStyle === 'area' || isTick,
-        tension: isTick ? 0.05 : 0.1,
+        borderWidth: 1.5,
+        fill: true,
+        tension: 0.08,
         stepped: false,
-        pointRadius: (ctx: { dataIndex: number }) => (ctx.dataIndex === closes.length - 1 ? (isTick ? 4.5 : 4) : 0),
+        pointRadius: (ctx: { dataIndex: number }) => (ctx.dataIndex === lastValidIdx ? 4.5 : 0),
         pointBackgroundColor: lineColor,
         pointBorderColor: '#ffffff',
         pointBorderWidth: 1.5,
@@ -719,11 +853,16 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
         }) => {
           const chart = context.chart;
           const { ctx, chartArea } = chart;
-          if (!chartArea || (chartStyle !== 'area' && !isTick)) return 'transparent';
+          if (!chartArea) return 'transparent';
           const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
           gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
-          const alpha = isTick ? '0.12' : '0.18';
-          gradient.addColorStop(1, isUpTrend ? (isRedUp ? `rgba(225, 29, 72, ${alpha})` : `rgba(5, 150, 105, ${alpha})`) : (isRedUp ? `rgba(5, 150, 105, ${alpha})` : `rgba(225, 29, 72, ${alpha})`));
+          const alpha = '0.16';
+          gradient.addColorStop(
+            1,
+            isUpTrend
+              ? (isRedUp ? `rgba(225, 29, 72, ${alpha})` : `rgba(5, 150, 105, ${alpha})`)
+              : (isRedUp ? `rgba(5, 150, 105, ${alpha})` : `rgba(225, 29, 72, ${alpha})`)
+          );
           return gradient;
         },
       });
@@ -1009,10 +1148,54 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
       scales: {
         x: {
           grid: { color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)' },
+          afterBuildTicks: (scale: any) => {
+            if (timeframe === '1D' && candles.length > 0) {
+              const isUS = selectedChartTarget.market === 'us' || selectedChartTarget.symbol.startsWith('^');
+              const isJP = selectedChartTarget.symbol === '^N225';
+              const isKR = selectedChartTarget.symbol === '^KS11';
+
+              let targetKeys = ['09:00', '10:00', '11:00', '12:00', '13:00', '13:30'];
+              if (isUS) {
+                targetKeys = ['09:30', '11:00', '12:30', '14:00', '16:00'];
+              } else if (isJP) {
+                targetKeys = ['09:00', '11:00', '13:00', '15:00'];
+              } else if (isKR) {
+                targetKeys = ['09:00', '11:00', '13:00', '15:30'];
+              }
+
+              const customTicks: any[] = [];
+              targetKeys.forEach((key) => {
+                const foundIdx = candles.findIndex((c) => c && c.timeStr === key);
+                if (foundIdx !== -1) {
+                  customTicks.push({ value: foundIdx, label: key });
+                }
+              });
+
+              if (customTicks.length > 0) {
+                scale.ticks = customTicks;
+              }
+            } else if (timeframe === '5D' && candles.length > 0) {
+              const customTicks: any[] = [];
+              const seenDates = new Set<string>();
+              candles.forEach((c, idx) => {
+                if (c && c.dateStr && !seenDates.has(c.dateStr)) {
+                  seenDates.add(c.dateStr);
+                  customTicks.push({ value: idx, label: c.dateStr });
+                }
+              });
+              if (customTicks.length > 0) {
+                scale.ticks = customTicks;
+              }
+            }
+          },
           ticks: {
             color: isLight ? '#64748b' : '#94a3b8',
-            maxTicksLimit: 7,
+            autoSkip: timeframe !== '1D' && timeframe !== '5D',
+            maxTicksLimit: timeframe === '1D' || timeframe === '5D' ? undefined : 7,
             font: { family: 'monospace', size: 10, weight: 'bold' as const },
+            callback: function (this: any, val: any) {
+              return this.getLabelForValue(val);
+            },
           },
         },
         y: {
@@ -1306,9 +1489,14 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   // Active Index for hovering on charts
   const activeIdx = useMemo(() => {
     if (!candles.length) return -1;
-    if (hoveredCandle) {
+    if (hoveredCandle && hoveredCandle.close !== null) {
       const idx = candles.findIndex((c) => c.timestamp === hoveredCandle.timestamp);
       if (idx >= 0) return idx;
+    }
+    for (let i = candles.length - 1; i >= 0; i--) {
+      if (candles[i] && candles[i].close !== null && typeof candles[i].close === 'number' && !isNaN(candles[i].close)) {
+        return i;
+      }
     }
     return candles.length - 1;
   }, [candles, hoveredCandle]);
@@ -1358,9 +1546,13 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
   if (!isOpen) return null;
 
   const currentCandle = hoveredCandle || (candles.length > 0 ? candles[candles.length - 1] : null);
-  const activePrice = currentCandle ? currentCandle.close : (metaInfo?.close || 0);
-  const activePrevClose = metaInfo ? metaInfo.prevClose : activePrice;
-  const activeDiff = activePrice - activePrevClose;
+  const activePrice = (currentCandle && typeof currentCandle.close === 'number' && currentCandle.close !== null)
+    ? currentCandle.close
+    : (metaInfo && typeof metaInfo.close === 'number' && metaInfo.close !== null ? metaInfo.close : 0);
+  const activePrevClose = (metaInfo && typeof metaInfo.prevClose === 'number' && metaInfo.prevClose !== null)
+    ? metaInfo.prevClose
+    : activePrice;
+  const activeDiff = (activePrice !== null && activePrevClose !== null) ? activePrice - activePrevClose : 0;
   const activeDiffPct = activePrevClose > 0 ? (activeDiff / activePrevClose) * 100 : 0;
   const isActiveUp = activeDiff >= 0;
 
@@ -1517,14 +1709,14 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     ? isRedUp ? 'text-rose-600' : 'text-emerald-600'
                     : isRedUp ? 'text-emerald-600' : 'text-rose-600'
                 }`}>
-                  ${activePrice.toFixed(2)}
+                  ${activePrice !== null && activePrice !== undefined && !isNaN(activePrice) ? activePrice.toFixed(2) : '--'}
                 </span>
                 <span className={`text-xs sm:text-sm font-mono font-bold ${
                   isActiveUp
                     ? isRedUp ? 'text-rose-600' : 'text-emerald-600'
                     : isRedUp ? 'text-emerald-600' : 'text-rose-600'
                 }`}>
-                  {isActiveUp ? '▲' : '▼'}{activeDiff >= 0 ? '+' : ''}{activeDiff.toFixed(2)} ({isActiveUp ? '+' : ''}{activeDiffPct.toFixed(2)}%)
+                  {isActiveUp ? '▲' : '▼'}{activeDiff >= 0 ? '+' : ''}{activeDiff !== null && activeDiff !== undefined ? activeDiff.toFixed(2) : '--'} ({isActiveUp ? '+' : ''}{activeDiffPct !== null && activeDiffPct !== undefined ? activeDiffPct.toFixed(2) : '--'}%)
                 </span>
               </div>
             </div>
@@ -1535,25 +1727,25 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             <div className="flex flex-col">
               <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>開盤</span>
               <span className={`text-xs sm:text-[13px] font-bold tabular-nums ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
-                ${currentCandle ? currentCandle.open.toFixed(2) : '--'}
+                ${currentCandle && currentCandle.open !== null && currentCandle.open !== undefined ? currentCandle.open.toFixed(2) : '--'}
               </span>
             </div>
             <div className="flex flex-col">
               <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>最高</span>
               <span className={`text-xs sm:text-[13px] font-black tabular-nums ${isRedUp ? 'text-rose-500' : 'text-emerald-500'}`}>
-                ${currentCandle ? currentCandle.high.toFixed(2) : '--'}
+                ${currentCandle && currentCandle.high !== null && currentCandle.high !== undefined ? currentCandle.high.toFixed(2) : '--'}
               </span>
             </div>
             <div className="flex flex-col">
               <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>最低</span>
               <span className={`text-xs sm:text-[13px] font-black tabular-nums ${isRedUp ? 'text-emerald-500' : 'text-rose-500'}`}>
-                ${currentCandle ? currentCandle.low.toFixed(2) : '--'}
+                ${currentCandle && currentCandle.low !== null && currentCandle.low !== undefined ? currentCandle.low.toFixed(2) : '--'}
               </span>
             </div>
             <div className="flex flex-col">
               <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>昨收</span>
               <span className={`text-xs sm:text-[13px] font-bold tabular-nums ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                ${activePrevClose.toFixed(2)}
+                ${activePrevClose !== null && activePrevClose !== undefined ? activePrevClose.toFixed(2) : '--'}
               </span>
             </div>
             <div className="flex flex-col">
@@ -1683,6 +1875,9 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                     onClick={() => {
                       playClickSound();
                       setTimeframe(tf);
+                      if (tf === '1D') {
+                        setChartStyle('line');
+                      }
                     }}
                     className={`flex-1 py-0.5 h-[20px] rounded font-bold transition text-[10px] sm:text-xs text-center flex items-center justify-center leading-none ${
                       timeframe === tf
@@ -1701,16 +1896,14 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
             {/* 2C. Indicator Control Buttons & Selectors (K線, 均線, 布林, 昨收, VWAP, 量能) */}
             <div className={`px-1.5 sm:px-3 py-0.5 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'} flex items-center justify-between gap-1 overflow-x-auto no-scrollbar`}>
               <div className="flex items-center gap-1 shrink-0">
-                {/* Chart Style Selector */}
+                {/* Chart Style Selector - Merged line/area/tick into single '折線圖' and 'K線' */}
                 <CustomSelect
-                  value={chartStyle}
+                  value={chartStyle === 'area' || chartStyle === 'tick' ? 'line' : chartStyle}
                   options={[
-                    { value: 'candlestick', label: 'K線' },
-                    { value: 'tick', label: '即時 Tick' },
-                    { value: 'area', label: '面積圖' },
                     { value: 'line', label: '折線圖' },
+                    { value: 'candlestick', label: 'K線' },
                   ]}
-                  onChange={(val) => setChartStyle(val)}
+                  onChange={(val) => setChartStyle(val as ChartRenderStyle)}
                   isLight={isLight}
                   ariaLabel="切換圖表模式"
                 />
@@ -1825,10 +2018,10 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 {showMA && (
                   <div className="flex items-center gap-2 pr-4 border-r border-slate-200 dark:border-slate-800">
                     <span className="text-amber-500 text-[9px] font-black uppercase tracking-wider">MA</span>
-                    <span className="text-amber-500">5MA: {activeSubValues.ma5 ? activeSubValues.ma5.toFixed(2) : '--'}</span>
-                    <span className="text-cyan-500">10MA: {activeSubValues.ma10 ? activeSubValues.ma10.toFixed(2) : '--'}</span>
-                    <span className="text-purple-500">20MA: {activeSubValues.ma20 ? activeSubValues.ma20.toFixed(2) : '--'}</span>
-                    {activeSubValues.ma60 && (
+                    <span className="text-amber-500">5MA: {activeSubValues.ma5 !== undefined && activeSubValues.ma5 !== null ? activeSubValues.ma5.toFixed(2) : '--'}</span>
+                    <span className="text-cyan-500">10MA: {activeSubValues.ma10 !== undefined && activeSubValues.ma10 !== null ? activeSubValues.ma10.toFixed(2) : '--'}</span>
+                    <span className="text-purple-500">20MA: {activeSubValues.ma20 !== undefined && activeSubValues.ma20 !== null ? activeSubValues.ma20.toFixed(2) : '--'}</span>
+                    {activeSubValues.ma60 !== undefined && activeSubValues.ma60 !== null && (
                       <span className="text-orange-500">60MA: {activeSubValues.ma60.toFixed(2)}</span>
                     )}
                   </div>
@@ -1836,12 +2029,12 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                 {showBollinger && (
                   <div className="flex items-center gap-2 pr-4 border-r border-slate-200 dark:border-slate-800">
                     <span className="text-blue-500 text-[9px] font-black uppercase tracking-wider">BOLL</span>
-                    <span className="text-blue-400">上軌: {activeSubValues.bbUpper ? activeSubValues.bbUpper.toFixed(2) : '--'}</span>
-                    <span className={isLight ? 'text-slate-600' : 'text-slate-300'}>中軌: {activeSubValues.bbMid ? activeSubValues.bbMid.toFixed(2) : '--'}</span>
-                    <span className="text-blue-400">下軌: {activeSubValues.bbLower ? activeSubValues.bbLower.toFixed(2) : '--'}</span>
+                    <span className="text-blue-400">上軌: {activeSubValues.bbUpper !== undefined && activeSubValues.bbUpper !== null ? activeSubValues.bbUpper.toFixed(2) : '--'}</span>
+                    <span className={isLight ? 'text-slate-600' : 'text-slate-300'}>中軌: {activeSubValues.bbMid !== undefined && activeSubValues.bbMid !== null ? activeSubValues.bbMid.toFixed(2) : '--'}</span>
+                    <span className="text-blue-400">下軌: {activeSubValues.bbLower !== undefined && activeSubValues.bbLower !== null ? activeSubValues.bbLower.toFixed(2) : '--'}</span>
                   </div>
                 )}
-                {showVWAP && activeSubValues?.vwap && (timeframe === '1D' || timeframe === '5D') && (
+                {showVWAP && activeSubValues?.vwap !== undefined && activeSubValues?.vwap !== null && (timeframe === '1D' || timeframe === '5D') && (
                   <div className="flex items-center gap-2">
                     <span className="text-orange-500 text-[9px] font-black uppercase tracking-wider">VWAP</span>
                     <span className="text-orange-500">{activeSubValues.vwap.toFixed(2)}</span>
@@ -2316,7 +2509,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                         <div className={`p-2 rounded-lg ${isLight ? 'bg-slate-50' : 'bg-slate-900'}`}>
                           <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>買入均價</span>
                           <div className={`text-sm font-bold mt-0.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                            ${matchedPortfolioItem.cost.toFixed(2)}
+                            ${matchedPortfolioItem.cost !== null && matchedPortfolioItem.cost !== undefined ? matchedPortfolioItem.cost.toFixed(2) : '--'}
                           </div>
                         </div>
                         <div className={`p-2 rounded-lg ${isLight ? 'bg-slate-50' : 'bg-slate-900'}`}>
@@ -2393,7 +2586,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                                 ? isRedUp ? (isLight ? 'text-rose-600' : 'text-rose-400') : (isLight ? 'text-emerald-600' : 'text-emerald-400')
                                 : isRedUp ? (isLight ? 'text-emerald-600' : 'text-emerald-400') : (isLight ? 'text-rose-600' : 'text-rose-400')
                             }`}>
-                              {simROI >= 0 ? '+' : ''}{simROI.toFixed(2)}%
+                              {simROI >= 0 ? '+' : ''}{simROI !== null && simROI !== undefined ? simROI.toFixed(2) : '--'}%
                             </strong>
                           </div>
                         </div>
@@ -2567,7 +2760,7 @@ export const FullStockChartModal: React.FC<FullStockChartModalProps> = ({
                                     : isRedUp ? (isLight ? 'text-emerald-600' : 'text-emerald-400') : (isLight ? 'text-rose-600' : 'text-rose-400')
                                 }`}>
                                   {item.price >= (item.prevClose || item.price) ? '+' : ''}
-                                  {(((item.price - (item.prevClose || item.price)) / (item.prevClose || item.price)) * 100).toFixed(2)}%
+                                  {item.prevClose ? (((item.price - item.prevClose) / item.prevClose) * 100).toFixed(2) : '0.00'}%
                                 </div>
                               </div>
                             )}

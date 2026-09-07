@@ -29,7 +29,7 @@ ChartJS.register(
 
 interface AssetTrendChartProps {
   labels: string[];
-  data: number[];
+  data: (number | null)[];
   currentVal?: number;
   isPrivacy: boolean;
   isRedUp: boolean;
@@ -42,8 +42,11 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
   isPrivacy,
   isRedUp,
 }) => {
-  const displayVal = currentVal ?? (data.length > 0 ? data[data.length - 1] : 0);
-  const isTrendUp = data.length > 0 ? data[data.length - 1] >= data[0] : true;
+  const validData = data.filter((d) => d !== null) as number[];
+  const startVal = validData.length > 0 ? validData[0] : 0;
+  const endVal = validData.length > 0 ? validData[validData.length - 1] : 0;
+  const displayVal = currentVal ?? endVal;
+  const isTrendUp = validData.length > 0 ? endVal >= startVal : true;
   const trendColorRgb = isTrendUp
     ? isRedUp
       ? '#e11d48'
@@ -52,8 +55,6 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
     ? '#059669'
     : '#e11d48';
 
-  const startVal = data.length > 0 ? data[0] : 0;
-  const endVal = data.length > 0 ? data[data.length - 1] : 0;
   const diff = endVal - startVal;
   const diffPct = startVal > 0 ? (diff / startVal) * 100 : 0;
 
@@ -64,7 +65,7 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
         {
           data,
           borderColor: trendColorRgb,
-          borderWidth: 3,
+          borderWidth: 1.5,
           fill: true,
           tension: 0.1,
           pointRadius: 0,
@@ -114,9 +115,18 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
           callbacks: {
             title: (items: Array<{ label: string }>) => `時間: ${items[0]?.label || ''}`,
             label: (item: { raw: unknown; dataIndex: number; dataset: { data: unknown[] } }) => {
+              if (item.raw === null || item.raw === undefined) {
+                return ['無交易數據'];
+              }
               if (isPrivacy) return [`總市值: **** NT$`, `較前日: ****`];
               const val = Number(item.raw) || 0;
-              const prev = item.dataIndex > 0 ? Number(item.dataset.data[item.dataIndex - 1]) : val;
+              let prev = val;
+              for (let i = item.dataIndex - 1; i >= 0; i--) {
+                if (item.dataset.data[i] !== null && typeof item.dataset.data[i] === 'number') {
+                  prev = item.dataset.data[i] as number;
+                  break;
+                }
+              }
               const d = val - prev;
               return [
                 `總市值: $${Math.round(val).toLocaleString()} NT$`,
@@ -132,14 +142,20 @@ export const AssetTrendChart: React.FC<AssetTrendChartProps> = ({
           ticks: {
             color: '#64748b',
             font: { size: 9, weight: 'bold' as const },
-            maxTicksLimit: 6,
-            autoSkip: true,
+            maxTicksLimit: undefined,
+            autoSkip: false,
             maxRotation: 0,
             padding: 2,
-            callback: function (val: any) {
+            callback: function (val: any, index: number, ticks: any[]) {
               const label = this.getLabelForValue(val as number) || '';
               if (typeof label === 'string') {
                 const clean = label.replace(' (現價)', '');
+                if (clean.length === 5 && clean.includes(':')) {
+                  if (index === 0 || index === ticks.length - 1 || clean.endsWith(':00')) {
+                    return clean;
+                  }
+                  return '';
+                }
                 if (clean.includes('/')) {
                   const parts = clean.split('/');
                   if (parts.length === 3) return `${parts[1]}/${parts[2]}`;

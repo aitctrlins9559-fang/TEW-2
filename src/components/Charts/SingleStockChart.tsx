@@ -426,6 +426,9 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
           callbacks: {
             title: (items: Array<{ label: string }>) => `時間: ${items[0]?.label || ''}`,
             label: (item: { raw: unknown }) => {
+              if (item.raw === null || item.raw === undefined) {
+                return ['無交易數據'];
+              }
               const p = Number(item.raw) || 0;
               const d = p - prevClose;
               const dPct = prevClose > 0 ? (d / prevClose) * 100 : 0;
@@ -468,9 +471,38 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
       scales: {
         x: {
           grid: { color: 'rgba(0,0,0,0.04)' },
+          afterBuildTicks: (scale: any) => {
+            const labels = (scale.chart?.data?.labels || []) as string[];
+            if (labels.length === 0) return;
+
+            const isUS = intradayData.market === 'us' || intradayData.symbol.startsWith('^');
+            const isJP = intradayData.symbol === '^N225';
+            const isKR = intradayData.symbol === '^KS11';
+
+            let targetKeys = ['09:00', '10:00', '11:00', '12:00', '13:00', '13:30'];
+            if (isUS) {
+              targetKeys = ['09:30', '11:00', '12:30', '14:00', '16:00'];
+            } else if (isJP) {
+              targetKeys = ['09:00', '11:00', '13:00', '15:00'];
+            } else if (isKR) {
+              targetKeys = ['09:00', '11:00', '13:00', '15:30'];
+            }
+
+            const customTicks: any[] = [];
+            targetKeys.forEach((key) => {
+              const idx = labels.indexOf(key);
+              if (idx !== -1) {
+                customTicks.push({ value: idx, label: key });
+              }
+            });
+
+            if (customTicks.length > 0) {
+              scale.ticks = customTicks;
+            }
+          },
           ticks: {
             color: '#64748b',
-            maxTicksLimit: 6,
+            autoSkip: false,
             padding: 1,
             font: { family: 'sans-serif', size: 9, weight: 'bold' as const },
           },
@@ -632,11 +664,11 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
               </span>
             </div>
             <div className="text-[10px] sm:text-xs text-slate-500 flex items-center gap-1.5 font-mono flex-wrap">
-              <span>昨收: <strong className="text-slate-800">${intradayData.prevClose.toFixed(2)}</strong></span>
+              <span>昨收: <strong className="text-slate-800">${intradayData.prevClose !== null && intradayData.prevClose !== undefined ? intradayData.prevClose.toFixed(2) : '--'}</strong></span>
               <span>•</span>
-              <span>最高: <strong className="text-rose-600">${intradayData.highPrice.toFixed(2)}</strong></span>
+              <span>最高: <strong className="text-rose-600">${intradayData.highPrice !== null && intradayData.highPrice !== undefined ? intradayData.highPrice.toFixed(2) : '--'}</strong></span>
               <span>•</span>
-              <span>最低: <strong className="text-emerald-600">${intradayData.lowPrice.toFixed(2)}</strong></span>
+              <span>最低: <strong className="text-emerald-600">${intradayData.lowPrice !== null && intradayData.lowPrice !== undefined ? intradayData.lowPrice.toFixed(2) : '--'}</strong></span>
             </div>
           </div>
 
@@ -646,7 +678,7 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
                 {intradayData.isMarketOpen ? '盤中即時現價' : `${intradayData.tradingDateStr || ''} 收盤價`}
               </div>
               <div className="text-xl sm:text-3xl font-black font-mono tracking-tight tabular-nums text-slate-900">
-                ${intradayData.latestPrice.toFixed(2)}
+                ${intradayData.latestPrice !== null && intradayData.latestPrice !== undefined ? intradayData.latestPrice.toFixed(2) : '--'}
               </div>
             </div>
 
@@ -665,11 +697,11 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
             >
               <div className="text-xs sm:text-sm font-black flex items-center gap-0.5">
                 {diff > 0 ? '+' : ''}
-                {diff.toFixed(2)}
+                {diff !== null && diff !== undefined ? diff.toFixed(2) : '--'}
               </div>
               <div className="text-[9px] sm:text-[10px] font-semibold">
                 {diffPct > 0 ? '+' : ''}
-                {diffPct.toFixed(2)}%
+                {diffPct !== null && diffPct !== undefined ? diffPct.toFixed(2) : '--'}%
               </div>
             </div>
           </div>
@@ -682,25 +714,25 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
           <div className="bg-slate-50 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
             <div className="text-slate-500 font-medium text-[9px] sm:text-[11px] mb-0.5 truncate">昨日收盤</div>
             <div className="text-[11px] sm:text-sm font-bold text-slate-900 font-mono tabular-nums">
-              ${intradayData.prevClose.toFixed(2)}
+              ${intradayData.prevClose !== null && intradayData.prevClose !== undefined ? intradayData.prevClose.toFixed(2) : '--'}
             </div>
           </div>
           <div className="bg-slate-50 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
             <div className="text-slate-500 font-medium text-[9px] sm:text-[11px] mb-0.5 truncate">當日最高</div>
             <div className="text-[11px] sm:text-sm font-bold text-rose-600 font-mono tabular-nums">
-              ${intradayData.highPrice.toFixed(2)}
+              ${intradayData.highPrice !== null && intradayData.highPrice !== undefined ? intradayData.highPrice.toFixed(2) : '--'}
             </div>
           </div>
           <div className="bg-slate-50 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
             <div className="text-slate-500 font-medium text-[9px] sm:text-[11px] mb-0.5 truncate">當日最低</div>
             <div className="text-[11px] sm:text-sm font-bold text-emerald-600 font-mono tabular-nums">
-              ${intradayData.lowPrice.toFixed(2)}
+              ${intradayData.lowPrice !== null && intradayData.lowPrice !== undefined ? intradayData.lowPrice.toFixed(2) : '--'}
             </div>
           </div>
           <div className="bg-slate-50 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl border border-slate-200">
             <div className="text-slate-500 font-medium text-[9px] sm:text-[11px] mb-0.5 truncate">當日振幅</div>
             <div className="text-[11px] sm:text-sm font-bold text-amber-600 font-mono tabular-nums">
-              {intradayData.amplitudePct.toFixed(2)}%
+              {intradayData.amplitudePct !== null && intradayData.amplitudePct !== undefined ? intradayData.amplitudePct.toFixed(2) : '--'}%
             </div>
           </div>
         </div>
@@ -733,7 +765,7 @@ export const SingleStockChart: React.FC<SingleStockChartProps> = ({
         <span className="truncate">標的: {intradayData ? `${intradayData.name} (${intradayData.symbol})` : '--'}</span>
         <span className="shrink-0 ml-1">
           {intradayData
-            ? `${intradayData.isMarketOpen ? '盤中' : '收盤'}: $${intradayData.latestPrice.toFixed(2)} ${
+            ? `${intradayData.isMarketOpen ? '盤中' : '收盤'}: $${intradayData.latestPrice !== null && intradayData.latestPrice !== undefined ? intradayData.latestPrice.toFixed(2) : '--'} ${
                 intradayData.market === 'us' ? 'USD' : 'NT$'
               }`
             : '請選擇監控標的'}

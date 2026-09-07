@@ -376,7 +376,7 @@ export const AssetRiverChart: React.FC<AssetRiverChartProps> = ({
         <div className="text-right">
           <span className="text-slate-500">區間:</span>
           <span className={`font-bold ml-1 ${diffVal >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-            {isPrivacy ? '****' : `${diffVal >= 0 ? '+' : ''}${diffPct.toFixed(2)}%`}
+            {isPrivacy ? '****' : diffPct !== null && diffPct !== undefined ? `${diffVal >= 0 ? '+' : ''}${diffPct.toFixed(2)}%` : '--'}
           </span>
         </div>
       </div>

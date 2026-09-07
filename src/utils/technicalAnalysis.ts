@@ -15,6 +15,10 @@ export interface CandleData {
 export function calculateSMA(data: (number | null)[], period: number): (number | null)[] {
   const result: (number | null)[] = [];
   for (let i = 0; i < data.length; i++) {
+    if (data[i] === null || isNaN(data[i] as number)) {
+      result.push(null);
+      continue;
+    }
     const startIdx = Math.max(0, i - period + 1);
     const slice = data.slice(startIdx, i + 1).filter((v): v is number => v !== null && !isNaN(v));
     if (slice.length === 0) {
@@ -28,7 +32,7 @@ export function calculateSMA(data: (number | null)[], period: number): (number |
 }
 
 // 2. Exponential Moving Average (EMA)
-export function calculateEMA(data: number[], period: number): (number | null)[] {
+export function calculateEMA(data: (number | null)[], period: number): (number | null)[] {
   const result: (number | null)[] = [];
   const multiplier = 2 / (period + 1);
   let prevEma: number | null = null;
@@ -36,7 +40,7 @@ export function calculateEMA(data: number[], period: number): (number | null)[] 
   for (let i = 0; i < data.length; i++) {
     const val = data[i];
     if (val === null || isNaN(val)) {
-      result.push(prevEma);
+      result.push(null);
       continue;
     }
 
@@ -100,21 +104,29 @@ export function calculateBollingerBands(
 }
 
 // 4. Relative Strength Index (RSI 14)
-export function calculateRSI(prices: number[], period: number = 14): (number | null)[] {
+export function calculateRSI(prices: (number | null)[], period: number = 14): (number | null)[] {
   const rsi: (number | null)[] = [];
   if (prices.length === 0) return [];
-  if (prices.length === 1) return [50];
 
   let avgGain = 0;
   let avgLoss = 0;
+  let prevPrice: number | null = null;
 
   for (let i = 0; i < prices.length; i++) {
-    if (i === 0) {
+    const price = prices[i];
+    if (price === null || isNaN(price)) {
+      rsi.push(null);
+      continue;
+    }
+
+    if (prevPrice === null) {
+      prevPrice = price;
       rsi.push(50);
       continue;
     }
 
-    const change = prices[i] - prices[i - 1];
+    const change = price - prevPrice;
+    prevPrice = price;
     const gain = change > 0 ? change : 0;
     const loss = change < 0 ? Math.abs(change) : 0;
 
@@ -136,9 +148,9 @@ export function calculateRSI(prices: number[], period: number = 14): (number | n
 
 // 5. Stochastic Oscillator (KD 9, 3, 3)
 export function calculateKD(
-  highs: number[],
-  lows: number[],
-  closes: number[],
+  highs: (number | null)[],
+  lows: (number | null)[],
+  closes: (number | null)[],
   n: number = 9,
   m1: number = 3,
   m2: number = 3
@@ -150,12 +162,18 @@ export function calculateKD(
   let lastD = 50;
 
   for (let i = 0; i < closes.length; i++) {
-    const startIdx = Math.max(0, i - n + 1);
-    const highSlice = highs.slice(startIdx, i + 1);
-    const lowSlice = lows.slice(startIdx, i + 1);
-    const maxHigh = Math.max(...highSlice);
-    const minLow = Math.min(...lowSlice);
     const close = closes[i];
+    if (close === null || isNaN(close)) {
+      kArr.push(null);
+      dArr.push(null);
+      continue;
+    }
+
+    const startIdx = Math.max(0, i - n + 1);
+    const highSlice = highs.slice(startIdx, i + 1).filter((v): v is number => v !== null && !isNaN(v));
+    const lowSlice = lows.slice(startIdx, i + 1).filter((v): v is number => v !== null && !isNaN(v));
+    const maxHigh = highSlice.length > 0 ? Math.max(...highSlice) : close;
+    const minLow = lowSlice.length > 0 ? Math.min(...lowSlice) : close;
 
     const rsv = maxHigh === minLow ? 50 : ((close - minLow) / (maxHigh - minLow)) * 100;
 
@@ -217,13 +235,21 @@ export function calculateMACD(
 }
 
 // 7. Support, Resistance & Pivot Levels
-export function calculateSupportResistance(highs: number[], lows: number[], closes: number[]) {
+export function calculateSupportResistance(highs: (number | null)[], lows: (number | null)[], closes: (number | null)[]) {
   if (closes.length === 0) return { resistance: 0, support: 0, pivot: 0, maxRecent: 0, minRecent: 0 };
 
-  const recentLookback = Math.min(30, closes.length);
-  const recentHighs = highs.slice(-recentLookback);
-  const recentLows = lows.slice(-recentLookback);
-  const recentCloses = closes.slice(-recentLookback);
+  const validCloses = closes.filter((c): c is number => c !== null && !isNaN(c));
+  const validHighs = highs.filter((h): h is number => h !== null && !isNaN(h));
+  const validLows = lows.filter((l): l is number => l !== null && !isNaN(l));
+
+  if (validCloses.length === 0 || validHighs.length === 0 || validLows.length === 0) {
+    return { resistance: 0, support: 0, pivot: 0, maxRecent: 0, minRecent: 0 };
+  }
+
+  const recentLookback = Math.min(30, validCloses.length);
+  const recentHighs = validHighs.slice(-recentLookback);
+  const recentLows = validLows.slice(-recentLookback);
+  const recentCloses = validCloses.slice(-recentLookback);
 
   const h = Math.max(...recentHighs);
   const l = Math.min(...recentLows);

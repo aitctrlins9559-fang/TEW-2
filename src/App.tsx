@@ -319,9 +319,9 @@ export default function App() {
           market: (['tse', 'otc', 'us'].includes(item.market as string) ? item.market : 'tse') as MarketType,
           transactions: txs,
           shares: totalShares,
-          cost: Number(avgCost.toFixed(4)),
+          cost: avgCost !== null && avgCost !== undefined ? Number(avgCost.toFixed(4)) : 0,
           buyDate: lastBuyDate,
-          buyRate: Number(avgBuyRate.toFixed(2)),
+          buyRate: avgBuyRate !== null && avgBuyRate !== undefined ? Number(avgBuyRate.toFixed(2)) : 1,
           price: typeof item.price === 'number' && item.price > 0 ? item.price : null,
           prevClose: typeof item.prevClose === 'number' && item.prevClose > 0 ? item.prevClose : null,
           dayHigh: typeof item.dayHigh === 'number' ? item.dayHigh : null,
@@ -530,7 +530,7 @@ export default function App() {
         portfolio,
         totalValue: Math.round(totalValTWD),
         totalProfit: Math.round(profit),
-        totalROI: Number(roi.toFixed(2)),
+        totalROI: roi !== null && roi !== undefined ? Number(roi.toFixed(2)) : 0,
         indices,
       });
       setAiAnalysisResult(analysis);
@@ -964,7 +964,7 @@ export default function App() {
       date: getTaiwanDateString(),
       dps: actualDeductPerShare,
       totalAmount: totalDeductTWD,
-      note: `除息每股扣抵 $${actualDeductPerShare.toFixed(2)} 元`,
+      note: `除息每股扣抵 $${actualDeductPerShare !== null && actualDeductPerShare !== undefined ? actualDeductPerShare.toFixed(2) : '--'} 元`,
     };
 
     const newCost = Math.max(0, Math.round((target.cost - actualDeductPerShare) * 10000) / 10000);
@@ -988,7 +988,7 @@ export default function App() {
       if (refreshed) setTxHistoryStock(refreshed);
     }
 
-    showToast(`✅ 成功為 ${target.name} 扣抵每股 $${actualDeductPerShare.toFixed(2)} 元！持股均價已由 $${target.cost} 調降為 $${newCost.toFixed(2)} 元`);
+    showToast(`✅ 成功為 ${target.name} 扣抵每股 $${actualDeductPerShare !== null && actualDeductPerShare !== undefined ? actualDeductPerShare.toFixed(2) : '--'} 元！持股均價已由 $${target.cost} 調降為 $${newCost !== null && newCost !== undefined ? newCost.toFixed(2) : '--'} 元`);
     playSuccessSound();
   };
 
@@ -1040,7 +1040,7 @@ export default function App() {
   });
 
   // Real intraday price series state for total asset trend
-  const [realIntradaySeries, setRealIntradaySeries] = useState<{ labels: string[]; data: number[] } | null>(null);
+  const [realIntradaySeries, setRealIntradaySeries] = useState<{ labels: string[]; data: (number | null)[] } | null>(null);
 
   // Fetch real 5-minute intraday price history for all portfolio holdings
   useEffect(() => {
@@ -1082,8 +1082,18 @@ export default function App() {
         const sortedTs = Array.from(tsMap.keys()).sort((a, b) => a - b);
         if (sortedTs.length === 0) return;
 
-        const labels = sortedTs.map((ts) => tsMap.get(ts) || '');
-        const data = sortedTs.map((ts) => {
+        const hasTW = portfolio.some((s) => s.market !== 'us');
+        const hasUS = portfolio.some((s) => s.market === 'us');
+        const isUSOnly = hasUS && !hasTW;
+
+        const startMins = isUSOnly ? 9 * 60 + 30 : 9 * 60; // 09:30 or 09:00
+        const endMins = isUSOnly ? 16 * 60 : 13 * 60 + 30; // 16:00 or 13:30
+
+        const valMap = new Map<string, number>();
+        let maxElapsedMins = -1;
+
+        sortedTs.forEach((ts) => {
+          const timeStr = tsMap.get(ts)!;
           let totalTWDAtTs = 0;
           results.forEach(({ stock, chartData }) => {
             const fx = stock.market === 'us' ? usdTwdRate : 1;
@@ -1102,11 +1112,47 @@ export default function App() {
 
             totalTWDAtTs += effShares * pAtTs * fx;
           });
-          return Math.round(totalTWDAtTs);
+          valMap.set(timeStr, Math.round(totalTWDAtTs));
+
+          const parts = timeStr.split(':');
+          if (parts.length >= 2) {
+            const m = Number(parts[0]) * 60 + Number(parts[1]);
+            if (m <= endMins && m > maxElapsedMins) {
+              maxElapsedMins = m;
+            }
+          }
         });
 
-        if (labels.length > 0 && data.length > 0) {
-          setRealIntradaySeries({ labels, data });
+        const finalLabels: string[] = [];
+        const finalData: (number | null)[] = [];
+        let lastVal = prevCloseValTWD > 0 ? prevCloseValTWD : totalValTWD;
+
+        if (sortedTs.length > 0) {
+          const firstTimeStr = tsMap.get(sortedTs[0])!;
+          if (valMap.has(firstTimeStr)) {
+            lastVal = valMap.get(firstTimeStr)!;
+          }
+        }
+
+        for (let m = startMins; m <= endMins; m += 1) {
+          const hh = String(Math.floor(m / 60)).padStart(2, '0');
+          const mm = String(m % 60).padStart(2, '0');
+          const tStr = `${hh}:${mm}`;
+
+          finalLabels.push(tStr);
+
+          if (valMap.has(tStr)) {
+            lastVal = valMap.get(tStr)!;
+            finalData.push(lastVal);
+          } else if (m <= maxElapsedMins) {
+            finalData.push(lastVal);
+          } else {
+            finalData.push(null);
+          }
+        }
+
+        if (finalLabels.length > 0) {
+          setRealIntradaySeries({ labels: finalLabels, data: finalData });
         }
       } catch {
         // ignore
@@ -1638,7 +1684,7 @@ export default function App() {
         portfolio={portfolio}
         totalValue={Math.round(totalValTWD)}
         totalProfit={Math.round(totalProfitTWD || 0)}
-        totalROI={Number((totalROI || 0).toFixed(2))}
+        totalROI={totalROI !== null && totalROI !== undefined ? Number(totalROI.toFixed(2)) : 0}
         indices={indices}
         onClose={() => setIsAICopilotOpen(false)}
         onReanalyze={handleRunAIAnalysis}

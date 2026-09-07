@@ -9,7 +9,7 @@ import { playClickSound } from '../utils/audio';
 
 interface IntegratedAssetHubProps {
   labels: string[];
-  data: number[];
+  data: (number | null)[];
   currentVal: number;
   portfolio: StockPosition[];
   usdTwdRate: number;

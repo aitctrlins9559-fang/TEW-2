@@ -290,7 +290,7 @@ export const StockTable: React.FC<StockTableProps> = ({
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
               <span className="text-[10px] font-mono font-bold text-indigo-700 hidden sm:inline">
-                {DISCOUNT_OPTIONS.find((o) => Math.abs(o.value - localDiscount) < 0.001)?.label.split(' ')[1] || `${(localDiscount * 10).toFixed(1)}折`}
+                {DISCOUNT_OPTIONS.find((o) => Math.abs(o.value - localDiscount) < 0.001)?.label.split(' ')[1] || `${localDiscount !== null && localDiscount !== undefined ? (localDiscount * 10).toFixed(1) : '--'}折`}
               </span>
               <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isDataMenuOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -582,7 +582,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                                   : `${costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)}`}
                               </span>
                               <span className="text-xs">
-                                ({safePrice === null ? '--' : `${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(2)}%`})
+                                ({safePrice === null || costDetails.netRoiPct === null || costDetails.netRoiPct === undefined || isNaN(costDetails.netRoiPct) ? '--' : `${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(2)}%`})
                               </span>
                             </div>
                           </td>
@@ -606,7 +606,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                           {/* Stacked Dividend Yield & Annual Income */}
                           <td className="p-3.5 text-right font-mono whitespace-nowrap">
                             <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs sm:text-sm">
-                              {divInfo.dividendYieldPct.toFixed(2)}%
+                              {divInfo.dividendYieldPct !== null && divInfo.dividendYieldPct !== undefined ? divInfo.dividendYieldPct.toFixed(2) : '--'}%
                             </span>
                             <div className="text-xs text-emerald-800 font-bold mt-0.5 font-sans">
                               年領 {formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
@@ -712,7 +712,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                                   : `${costDetails.netProfitTWD >= 0 ? '+' : ''}${formatMoney(costDetails.netProfitTWD, isPrivacy)}`}
                               </span>
                               <span className="text-[9px] opacity-90">
-                                ({costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(1)}%)
+                                ({safePrice === null || costDetails.netRoiPct === null || costDetails.netRoiPct === undefined || isNaN(costDetails.netRoiPct) ? '--' : `${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(1)}%`})
                               </span>
                             </div>
                           </td>
@@ -720,7 +720,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                           {/* Stacked Dividend Yield & Income */}
                           <td className="py-2.5 pl-1 pr-2.5 text-right font-mono align-middle">
                             <div className="text-emerald-700 font-black text-xs tabular-nums truncate">
-                              {divInfo.dividendYieldPct.toFixed(1)}%
+                              {divInfo.dividendYieldPct !== null && divInfo.dividendYieldPct !== undefined ? divInfo.dividendYieldPct.toFixed(1) : '--'}%
                             </div>
                             <div className="text-[9.5px] text-slate-500 font-sans tabular-nums truncate" title={`年領 ${formatMoney(divInfo.annualIncomeTWD, isPrivacy)}`}>
                               年{formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
@@ -812,7 +812,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                               : 'bg-rose-50 text-rose-700 border-rose-200'
                           }`}
                         >
-                          {safePrice === null ? '--' : `${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(2)}%`}
+                          {safePrice === null || costDetails.netRoiPct === null || costDetails.netRoiPct === undefined || isNaN(costDetails.netRoiPct) ? '--' : `${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(2)}%`}
                         </div>
                       </div>
                     </div>
@@ -836,7 +836,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                       <div className="flex items-center justify-between text-emerald-950 font-bold flex-wrap gap-1">
                         <span className="flex items-center gap-1.5 text-xs sm:text-sm">
                           <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
-                          殖利率 {divInfo.dividendYieldPct.toFixed(2)}% ({divInfo.frequency})
+                          殖利率 {divInfo.dividendYieldPct !== null && divInfo.dividendYieldPct !== undefined ? divInfo.dividendYieldPct.toFixed(2) : '--'}% ({divInfo.frequency})
                         </span>
                         <span className="font-mono text-emerald-800 font-bold text-xs sm:text-sm shrink-0">
                           年領 {formatMoney(divInfo.annualIncomeTWD, isPrivacy)}
@@ -907,7 +907,7 @@ export const StockTable: React.FC<StockTableProps> = ({
                           <div className="text-base font-black text-slate-900 truncate">{item.name}</div>
                         </div>
                         <span className="text-xs font-mono font-extrabold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-800 shadow-2xs">
-                          {weightPct.toFixed(1)}%
+                          {weightPct !== null && weightPct !== undefined ? weightPct.toFixed(1) : '--'}%
                         </span>
                       </div>
 
@@ -919,12 +919,12 @@ export const StockTable: React.FC<StockTableProps> = ({
                         <div className="text-xs font-mono font-bold flex justify-between">
                           <span>報酬率</span>
                           <span className={isPositive ? getUpColor() : getDownColor()}>
-                            {isPositive ? '+' : ''}{itemRoi.toFixed(2)}%
+                            {isPositive ? '+' : ''}{itemRoi !== null && itemRoi !== undefined ? itemRoi.toFixed(2) : '--'}%
                           </span>
                         </div>
                         <div className="text-xs font-mono font-bold text-emerald-800 flex justify-between">
                           <span>殖利率</span>
-                          <span>{divInfo.dividendYieldPct.toFixed(2)}%</span>
+                          <span>{divInfo.dividendYieldPct !== null && divInfo.dividendYieldPct !== undefined ? divInfo.dividendYieldPct.toFixed(2) : '--'}%</span>
                         </div>
                       </div>
 

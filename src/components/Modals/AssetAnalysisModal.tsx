@@ -13,7 +13,7 @@ interface AssetAnalysisModalProps {
   isPrivacy: boolean;
   isRedUp: boolean;
   labels: string[];
-  data: number[];
+  data: (number | null)[];
   currentVal: number;
   onClose: () => void;
 }

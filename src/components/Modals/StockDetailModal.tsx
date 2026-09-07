@@ -207,7 +207,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
               {isUS ? '美股' : stock.market === 'otc' ? '上櫃' : '上市'}
             </span>
             <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 shrink-0 hidden xs:inline">
-              權重 {weightPct.toFixed(1)}%
+              權重 {weightPct !== null && weightPct !== undefined ? weightPct.toFixed(1) : '--'}%
             </span>
           </div>
         </div>
@@ -259,9 +259,9 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                     {stock.prevClose && safePrice && (
                       <span className={`text-[10px] sm:text-xs font-mono font-bold ${safePrice >= stock.prevClose ? getUpColor() : getDownColor()}`}>
                         {safePrice >= stock.prevClose ? '▲' : '▼'}
-                        {Math.abs(safePrice - stock.prevClose).toFixed(2)} (
+                        {Math.abs(safePrice - stock.prevClose) !== null && !isNaN(Math.abs(safePrice - stock.prevClose)) ? Math.abs(safePrice - stock.prevClose).toFixed(2) : '--'} (
                         {safePrice >= stock.prevClose ? '+' : ''}
-                        {(((safePrice - stock.prevClose) / stock.prevClose) * 100).toFixed(2)}%)
+                        {stock.prevClose > 0 ? (((safePrice - stock.prevClose) / stock.prevClose) * 100).toFixed(2) : '0.00'}%)
                       </span>
                     )}
                   </div>
@@ -289,7 +289,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                 <div className="bg-slate-50/80 px-2 py-1.5 rounded-lg border border-slate-200/60 text-[10px] font-mono space-y-1">
                   <div className="flex items-center justify-between text-slate-500 font-sans">
                     <span>當日低 ${dayRange.low}</span>
-                    <span className="font-bold text-slate-700">當日震盪位階 {dayRange.pct.toFixed(0)}%</span>
+                    <span className="font-bold text-slate-700">當日震盪位階 {dayRange.pct !== null && dayRange.pct !== undefined ? dayRange.pct.toFixed(0) : '--'}%</span>
                     <span>當日高 ${dayRange.high}</span>
                   </div>
                   <div className="w-full bg-slate-200 rounded-full h-1.5 relative overflow-hidden">
@@ -325,7 +325,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                     {costDetails.netProfitTWD >= 0 ? '+' : ''}{formatMoney(costDetails.netProfitTWD, isPrivacy)}
                   </div>
                   <div className="text-[9px] text-slate-400 font-sans mt-0.5 truncate">
-                    淨報酬: {costDetails.netRoiPct >= 0 ? '+' : ''}{costDetails.netRoiPct.toFixed(2)}%
+                    淨報酬: {costDetails.netRoiPct !== null && costDetails.netRoiPct !== undefined && !isNaN(costDetails.netRoiPct) ? `${costDetails.netRoiPct >= 0 ? '+' : ''}${costDetails.netRoiPct.toFixed(2)}%` : '--'}
                   </div>
                 </div>
 
@@ -338,7 +338,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                     {stock.shares.toLocaleString()} 股
                   </div>
                   <div className="text-[9px] text-slate-500 font-sans mt-0.5 truncate">
-                    均價: ${stock.cost} {isUS && `(匯率${buyFx.toFixed(1)})`}
+                    均價: ${stock.cost} {isUS && `(匯率${(buyFx || usdTwdRate || 31.5).toFixed(1)})`}
                   </div>
                 </div>
 
@@ -545,11 +545,11 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                                 {divInfo.passedExDateStr ? `已於 ${divInfo.passedExDateStr} 除息` : '今年度已除息'}
                               </span>
                               <span className="text-[10px] text-slate-500 font-mono">
-                                (每股 ${divInfo.singleDividendPerShare.toFixed(2)} 元)
+                                (每股 ${divInfo.singleDividendPerShare !== null && divInfo.singleDividendPerShare !== undefined ? divInfo.singleDividendPerShare.toFixed(2) : '--'} 元)
                               </span>
                             </div>
                             <p className="text-[10px] text-slate-500">
-                              將買入均價由 ${stock.cost} 調降為 ${(Math.max(0, stock.cost - divInfo.singleDividendPerShare)).toFixed(2)} 元（扣抵後將同步記錄於歷程明細）
+                              將買入均價由 ${stock.cost} 調降為 ${divInfo.singleDividendPerShare !== null && divInfo.singleDividendPerShare !== undefined ? (Math.max(0, stock.cost - divInfo.singleDividendPerShare)).toFixed(2) : '--'} 元（扣抵後將同步記錄於歷程明細）
                             </p>
                           </div>
 
@@ -627,7 +627,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                   投資組合佔比與殖利率分析
                 </span>
                 <span className="text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100">
-                  權重 {weightPct.toFixed(1)}%
+                  權重 {weightPct !== null && weightPct !== undefined ? weightPct.toFixed(1) : '--'}%
                 </span>
               </div>
 
@@ -635,7 +635,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
               <div className="space-y-1">
                 <div className="flex justify-between text-[10px] text-slate-500 font-mono">
                   <span>持股市值佔比</span>
-                  <span className="font-bold text-slate-700">{weightPct.toFixed(1)}% of 總資產</span>
+                  <span className="font-bold text-slate-700">{weightPct !== null && weightPct !== undefined ? weightPct.toFixed(1) : '--'}% of 總資產</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                   <div
@@ -650,7 +650,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                 <div className="bg-slate-50 p-2 rounded-lg border border-slate-200/60">
                   <span className="text-[9px] text-slate-500 font-sans block">現價殖利率</span>
                   <span className="text-emerald-700 font-black text-xs sm:text-sm">
-                    {divInfo.dividendYieldPct > 0 ? `${divInfo.dividendYieldPct.toFixed(2)}%` : '--'}
+                    {divInfo.dividendYieldPct !== null && divInfo.dividendYieldPct !== undefined && divInfo.dividendYieldPct > 0 ? `${divInfo.dividendYieldPct.toFixed(2)}%` : '--'}
                   </span>
                   <span className="text-[8px] text-slate-400 font-sans block">以現價換算</span>
                 </div>
@@ -658,7 +658,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                 <div className="bg-slate-50 p-2 rounded-lg border border-slate-200/60">
                   <span className="text-[9px] text-slate-500 font-sans block">成本殖利率 (YoC)</span>
                   <span className="text-indigo-700 font-black text-xs sm:text-sm">
-                    {yieldOnCostPct > 0 ? `${yieldOnCostPct.toFixed(2)}%` : '--'}
+                    {yieldOnCostPct !== null && yieldOnCostPct !== undefined && yieldOnCostPct > 0 ? `${yieldOnCostPct.toFixed(2)}%` : '--'}
                   </span>
                   <span className="text-[8px] text-slate-400 font-sans block">以買入成本換算</span>
                 </div>
@@ -674,7 +674,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                 <div className="bg-slate-50 p-2 rounded-lg border border-slate-200/60">
                   <span className="text-[9px] text-slate-500 font-sans block">扣除股利實質成本</span>
                   <span className="text-slate-800 font-bold text-xs">
-                    ${effectiveCostPerShare.toFixed(2)}
+                    ${effectiveCostPerShare !== null && effectiveCostPerShare !== undefined && !isNaN(effectiveCostPerShare) ? effectiveCostPerShare.toFixed(2) : '--'}
                   </span>
                   <span className="text-[8px] text-slate-400 font-sans block">每股零成本門檻</span>
                 </div>
@@ -746,7 +746,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
                       {targetSimNetProfitTWD >= 0 ? '+' : ''}{formatMoney(targetSimNetProfitTWD, isPrivacy)}
                     </span>
                     <span className={`text-[10px] font-bold ${targetSimNetProfitTWD >= 0 ? getUpColor() : getDownColor()}`}>
-                      ({targetSimRoiPct >= 0 ? '+' : ''}{targetSimRoiPct.toFixed(2)}%)
+                      ({targetSimRoiPct !== null && targetSimRoiPct !== undefined && !isNaN(targetSimRoiPct) ? `${targetSimRoiPct >= 0 ? '+' : ''}${targetSimRoiPct.toFixed(2)}%` : '--'})
                     </span>
                   </div>
                 </div>

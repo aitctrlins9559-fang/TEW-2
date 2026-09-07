@@ -216,7 +216,7 @@ export function getStockDividendInfo(
     ? `官方最新公告 (${exactExDate} 除息)`
     : passedExDateStr
     ? `今年度前次已除息 (${passedExDateStr})`
-    : `未公布 (依前次每股 $${singleDps.toFixed(2)} 估算)`;
+    : `未公布 (依前次每股 $${singleDps !== null && singleDps !== undefined ? singleDps.toFixed(2) : '--'} 估算)`;
 
   return {
     singleDividendPerShare: singleDps,

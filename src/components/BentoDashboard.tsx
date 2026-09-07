@@ -225,7 +225,7 @@ export const BentoDashboard: React.FC<BentoDashboardProps> = ({
                   <span className="opacity-30">｜</span>
                   <span>
                     {currentRange.isPositive ? '+' : ''}
-                    {currentRange.roi.toFixed(2)}%
+                    {currentRange.roi !== null && currentRange.roi !== undefined ? currentRange.roi.toFixed(2) : '--'}%
                   </span>
                   <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 opacity-60 shrink-0" />
                 </button>
@@ -292,7 +292,7 @@ export const BentoDashboard: React.FC<BentoDashboardProps> = ({
               </div>
             </div>
             <span className="text-[10px] sm:text-xs font-mono font-black text-emerald-700 bg-emerald-50/90 border border-emerald-200/80 px-2 py-0.5 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-2xl shadow-2xs">
-              {targetPct.toFixed(1)}% 達標
+              {targetPct !== null && targetPct !== undefined ? targetPct.toFixed(1) : '--'}% 達標
             </span>
           </div>
 

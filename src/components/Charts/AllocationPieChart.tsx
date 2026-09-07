@@ -203,7 +203,7 @@ export const AllocationPieChart: React.FC<AllocationPieChartProps> = ({
 
                     <div className="text-right shrink-0 font-mono flex items-center gap-1.5">
                       <span className="font-bold text-indigo-600 text-[11px] sm:text-xs tabular-nums">
-                        {pct.toFixed(1)}%
+                        {pct !== null && pct !== undefined ? pct.toFixed(1) : '--'}%
                       </span>
                       <span className="text-[10px] text-slate-500 font-medium tabular-nums hidden xs:inline">
                         {isPrivacy ? '****' : `$${Math.round(val).toLocaleString()}`}
@@ -269,7 +269,7 @@ export const AllocationPieChart: React.FC<AllocationPieChartProps> = ({
 
                     <div className="text-right shrink-0 font-mono">
                       <div className="font-bold text-indigo-600 text-xs tabular-nums">
-                        {pct.toFixed(1)}%
+                        {pct !== null && pct !== undefined ? pct.toFixed(1) : '--'}%
                       </div>
                       <div className="text-[10px] text-slate-600 font-medium tabular-nums">
                         {isPrivacy ? '****' : `$${Math.round(val).toLocaleString()}`}

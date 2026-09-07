@@ -339,7 +339,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Currency Pill */}
           <div className="flex items-center gap-0.5 bg-indigo-50/80 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-xl border border-indigo-100 text-indigo-900 font-bold font-mono text-[10px] sm:text-xs shrink-0 ml-auto">
             <DollarSign className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-600" />
-            <span>匯率 {usdTwdRate > 0 ? usdTwdRate.toFixed(2) : '31.50'}</span>
+            <span>匯率 {usdTwdRate > 0 && usdTwdRate !== null && usdTwdRate !== undefined ? usdTwdRate.toFixed(2) : '31.50'}</span>
           </div>
         </div>
       </div>

@@ -183,7 +183,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         {/* Quick Utility Toggles */}
         <div className="flex items-center justify-between gap-1 text-slate-600">
           <div className="text-[11px] font-mono font-bold text-slate-500">
-            USD/TWD <span className="text-slate-900">${usdTwdRate.toFixed(2)}</span>
+            USD/TWD <span className="text-slate-900">${usdTwdRate !== null && usdTwdRate !== undefined ? usdTwdRate.toFixed(2) : '--'}</span>
           </div>
 
           <div className="flex items-center gap-1">

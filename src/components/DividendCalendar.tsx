@@ -420,7 +420,7 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
             <span className="text-[9px] sm:text-xs font-sans text-slate-500 font-normal ml-0.5">/月</span>
           </div>
           <div className="text-[9px] sm:text-[11px] text-slate-500 font-mono truncate">
-            進度: <strong className="text-indigo-600">{goalProgressPct.toFixed(0)}%</strong>
+            進度: <strong className="text-indigo-600">{goalProgressPct !== null && goalProgressPct !== undefined ? goalProgressPct.toFixed(0) : '--'}%</strong>
           </div>
         </div>
 
@@ -430,7 +430,7 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
             <Sparkles className="w-3 h-3 text-amber-600 shrink-0" /> 平均殖利率
           </div>
           <div className="text-sm sm:text-2xl font-black font-mono text-amber-700 tracking-tight my-0.5 truncate">
-            {summary.weightedDividendYieldPct.toFixed(2)}%
+            {summary.weightedDividendYieldPct !== null && summary.weightedDividendYieldPct !== undefined ? summary.weightedDividendYieldPct.toFixed(2) : '--'}%
           </div>
           <div className="text-[9px] sm:text-[11px] text-slate-600 font-mono truncate">
             共 {portfolio.length} 檔持股
@@ -623,11 +623,11 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
                         <div className="min-w-0">
                           <div className="text-[9px] text-slate-500 font-sans">每股現金 (配息)</div>
                           <div className="text-xs font-black text-emerald-700 truncate">
-                            ${item.singleDps.toFixed(2)} <span className="text-[9px] font-normal text-slate-500 font-sans">元/股</span>
+                            ${item.singleDps !== null && item.singleDps !== undefined ? item.singleDps.toFixed(2) : '--'} <span className="text-[9px] font-normal text-slate-500 font-sans">元/股</span>
                           </div>
                           {originalStock?.market !== 'us' && (
                             <div className="text-[8px] text-slate-400 font-sans truncate">
-                              (每張 ${Math.round(item.singleDps * 1000).toLocaleString()})
+                              (每張 ${Math.round((item.singleDps || 0) * 1000).toLocaleString()})
                             </div>
                           )}
                         </div>
@@ -737,11 +737,11 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
                           </td>
 
                           <td className="py-1.5 px-2 text-right font-bold text-emerald-700">
-                            ${item.singleDps.toFixed(2)}
+                            ${item.singleDps !== null && item.singleDps !== undefined ? item.singleDps.toFixed(2) : '--'}
                           </td>
 
                           <td className="py-1.5 px-2 text-right font-bold text-purple-700">
-                            {item.stockDps > 0 ? `${item.stockDps.toFixed(2)}` : '-'}
+                            {item.stockDps > 0 && item.stockDps !== null && item.stockDps !== undefined ? `${item.stockDps.toFixed(2)}` : '-'}
                           </td>
 
                           <td className="py-1.5 px-2 text-center">
@@ -859,7 +859,7 @@ export const DividendCalendar: React.FC<DividendCalendarProps> = ({
                 <Calculator className="w-4 h-4 text-indigo-600" /> 填補缺口：還需投入本金估算
               </div>
               <p className="text-xs text-slate-700 leading-relaxed">
-                依據您目前組合平均殖利率 <strong className="text-amber-800 font-mono">{summary.weightedDividendYieldPct.toFixed(2)}%</strong> 試算，要填補每月 <strong className="text-emerald-700 font-mono">${Math.round(monthlyGap).toLocaleString()} NT$</strong> 的缺口：
+                依據您目前組合平均殖利率 <strong className="text-amber-800 font-mono">{summary.weightedDividendYieldPct !== null && summary.weightedDividendYieldPct !== undefined ? summary.weightedDividendYieldPct.toFixed(2) : '--'}%</strong> 試算，要填補每月 <strong className="text-emerald-700 font-mono">${Math.round(monthlyGap).toLocaleString()} NT$</strong> 的缺口：
               </p>
               <div className="bg-white p-3 rounded-xl border border-sky-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div className="text-xs text-slate-600">
